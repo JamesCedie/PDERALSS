@@ -1,8 +1,134 @@
-<?php require 'includes/layout.php'; page_start('Damage Assessment');
-$rows=[['DA-001','Brgy. Jaro','Pedro Santos','House','Fully Damaged','Verified','2026-05-01'],['DA-002','Brgy. Molo','Maria Reyes','House','Partially Damaged','Under Review','2026-05-01'],['DA-003','Brgy. Arevalo','Jose Garcia','Infrastructure','Severe','Verified','2026-04-30'],['DA-004','Brgy. La Paz','Ana Cruz','House','Minor Damage','Verified','2026-04-30']];
+<?php
+require 'includes/layout.php';
+page_start('Damage Assessment');
+
+$rows = [
+    ['DA-001', 'Brgy. Jaro',    'Pedro Santos', 'House',          'Fully Damaged',     'Verified',     '2026-05-01'],
+    ['DA-002', 'Brgy. Molo',    'Maria Reyes',  'House',          'Partially Damaged', 'Under Review', '2026-05-01'],
+    ['DA-003', 'Brgy. Arevalo', 'Jose Garcia',  'Infrastructure', 'Severe',            'Verified',     '2026-04-30'],
+    ['DA-004', 'Brgy. La Paz',  'Ana Cruz',     'House',          'Minor Damage',      'Verified',     '2026-04-30'],
+];
 ?>
-<div class="page-head"><h1 class="page-title">Damage Assessment & Verification</h1><button class="btn btn-primary" onclick="openModal('damageModal')">＋ Submit Assessment</button></div>
-<div class="grid g3"><div class="card"><div class="stat"><div class="stat-icon blue">✓</div><div><div class="stat-value">156</div><div class="stat-label">Total Assessments</div></div></div></div><div class="card"><div class="stat"><div class="stat-icon green">✓</div><div><div class="stat-value">121</div><div class="stat-label">Verified</div></div></div></div><div class="card"><div class="stat"><div class="stat-icon yellow">⌛</div><div><div class="stat-value">35</div><div class="stat-label">Under Review</div></div></div></div></div>
-<div class="card mt"><div class="alert alert-info"><b>Secure Report Submission</b><div class="mini">Assessment records can be validated before inclusion in official allocation and logistics reports.</div></div><h2>Assessment Records</h2><div class="table-wrap"><table class="table"><thead><tr><th>ID</th><th>Barangay</th><th>Reporter</th><th>Asset Type</th><th>Damage</th><th>Status</th><th>Date</th></tr></thead><tbody><?php foreach($rows as $r): ?><tr><?php foreach($r as $i=>$v): ?><td><?=$i===5?status_badge($v):htmlspecialchars($v)?></td><?php endforeach; ?></tr><?php endforeach; ?></tbody></table></div></div>
-<div id="damageModal" class="modal"><div class="modal-box"><div class="modal-head"><h2>Submit Damage Assessment</h2><button class="icon-btn" onclick="closeModal('damageModal')">✕</button></div><form onsubmit="event.preventDefault();alert('Assessment submitted for verification.');closeModal('damageModal')"><div class="form-grid"><div class="field"><label>Barangay</label><input required></div><div class="field"><label>Reporter</label><input required></div><div class="field"><label>Asset Type</label><select><option>House</option><option>Infrastructure</option><option>Road</option><option>Facility</option></select></div><div class="field"><label>Damage Status</label><select><option>Fully Damaged</option><option>Partially Damaged</option><option>Minor Damage</option></select></div><div class="field" style="grid-column:1/-1"><label>Description</label><textarea></textarea></div></div><div class="actions mt"><button class="btn btn-primary">Submit Assessment</button></div></form></div></div>
+
+<div class="page-head">
+    <h1 class="page-title">Damage Assessment &amp; Verification</h1>
+    <button class="btn btn-primary" onclick="openModal('damageModal')">＋ Submit Assessment</button>
+</div>
+
+<div class="grid g3">
+    <div class="card">
+        <div class="stat">
+            <div class="stat-icon blue">✓</div>
+            <div>
+                <div class="stat-value">156</div>
+                <div class="stat-label">Total Assessments</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="stat">
+            <div class="stat-icon green">✓</div>
+            <div>
+                <div class="stat-value">121</div>
+                <div class="stat-label">Verified</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="stat">
+            <div class="stat-icon yellow">⌛</div>
+            <div>
+                <div class="stat-value">35</div>
+                <div class="stat-label">Under Review</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt">
+    <div class="alert alert-info">
+        <b>Secure Report Submission</b>
+        <div class="mini">Assessment records can be validated before inclusion in official allocation and logistics reports.</div>
+    </div>
+
+    <h2>Assessment Records</h2>
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Barangay</th>
+                    <th>Reporter</th>
+                    <th>Asset Type</th>
+                    <th>Damage</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($rows as $r): ?>
+                    <tr>
+                        <?php foreach ($r as $i => $v): ?>
+                            <td><?= $i === 5 ? status_badge($v) : htmlspecialchars($v) ?></td>
+                        <?php endforeach; ?>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="damageModal" class="modal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <h2>Submit Damage Assessment</h2>
+            <button class="icon-btn" onclick="closeModal('damageModal')">✕</button>
+        </div>
+
+        <form onsubmit="event.preventDefault(); alert('Assessment submitted for verification.'); closeModal('damageModal')">
+            <div class="form-grid">
+                <div class="field">
+                    <label>Barangay</label>
+                    <input required>
+                </div>
+
+                <div class="field">
+                    <label>Reporter</label>
+                    <input required>
+                </div>
+
+                <div class="field">
+                    <label>Asset Type</label>
+                    <select>
+                        <option>House</option>
+                        <option>Infrastructure</option>
+                        <option>Road</option>
+                        <option>Facility</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Damage Status</label>
+                    <select>
+                        <option>Fully Damaged</option>
+                        <option>Partially Damaged</option>
+                        <option>Minor Damage</option>
+                    </select>
+                </div>
+
+                <div class="field field-full">
+                    <label>Description</label>
+                    <textarea></textarea>
+                </div>
+            </div>
+
+            <div class="actions mt">
+                <button class="btn btn-primary">Submit Assessment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <?php page_end(); ?>

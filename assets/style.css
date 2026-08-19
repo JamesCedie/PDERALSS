@@ -1,44 +1,839 @@
+/* ==========================================================
+   Reset & base
+   ========================================================== */
+* {
+    box-sizing: border-box;
+}
 
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f8fafc;color:#1f2937}
-a{text-decoration:none;color:inherit}
-button,input,select,textarea{font:inherit}
-.app{display:flex;min-height:100vh}
-.sidebar{width:260px;background:#0f3b82;color:#fff;position:fixed;left:0;top:0;bottom:0;overflow-y:auto;z-index:20;transition:.25s}
-.sidebar.collapsed{width:0;overflow:hidden}
-.brand{padding:24px 22px;font-size:20px;font-weight:700;border-bottom:1px solid rgba(255,255,255,.12)}
-.nav{padding:14px}
-.nav a{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:9px;color:#dbeafe;margin-bottom:4px;font-size:14px}
-.nav a.active{background:#2563eb;color:#fff}
-.nav a:hover{background:#1d4ed8}
-.nav-icon{width:22px;text-align:center}
-.main{margin-left:260px;width:calc(100% - 260px);min-width:0;transition:.25s}
-.main.expanded{margin-left:0;width:100%}
-.topbar{height:72px;background:#fff;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:10}
-.top-left,.top-right{display:flex;align-items:center;gap:16px}
-.icon-btn{border:0;background:transparent;padding:9px;border-radius:8px;cursor:pointer;color:#4b5563}
-.icon-btn:hover{background:#f3f4f6}
-.user{text-align:right}.user-name{font-size:14px}.user-role{font-size:12px;color:#6b7280;margin-top:3px}
-.content{padding:24px;max-width:1600px;margin:auto}
-.page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
-.page-title{font-size:25px;font-weight:600;margin:0}
-.grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g5{grid-template-columns:repeat(5,minmax(0,1fr))}
-.card{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(15,23,42,.06);padding:22px;border:1px solid #eef2f7}
-.card h2{font-size:18px;margin:0 0 16px}.card h3{font-size:15px;margin:0 0 6px}
-.stat{display:flex;align-items:center;gap:14px}.stat-icon{width:48px;height:48px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:23px}.blue{background:#3b82f6}.red{background:#ef4444}.green{background:#22c55e}.yellow{background:#eab308}.purple{background:#8b5cf6}.gray{background:#6b7280}
-.stat-value{font-size:27px;font-weight:600}.stat-label{font-size:13px;color:#6b7280;margin-top:4px}
-.table-wrap{overflow-x:auto}.table{width:100%;border-collapse:collapse}.table th{background:#f8fafc;color:#6b7280;font-size:12px;font-weight:600;text-align:left;padding:12px;border-bottom:1px solid #e5e7eb;white-space:nowrap}.table td{font-size:13px;padding:12px;border-bottom:1px solid #f1f5f9;vertical-align:top}.table tr:hover td{background:#fafafa}
-.badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:600}.b-green{background:#dcfce7;color:#15803d}.b-red{background:#fee2e2;color:#b91c1c}.b-yellow{background:#fef3c7;color:#a16207}.b-blue{background:#dbeafe;color:#1d4ed8}.b-gray{background:#f3f4f6;color:#4b5563}.b-purple{background:#ede9fe;color:#6d28d9}
-.btn{border:0;border-radius:8px;padding:10px 15px;cursor:pointer;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:7px}.btn-primary{background:#2563eb;color:#fff}.btn-primary:hover{background:#1d4ed8}.btn-success{background:#16a34a;color:#fff}.btn-danger{background:#dc2626;color:#fff}.btn-light{background:#f3f4f6;color:#374151}.btn-warning{background:#eab308;color:#fff}
-.actions{display:flex;gap:7px;flex-wrap:wrap}
-.alert{padding:14px;border-radius:8px;border-left:4px solid;margin-bottom:10px}.alert-warning{background:#fffbeb;border-color:#eab308}.alert-info{background:#eff6ff;border-color:#3b82f6}.alert-danger{background:#fef2f2;border-color:#ef4444}.alert-success{background:#f0fdf4;border-color:#22c55e}
-.map{height:370px;background:linear-gradient(135deg,#eff6ff,#f0fdf4);border-radius:9px;position:relative;overflow:hidden;border:1px solid #dbeafe}.pin{position:absolute;background:#fff;border:2px solid #60a5fa;border-radius:999px;padding:8px 12px;box-shadow:0 3px 8px rgba(0,0,0,.1);font-size:12px}
-.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field label{display:block;font-size:12px;color:#4b5563;margin-bottom:6px}.field input,.field select,.field textarea{width:100%;border:1px solid #d1d5db;border-radius:8px;padding:10px 11px;background:#fff;outline:none}.field textarea{min-height:90px;resize:vertical}.field input:focus,.field select:focus,.field textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
-.modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.48);align-items:center;justify-content:center;padding:20px;z-index:50}.modal.show{display:flex}.modal-box{background:#fff;border-radius:12px;width:min(680px,100%);max-height:90vh;overflow:auto;padding:24px}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.modal-head h2{margin:0;font-size:20px}
-.login-page{min-height:100vh;background:linear-gradient(135deg,#eff6ff,#dbeafe);display:flex;align-items:center;justify-content:center;padding:20px}.login-card{background:#fff;width:min(460px,100%);padding:34px;border-radius:14px;box-shadow:0 12px 35px rgba(15,23,42,.15)}.shield{width:70px;height:70px;background:#2563eb;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:35px;margin:0 auto 18px}.login-card h1{text-align:center;color:#123b7a;font-size:22px;line-height:1.35;margin:0}.login-card p{text-align:center;color:#6b7280;margin:8px 0 24px}
-.empty{text-align:center;padding:35px;color:#6b7280}.mini{font-size:12px;color:#6b7280}.mb{margin-bottom:16px}.mt{margin-top:16px}
-.permission-list{margin:0;padding-left:18px;color:#4b5563;font-size:13px;line-height:1.9}
-.timeline{border-left:2px solid #bfdbfe;margin-left:8px;padding-left:20px}.timeline-item{position:relative;margin-bottom:20px}.timeline-item:before{content:"";position:absolute;left:-27px;top:2px;width:10px;height:10px;border-radius:50%;background:#2563eb}
-.footer-note{font-size:12px;color:#94a3b8;margin-top:22px}
-@media(max-width:1100px){.g5{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:800px){.sidebar{width:240px}.main{margin-left:0;width:100%}.sidebar.mobile-open{width:240px}.g2,.g3,.g4,.g5,.form-grid{grid-template-columns:1fr}.content{padding:16px}.topbar{padding:0 14px}.user{display:none}}
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f8fafc;
+    color: #1f2937;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+/* ==========================================================
+   App shell / sidebar / topbar
+   ========================================================== */
+.app {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 260px;
+    background: #0f3b82;
+    color: #fff;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    overflow-y: auto;
+    z-index: 20;
+    transition: .25s;
+}
+
+.sidebar.collapsed {
+    width: 0;
+    overflow: hidden;
+}
+
+.brand {
+    padding: 24px 22px;
+    font-size: 20px;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+
+.nav {
+    padding: 14px;
+}
+
+.nav a {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border-radius: 9px;
+    color: #dbeafe;
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+
+.nav a.active {
+    background: #2563eb;
+    color: #fff;
+}
+
+.nav a:hover {
+    background: #1d4ed8;
+}
+
+.nav-icon {
+    width: 22px;
+    text-align: center;
+}
+
+.main {
+    margin-left: 260px;
+    width: calc(100% - 260px);
+    min-width: 0;
+    transition: .25s;
+}
+
+.main.expanded {
+    margin-left: 0;
+    width: 100%;
+}
+
+.topbar {
+    height: 72px;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.top-left,
+.top-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.icon-btn {
+    border: 0;
+    background: transparent;
+    padding: 9px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #4b5563;
+}
+
+.icon-btn:hover {
+    background: #f3f4f6;
+}
+
+.user {
+    text-align: right;
+}
+
+.user-name {
+    font-size: 14px;
+}
+
+.user-role {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 3px;
+}
+
+/* ==========================================================
+   Page content / layout grid
+   ========================================================== */
+.content {
+    padding: 24px;
+    max-width: 1600px;
+    margin: auto;
+}
+
+.page-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.page-title {
+    font-size: 25px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.grid {
+    display: grid;
+    gap: 16px;
+}
+
+.g2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.g3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.g4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.g5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+/* ==========================================================
+   Cards & stats
+   ========================================================== */
+.card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, .06);
+    padding: 22px;
+    border: 1px solid #eef2f7;
+}
+
+.card h2 {
+    font-size: 18px;
+    margin: 0 0 16px;
+}
+
+.card h3 {
+    font-size: 15px;
+    margin: 0 0 6px;
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 23px;
+}
+
+.blue {
+    background: #3b82f6;
+}
+
+.red {
+    background: #ef4444;
+}
+
+.green {
+    background: #22c55e;
+}
+
+.yellow {
+    background: #eab308;
+}
+
+.purple {
+    background: #8b5cf6;
+}
+
+.gray {
+    background: #6b7280;
+}
+
+.stat-value {
+    font-size: 27px;
+    font-weight: 600;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+/* ==========================================================
+   Tables
+   ========================================================== */
+.table-wrap {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    background: #f8fafc;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+}
+
+.table td {
+    font-size: 13px;
+    padding: 12px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+}
+
+.table tr:hover td {
+    background: #fafafa;
+}
+
+/* ==========================================================
+   Badges
+   ========================================================== */
+.badge {
+    display: inline-block;
+    padding: 5px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.b-green {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.b-red {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.b-yellow {
+    background: #fef3c7;
+    color: #a16207;
+}
+
+.b-blue {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.b-gray {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
+.b-purple {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+/* ==========================================================
+   Buttons & actions
+   ========================================================== */
+.btn {
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.btn-primary {
+    background: #2563eb;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.btn-success {
+    background: #16a34a;
+    color: #fff;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: #fff;
+}
+
+.btn-light {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.btn-warning {
+    background: #eab308;
+    color: #fff;
+}
+
+.actions {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+/* ==========================================================
+   Alerts
+   ========================================================== */
+.alert {
+    padding: 14px;
+    border-radius: 8px;
+    border-left: 4px solid;
+    margin-bottom: 10px;
+}
+
+.alert-warning {
+    background: #fffbeb;
+    border-color: #eab308;
+}
+
+.alert-info {
+    background: #eff6ff;
+    border-color: #3b82f6;
+}
+
+.alert-danger {
+    background: #fef2f2;
+    border-color: #ef4444;
+}
+
+.alert-success {
+    background: #f0fdf4;
+    border-color: #22c55e;
+}
+
+/* ==========================================================
+   Map / pins
+   ========================================================== */
+.map {
+    height: 370px;
+    background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+    border-radius: 9px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #dbeafe;
+}
+
+.pin {
+    position: absolute;
+    background: #fff;
+    border: 2px solid #60a5fa;
+    border-radius: 999px;
+    padding: 8px 12px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, .1);
+    font-size: 12px;
+}
+
+/* ==========================================================
+   Forms
+   ========================================================== */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.field label {
+    display: block;
+    font-size: 12px;
+    color: #4b5563;
+    margin-bottom: 6px;
+}
+
+.field input,
+.field select,
+.field textarea {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 10px 11px;
+    background: #fff;
+    outline: none;
+}
+
+.field textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
+}
+
+/* ==========================================================
+   Modals
+   ========================================================== */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .48);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 50;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-box {
+    background: #fff;
+    border-radius: 12px;
+    width: min(680px, 100%);
+    max-height: 90vh;
+    overflow: auto;
+    padding: 24px;
+}
+
+.modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.modal-head h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+/* ==========================================================
+   Login page
+   ========================================================== */
+.login-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.login-card {
+    background: #fff;
+    width: min(460px, 100%);
+    padding: 34px;
+    border-radius: 14px;
+    box-shadow: 0 12px 35px rgba(15, 23, 42, .15);
+}
+
+.shield {
+    width: 70px;
+    height: 70px;
+    background: #2563eb;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 35px;
+    margin: 0 auto 18px;
+}
+
+.login-card h1 {
+    text-align: center;
+    color: #123b7a;
+    font-size: 22px;
+    line-height: 1.35;
+    margin: 0;
+}
+
+.login-card p {
+    text-align: center;
+    color: #6b7280;
+    margin: 8px 0 24px;
+}
+
+/* ==========================================================
+   Misc utilities
+   ========================================================== */
+.empty {
+    text-align: center;
+    padding: 35px;
+    color: #6b7280;
+}
+
+.mini {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.mb {
+    margin-bottom: 16px;
+}
+
+.mt {
+    margin-top: 16px;
+}
+
+.permission-list {
+    margin: 0;
+    padding-left: 18px;
+    color: #4b5563;
+    font-size: 13px;
+    line-height: 1.9;
+}
+
+.timeline {
+    border-left: 2px solid #bfdbfe;
+    margin-left: 8px;
+    padding-left: 20px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-item:before {
+    content: "";
+    position: absolute;
+    left: -27px;
+    top: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #2563eb;
+}
+
+.footer-note {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 22px;
+}
+
+/* ==========================================================
+   Missing helper classes (referenced in markup, not yet styled)
+   ========================================================== */
+.field-full {
+    grid-column: 1 / -1;
+}
+
+.card-head-gap {
+    margin-bottom: 12px;
+}
+
+.event-desc {
+    color: #4b5563;
+    font-size: 13px;
+    margin: 10px 0;
+}
+
+/* ==========================================================
+   Buttons (migrated from inline styles)
+   ========================================================== */
+.btn-block {
+    width: 100%;
+    justify-content: center;
+}
+
+/* ==========================================================
+   Barangay progress lists (migrated from inline styles)
+   casualties.php per-barangay breakdown
+   ========================================================== */
+.barangay-row {
+    margin: 14px 0;
+}
+
+.barangay-row-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+}
+
+/* ==========================================================
+   Progress bars (migrated from inline styles)
+   Shared by casualties.php and evacuation-centers.php.
+   Dynamic fill amount is set per-instance via the --fill
+   custom property.
+   ========================================================== */
+.progress-track {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 99px;
+    margin-top: 7px;
+}
+
+.progress-track--lg {
+    height: 9px;
+    margin-top: 6px;
+}
+
+.progress-fill {
+    width: var(--fill, 0%);
+    max-width: 100%;
+    height: 100%;
+    border-radius: 99px;
+    background: #2563eb;
+}
+
+.progress-fill--red {
+    background: #ef4444;
+}
+
+/* ==========================================================
+   Map caption (migrated from inline styles)
+   dashboard.php map legend box. Pin position is set
+   per-instance via the --x / --y custom properties.
+   ========================================================== */
+.pin {
+    left: var(--x, 0%);
+    top: var(--y, 0%);
+}
+
+.map-caption {
+    position: absolute;
+    bottom: 14px;
+    left: 14px;
+    background: #fff;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    color: #6b7280;
+}
+
+/* ==========================================================
+   Dashboard alerts (migrated from inline styles)
+   ========================================================== */
+.alert-message {
+    font-size: 13px;
+}
+
+/* ==========================================================
+   Evacuation center overview list (migrated from inline styles)
+   ========================================================== */
+.center-row {
+    margin-bottom: 16px;
+}
+
+.center-row-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+}
+
+/* ==========================================================
+   Notifications (migrated from inline styles)
+   ========================================================== */
+.notif-alert {
+    cursor: pointer;
+}
+
+.notif-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.notif-title {
+    font-size: 13px;
+}
+
+.notif-message {
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+.notif-time {
+    margin-top: 7px;
+}
+
+/* ==========================================================
+   Relief goods (migrated from inline styles)
+   ========================================================== */
+.barangay-summary {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.barangay-summary-value {
+    font-size: 23px;
+    margin-top: 7px;
+}
+
+/* ==========================================================
+   Reports (migrated from inline styles)
+   ========================================================== */
+.report-stat-value {
+    font-size: 25px;
+    font-weight: 600;
+    margin: 5px 0;
+}
+
+.report-type-card {
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
+}
+
+.report-type-icon {
+    font-size: 22px;
+}
+
+/* ==========================================================
+   Responsive
+   ========================================================== */
+@media (max-width: 1100px) {
+    .g5 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .g4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 800px) {
+    .sidebar {
+        width: 240px;
+    }
+
+    .main {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .sidebar.mobile-open {
+        width: 240px;
+    }
+
+    .g2,
+    .g3,
+    .g4,
+    .g5,
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .content {
+        padding: 16px;
+    }
+
+    .topbar {
+        padding: 0 14px;
+    }
+
+    .user {
+        display: none;
+    }
+}
