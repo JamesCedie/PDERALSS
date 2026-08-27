@@ -1,8 +1,6 @@
 <?php
-session_start();
-
-if (!isset($_SESSION['user'])) {
-    $_SESSION['user'] = ['name' => 'Juan Dela Cruz', 'role' => 'MDRRMO Officer'];
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
 $current = basename($_SERVER['PHP_SELF']);
@@ -40,10 +38,12 @@ function page_start($title = 'LGU Disaster Management System')
             <div class="brand">MDRRMO Portal</div>
             <nav class="nav">
                 <?php foreach ($nav as $item): ?>
-                    <a href="<?= $item[0] ?>" class="<?= $current === $item[0] ? 'active' : '' ?>">
-                        <span class="nav-icon"><?= $item[2] ?></span>
-                        <span><?= $item[1] ?></span>
-                    </a>
+                    <?php if (!function_exists('can_access') || can_access($item[0])): ?>
+                        <a href="<?= $item[0] ?>" class="<?= $current === $item[0] ? 'active' : '' ?>">
+                            <span class="nav-icon"><?= $item[2] ?></span>
+                            <span><?= $item[1] ?></span>
+                        </a>
+                    <?php endif; ?>
                 <?php endforeach; ?>
             </nav>
         </aside>

@@ -1,29 +1,104 @@
 <?php
+require_once 'includes/access.php'; require_page_access();
+require_once 'includes/db.php';
+
+// The one account nobody should be able to edit or delete through this screen.
+const PROTECTED_ADMIN_EMAIL = 'ADMIN@gmail.com';
+
+const ROLES = ['MDRRMO Officer', 'Social Worker'];
+
+function is_protected_admin(array $user): bool
+{
+    return strcasecmp($user['email'], PROTECTED_ADMIN_EMAIL) === 0;
+}
+
+$successMsg = null;
+$errorMsg   = null;
+
+// Handle "Add User" submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
+    $firstname = trim($_POST['first_name'] ?? '');
+    $lastname  = trim($_POST['last_name'] ?? '');
+    $username  = trim($_POST['username'] ?? '');
+    $email     = trim($_POST['email'] ?? '');
+    $role      = in_array($_POST['role'] ?? '', ROLES, true) ? $_POST['role'] : 'Social Worker';
+    $password  = $_POST['password'] ?? '';
+
+    if ($firstname && $lastname && $username && $email && $password) {
+        $existing = db_select_one('users', 'email = ? OR username = ?', [$email, $username]);
+        if ($existing) {
+            $errorMsg = 'A user with that email or username already exists.';
+        } else {
+            db_insert('users', [
+                'first_name' => $firstname,
+                'last_name'  => $lastname,
+                'username'  => $username,
+                'email'     => $email,
+                'password'  => password_hash($password, PASSWORD_DEFAULT),
+                'role'      => $role,
+            ]);
+            $successMsg = 'User account created.';
+        }
+    } else {
+        $errorMsg = 'Please fill in all required fields.';
+    }
+}
+
+// Handle "Edit User" submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user'])) {
+    $id = $_POST['user_id'] ?? '';
+    $target = db_select_one('users', 'user_id = ?', [$id]);
+
+    if (!$target) {
+        $errorMsg = 'User not found.';
+    } elseif (is_protected_admin($target)) {
+        $errorMsg = 'The admin account cannot be edited.';
+    } else {
+        $firstname = trim($_POST['first_name'] ?? '');
+        $lastname  = trim($_POST['last_name'] ?? '');
+        $username  = trim($_POST['username'] ?? '');
+        $email     = trim($_POST['email'] ?? '');
+        $role      = in_array($_POST['role'] ?? '', ROLES, true) ? $_POST['role'] : 'Social Worker';
+        $password  = $_POST['password'] ?? '';
+
+        $data = [
+            'first_name' => $firstname,
+            'last_name'  => $lastname,
+            'username'  => $username,
+            'email'     => $email,
+            'role'      => $role,
+        ];
+        if ($password !== '') {
+            $data['password'] = password_hash($password, PASSWORD_DEFAULT);
+        }
+
+        db_update('users', $data, 'user_id = ?', [$id]);
+        $successMsg = 'User updated.';
+    }
+}
+
+// Handle "Delete" action
+if (isset($_GET['delete'])) {
+    $target = db_select_one('users', 'user_id = ?', [$_GET['delete']]);
+    if ($target && !is_protected_admin($target)) {
+        db_delete('users', 'user_id = ?', [$_GET['delete']]);
+    }
+    header('Location: users.php');
+    exit;
+}
+
 require 'includes/layout.php';
 page_start('User Management');
 
-$users = [
-    ['USR-001', 'Juan Dela Cruz',   'juan.delacruz@mdrrmo.gov.ph',      'MDRRMO Officer',    'Active',   '2026-05-01 08:30 AM'],
-    ['USR-002', 'Maria Santos',     'maria.santos@socialwelfare.gov.ph','Social Worker',      'Active',   '2026-05-01 09:15 AM'],
-    ['USR-003', 'Pedro Garcia',     'pedro.garcia@brgy-jaro.gov.ph',    'Barangay Official',  'Active',   '2026-04-30 04:20 PM'],
-    ['USR-004', 'Ana Reyes',        'ana.reyes@mdrrmo.gov.ph',          'MDRRMO Officer',    'Active',   '2026-05-01 07:45 AM'],
-    ['USR-005', 'Carlos Mendoza',   'carlos.mendoza@brgy-molo.gov.ph',  'Barangay Official',  'Inactive', '2026-04-25 02:30 PM'],
-];
+$users = db_select('users', '1=1', [], '*', 'user_id DESC');
 
-$perms = [
-    'MDRRMO Officer' => [
-        'View all data', 'Manage households', 'Manage casualties', 'Approve vehicle requests',
-        'Manage evacuation centers', 'Distribute relief goods', 'Generate reports', 'Manage users',
-    ],
-    'Social Worker' => [
-        'View all data', 'Manage households', 'Manage casualties', 'Submit damage assessments',
-        'View evacuation centers', 'View relief goods', 'Generate reports',
-    ],
-    'Barangay Official' => [
-        'View barangay data', 'Submit household data', 'Request vehicles', 'Submit damage assessments',
-        'View evacuation centers', 'Request relief goods',
-    ],
+$roleCounts = [
+    'MDRRMO Officer' => 0,
+    'Social Worker'  => 0,
 ];
+foreach ($users as $u) {
+    if (isset($roleCounts[$u['role']])) $roleCounts[$u['role']]++;
+}
 ?>
 
 <div class="page-head">
@@ -31,11 +106,18 @@ $perms = [
     <button class="btn btn-primary" onclick="openModal('userModal')">＋ Add User</button>
 </div>
 
+<?php if ($successMsg): ?>
+    <div class="alert alert-success mb"><?= htmlspecialchars($successMsg) ?></div>
+<?php endif; ?>
+<?php if ($errorMsg): ?>
+    <div class="alert alert-danger mb"><?= htmlspecialchars($errorMsg) ?></div>
+<?php endif; ?>
+
 <div class="grid g3">
-    <?php foreach([
+    <?php foreach ([
         [count($users), 'Total Users', 'blue'],
-        [count(array_filter($users, fn($u) => $u[4] === 'Active')), 'Active Users', 'green'],
-        [count(array_filter($users, fn($u) => $u[4] === 'Inactive')), 'Inactive Users', 'gray'],
+        [$roleCounts['MDRRMO Officer'], 'MDRRMO Officers', 'green'],
+        [$roleCounts['Social Worker'], 'Social Workers', 'gray'],
     ] as $s): ?>
         <div class="card">
             <div class="stat">
@@ -57,46 +139,35 @@ $perms = [
                 <tr>
                     <th>User ID</th>
                     <th>Name</th>
+                    <th>Username</th>
                     <th>Email</th>
                     <th>Role</th>
-                    <th>Status</th>
-                    <th>Last Login</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach($users as $u): ?>
+                <?php foreach ($users as $u): $protected = is_protected_admin($u); ?>
                     <tr>
-                        <td><?=$u[0]?></td>
-                        <td><?=$u[1]?></td>
-                        <td><?=$u[2]?></td>
-                        <td><?=status_badge($u[3])?></td>
-                        <td><?=status_badge($u[4])?></td>
-                        <td><?=$u[5]?></td>
+                        <td><?= htmlspecialchars($u['user_id']) ?></td>
+                        <td><?= htmlspecialchars(trim($u['first_name'] . ' ' . $u['last_name'])) ?></td>
+                        <td><?= htmlspecialchars($u['username']) ?></td>
+                        <td><?= htmlspecialchars($u['email']) ?></td>
+                        <td><?= status_badge($u['role']) ?></td>
                         <td class="actions">
-                            <button class="btn btn-light">Edit</button>
-                            <button class="btn btn-danger" onclick="confirmAction('Delete this user?')">Delete</button>
+                            <?php if ($protected): ?>
+                                <span class="badge b-gray">Protected</span>
+                            <?php else: ?>
+                                <button class="btn btn-light" onclick="openModal('editModal-<?= $u['user_id'] ?>')">Edit</button>
+                                <button class="btn btn-danger"
+                                        onclick="if(confirmAction('Delete this user?')) window.location='users.php?delete=<?= urlencode($u['user_id']) ?>'">
+                                    Delete
+                                </button>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
-    </div>
-</div>
-
-<div class="card mt">
-    <h2>Role Permissions</h2>
-    <div class="grid g3">
-        <?php foreach($perms as $role => $list): ?>
-            <div>
-                <h3><?=$role?></h3>
-                <ul class="permission-list">
-                    <?php foreach($list as $p): ?>
-                        <li><?=$p?></li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-        <?php endforeach; ?>
     </div>
 </div>
 
@@ -106,27 +177,36 @@ $perms = [
             <h2>Add New User</h2>
             <button class="icon-btn" onclick="closeModal('userModal')">✕</button>
         </div>
-        <form onsubmit="event.preventDefault();alert('User account created.');closeModal('userModal')">
+        <form method="post">
+            <input type="hidden" name="create_user" value="1">
             <div class="form-grid">
                 <div class="field">
-                    <label>Full Name</label>
-                    <input required>
+                    <label>First Name</label>
+                    <input name="first_name" required>
+                </div>
+                <div class="field">
+                    <label>Last Name</label>
+                    <input name="last_name" required>
+                </div>
+                <div class="field">
+                    <label>Username</label>
+                    <input name="username" required>
                 </div>
                 <div class="field">
                     <label>Email</label>
-                    <input type="email" required>
+                    <input type="email" name="email" required>
                 </div>
                 <div class="field">
                     <label>Role</label>
-                    <select>
-                        <option>MDRRMO Officer</option>
-                        <option>Social Worker</option>
-                        <option>Barangay Official</option>
+                    <select name="role">
+                        <?php foreach (ROLES as $r): ?>
+                            <option><?= $r ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="field">
                     <label>Password</label>
-                    <input type="password" required>
+                    <input type="password" name="password" required>
                 </div>
             </div>
             <div class="actions mt">
@@ -135,5 +215,53 @@ $perms = [
         </form>
     </div>
 </div>
+
+<?php foreach ($users as $u): if (is_protected_admin($u)) continue; ?>
+    <div id="editModal-<?= $u['user_id'] ?>" class="modal">
+        <div class="modal-box">
+            <div class="modal-head">
+                <h2>Edit User</h2>
+                <button class="icon-btn" onclick="closeModal('editModal-<?= $u['user_id'] ?>')">✕</button>
+            </div>
+            <form method="post">
+                <input type="hidden" name="edit_user" value="1">
+                <input type="hidden" name="user_id" value="<?= htmlspecialchars($u['user_id']) ?>">
+                <div class="form-grid">
+                    <div class="field">
+                        <label>First Name</label>
+                        <input name="first_name" value="<?= htmlspecialchars($u['first_name']) ?>" required>
+                    </div>
+                    <div class="field">
+                        <label>Last Name</label>
+                        <input name="last_name" value="<?= htmlspecialchars($u['last_name']) ?>" required>
+                    </div>
+                    <div class="field">
+                        <label>Username</label>
+                        <input name="username" value="<?= htmlspecialchars($u['username']) ?>" required>
+                    </div>
+                    <div class="field">
+                        <label>Email</label>
+                        <input type="email" name="email" value="<?= htmlspecialchars($u['email']) ?>" required>
+                    </div>
+                    <div class="field">
+                        <label>Role</label>
+                        <select name="role">
+                            <?php foreach (ROLES as $r): ?>
+                                <option <?= $u['role'] === $r ? 'selected' : '' ?>><?= $r ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>New Password</label>
+                        <input type="password" name="password" placeholder="Leave blank to keep current password">
+                    </div>
+                </div>
+                <div class="actions mt">
+                    <button class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+<?php endforeach; ?>
 
 <?php page_end(); ?>

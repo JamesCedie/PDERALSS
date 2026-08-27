@@ -1,4 +1,4 @@
-<?php require 'includes/layout.php'; page_start('Casualty Monitoring'); 
+<?php require_once 'includes/access.php'; require_page_access(); require 'includes/layout.php'; page_start('Casualty Monitoring'); 
 $rows=[['CR-001','Brgy. Jaro','John Santos','Injured','Minor','2026-05-01'],['CR-002','Brgy. Jaro','Maria Cruz','Injured','Moderate','2026-05-01'],['CR-003','Brgy. Molo','Pedro Reyes','Missing','—','2026-05-01'],['CR-004','Brgy. Arevalo','Ana Garcia','Fatality','Critical','2026-04-30'],['CR-005','Brgy. La Paz','Jose Flores','Injured','Minor','2026-04-30']];
 ?>
 
