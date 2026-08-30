@@ -1,11 +1,14 @@
 <?php
-require_once 'includes/access.php'; require_page_access();
-require_once 'includes/db.php';
+require_once '../includes/access.php'; require_page_access();
+require_once '../includes/db.php';
 
 // The one account nobody should be able to edit or delete through this screen.
 const PROTECTED_ADMIN_EMAIL = 'ADMIN@gmail.com';
 
 const ROLES = ['MDRRMO Officer', 'Social Worker'];
+
+// Same barangay list used in the household form.
+const BARANGAYS = ['Brgy. Jaro', 'Brgy. Molo', 'Brgy. Mandurriao', 'Brgy. Arevalo', 'Brgy. La Paz'];
 
 function is_protected_admin(array $user): bool
 {
@@ -23,6 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
     $email     = trim($_POST['email'] ?? '');
     $role      = in_array($_POST['role'] ?? '', ROLES, true) ? $_POST['role'] : 'Social Worker';
     $password  = $_POST['password'] ?? '';
+    $address   = ($role === 'Social Worker' && in_array($_POST['address'] ?? '', BARANGAYS, true))
+        ? $_POST['address']
+        : null;
 
     if ($firstname && $lastname && $username && $email && $password) {
         $existing = db_select_one('users', 'email = ? OR username = ?', [$email, $username]);
@@ -36,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
                 'email'     => $email,
                 'password'  => password_hash($password, PASSWORD_DEFAULT),
                 'role'      => $role,
+                'address'   => $address,
             ]);
             $successMsg = 'User account created.';
         }
@@ -60,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user'])) {
         $email     = trim($_POST['email'] ?? '');
         $role      = in_array($_POST['role'] ?? '', ROLES, true) ? $_POST['role'] : 'Social Worker';
         $password  = $_POST['password'] ?? '';
+        $address   = ($role === 'Social Worker' && in_array($_POST['address'] ?? '', BARANGAYS, true))
+            ? $_POST['address']
+            : null;
 
         $data = [
             'first_name' => $firstname,
@@ -67,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user'])) {
             'username'  => $username,
             'email'     => $email,
             'role'      => $role,
+            'address'   => $address,
         ];
         if ($password !== '') {
             $data['password'] = password_hash($password, PASSWORD_DEFAULT);
@@ -87,7 +98,7 @@ if (isset($_GET['delete'])) {
     exit;
 }
 
-require 'includes/layout.php';
+require '../includes/layout.php';
 page_start('User Management');
 
 $users = db_select('users', '1=1', [], '*', 'user_id DESC');
@@ -142,6 +153,7 @@ foreach ($users as $u) {
                     <th>Username</th>
                     <th>Email</th>
                     <th>Role</th>
+                    <th>Address</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -153,6 +165,7 @@ foreach ($users as $u) {
                         <td><?= htmlspecialchars($u['username']) ?></td>
                         <td><?= htmlspecialchars($u['email']) ?></td>
                         <td><?= status_badge($u['role']) ?></td>
+                        <td><?= htmlspecialchars($u['address'] ?? '—') ?></td>
                         <td class="actions">
                             <?php if ($protected): ?>
                                 <span class="badge b-gray">Protected</span>
@@ -198,9 +211,17 @@ foreach ($users as $u) {
                 </div>
                 <div class="field">
                     <label>Role</label>
-                    <select name="role">
+                    <select name="role" id="addRole" onchange="document.getElementById('addAddressField').style.display = (this.value === 'Social Worker') ? '' : 'none'">
                         <?php foreach (ROLES as $r): ?>
                             <option><?= $r ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="field" id="addAddressField" style="display:none">
+                    <label>Address (Barangay)</label>
+                    <select name="address">
+                        <?php foreach (BARANGAYS as $b): ?>
+                            <option><?= $b ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -245,9 +266,17 @@ foreach ($users as $u) {
                     </div>
                     <div class="field">
                         <label>Role</label>
-                        <select name="role">
+                        <select name="role" id="editRole-<?= $u['user_id'] ?>" onchange="document.getElementById('editAddressField-<?= $u['user_id'] ?>').style.display = (this.value === 'Social Worker') ? '' : 'none'">
                             <?php foreach (ROLES as $r): ?>
                                 <option <?= $u['role'] === $r ? 'selected' : '' ?>><?= $r ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="field" id="editAddressField-<?= $u['user_id'] ?>" style="<?= $u['role'] === 'Social Worker' ? '' : 'display:none' ?>">
+                        <label>Address (Barangay)</label>
+                        <select name="address">
+                            <?php foreach (BARANGAYS as $b): ?>
+                                <option <?= $u['address'] === $b ? 'selected' : '' ?>><?= $b ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>

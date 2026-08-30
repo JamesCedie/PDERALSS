@@ -37,6 +37,12 @@ const ROLE_ACCESS = [
     ],
 ];
 
+// Which folder each role's dashboard lives in, relative to the project root.
+const ROLE_HOME = [
+    'MDRRMO Officer' => 'mdrrmo-officer/dashboard.php',
+    'Social Worker'  => 'social-worker/dashboard.php',
+];
+
 /**
  * Blocks the request unless the logged-in user's role is permitted to view
  * the current script. Call this at the very top of every protected page,
@@ -47,7 +53,7 @@ function require_page_access(): void
     $user = $_SESSION['user'] ?? null;
 
     if (!$user) {
-        header('Location: login.php');
+        header('Location: ../login.php');
         exit;
     }
 
@@ -60,6 +66,7 @@ function require_page_access(): void
     }
 
     http_response_code(403);
+    $homePath = '../' . (ROLE_HOME[$role] ?? 'login.php');
     ?>
     <!doctype html>
     <html lang="en">
@@ -67,7 +74,7 @@ function require_page_access(): void
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>Access Denied</title>
-        <link rel="stylesheet" href="assets/style.css">
+        <link rel="stylesheet" href="../assets/style.css">
     </head>
     <body>
         <div class="login-page">
@@ -76,7 +83,7 @@ function require_page_access(): void
                 <h1>Access Denied</h1>
                 <p>Your role (<b><?= htmlspecialchars($role) ?></b>) does not have permission
                    to view <b><?= htmlspecialchars($page) ?></b>.</p>
-                <a class="btn btn-primary btn-block" href="dashboard.php">Back to Dashboard</a>
+                <a class="btn btn-primary btn-block" href="<?= htmlspecialchars($homePath) ?>">Back to Dashboard</a>
             </div>
         </div>
     </body>

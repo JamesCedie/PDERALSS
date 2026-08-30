@@ -29,8 +29,8 @@ function page_start($title = 'LGU Disaster Management System')
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($title) ?></title>
-    <link rel="stylesheet" href="assets/style.css">
-    <link rel="stylesheet" href="assets/components.css">
+    <link rel="stylesheet" href="../assets/style.css">
+    <link rel="stylesheet" href="../assets/components.css">
 </head>
 <body>
     <div class="app">
@@ -61,7 +61,7 @@ function page_start($title = 'LGU Disaster Management System')
                         <div class="user-name"><?= htmlspecialchars($_SESSION['user']['name']) ?></div>
                         <div class="user-role"><?= htmlspecialchars($_SESSION['user']['role']) ?></div>
                     </div>
-                    <a class="icon-btn" title="Logout" href="logout.php">↪</a>
+                    <a class="icon-btn" title="Logout" href="../logout.php">↪</a>
                 </div>
             </header>
 
@@ -71,7 +71,7 @@ function page_start($title = 'LGU Disaster Management System')
 
 function page_end()
 {
-    echo '</main></div></div><script src="assets/app.js"></script></body></html>';
+    echo '</main></div></div><script src="../assets/app.js"></script></body></html>';
 }
 
 function status_badge($status)

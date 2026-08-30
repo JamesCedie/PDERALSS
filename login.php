@@ -47,7 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'name' => trim($user['first_name'] . ' ' . $user['last_name']),
             'role' => $user['role'],
         ];
-        header('Location: dashboard.php');
+        require_once 'includes/access.php';
+        $home = ROLE_HOME[$user['role']] ?? 'login.php';
+        header('Location: ' . $home);
         exit;
     }
 

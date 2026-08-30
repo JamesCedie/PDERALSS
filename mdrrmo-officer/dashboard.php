@@ -1,4 +1,4 @@
-<?php require_once 'includes/access.php'; require_page_access(); require 'includes/layout.php'; page_start('Dashboard'); ?>
+<?php require_once '../includes/access.php'; require_page_access(); require '../includes/layout.php'; page_start('Dashboard'); ?>
 
 <div class="grid g5">
     <?php foreach([

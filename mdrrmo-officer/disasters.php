@@ -1,5 +1,5 @@
 <?php
-require_once 'includes/access.php'; require_page_access(); require 'includes/layout.php';
+require_once '../includes/access.php'; require_page_access(); require '../includes/layout.php';
 page_start('Disaster Events');
 
 $events = [
