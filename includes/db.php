@@ -47,11 +47,16 @@
  */
 
 // ---- CONFIGURE THESE -------------------------------------------------
-define('DB_HOST', 'aws-0-ap-northeast-1.pooler.supabase.com'); // Supabase session pooler (IPv4-compatible)
-define('DB_PORT', '5432');
-define('DB_NAME', 'postgres');
-define('DB_USER', 'postgres.viscaridmbunxdkzayau'); // pooler username includes the project ref
-define('DB_PASS', 'hipusoncapstone');
+// Values are read from environment variables set in Render's dashboard,
+// so credentials are never hardcoded in the source code.
+// For local XAMPP development, you can set these in your system's
+// environment variables, or temporarily replace getenv() with the
+// actual values (but don't commit that to GitHub).
+define('DB_HOST', getenv('DB_HOST') ?: 'aws-0-ap-northeast-1.pooler.supabase.com');
+define('DB_PORT', getenv('DB_PORT') ?: '5432');
+define('DB_NAME', getenv('DB_NAME') ?: 'postgres');
+define('DB_USER', getenv('DB_USER') ?: 'postgres.viscaridmbunxdkzayau');
+define('DB_PASS', getenv('DB_PASS') ?: 'hipusoncapstone');
 // ------------------------------------------------------------------------
 
 /**
