@@ -15,6 +15,26 @@ function is_protected_admin(array $user): bool
     return strcasecmp($user['email'], PROTECTED_ADMIN_EMAIL) === 0;
 }
 
+/**
+ * Generates the next role-prefixed user ID (e.g. "MD3" or "SW3") by finding
+ * the highest existing number for that prefix and incrementing it.
+ */
+function generate_next_user_id(string $role): string
+{
+    $prefix = $role === 'MDRRMO Officer' ? 'md' : 'sw';
+
+    $existing = db_select('users', 'user_id LIKE ?', [$prefix . '%'], 'user_id');
+
+    $maxNum = 0;
+    foreach ($existing as $row) {
+        if (preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', $row['user_id'], $m)) {
+            $maxNum = max($maxNum, (int) $m[1]);
+        }
+    }
+
+    return $prefix . ($maxNum + 1);
+}
+
 $successMsg = null;
 $errorMsg   = null;
 
@@ -36,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
             $errorMsg = 'A user with that email or username already exists.';
         } else {
             db_insert('users', [
+                'user_id'    => generate_next_user_id($role),
                 'first_name' => $firstname,
                 'last_name'  => $lastname,
                 'username'  => $username,

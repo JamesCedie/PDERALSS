@@ -1,12 +1,47 @@
 <?php
-require_once '../includes/access.php'; require_page_access(); require '../includes/layout.php';
+require_once '../includes/access.php'; require_page_access();
+require_once '../includes/db.php';
+
+$successMsg = null;
+$errorMsg   = null;
+
+// Handle "Add Disaster Event" submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_event'])) {
+    $eventName   = trim($_POST['event_name'] ?? '');
+    $type        = $_POST['type'] ?? '';
+    $date        = $_POST['date'] ?? null;
+    $description = trim($_POST['description'] ?? '');
+
+    if ($eventName && $date) {
+        db_insert('disaster_events', [
+            'event_name' => $eventName,
+            'type'       => $type,
+            'date'       => $date,
+            'description' => $description,
+            'created_by' => $_SESSION['user']['id'] ?? null,
+        ]);
+        $_SESSION['flash_success'] = 'Disaster event added.';
+        header('Location: disasters.php');
+        exit;
+    } else {
+        $errorMsg = 'Please fill in the required fields.';
+    }
+}
+
+require '../includes/layout.php';
 page_start('Disaster Events');
 
-$events = [
-    ['DE-001', 'Typhoon Odette',         'Typhoon',    '2026-04-27', 'Active',    'High',   'Strong winds and heavy rainfall affected multiple barangays.'],
-    ['DE-002', 'Flash Flood Incident',   'Flood',      '2026-04-29', 'Active',    'High',   'Rising water levels prompted evacuation in low-lying areas.'],
-    ['DE-003', 'Earthquake Drill Event', 'Earthquake', '2026-05-01', 'Completed', 'Medium', 'Preparedness and response exercise.'],
-];
+if (isset($_SESSION['flash_success'])) {
+    $successMsg = $_SESSION['flash_success'];
+    unset($_SESSION['flash_success']);
+}
+
+$events = db_query(
+    "SELECT de.*, u.first_name, u.last_name
+     FROM disaster_events de
+     LEFT JOIN users u ON de.created_by = u.user_id
+     ORDER BY de.event_id DESC"
+)->fetchAll();
 
 $timeline = [
     ['08:30 AM', 'Incident reported by barangay officials.'],
@@ -21,23 +56,31 @@ $timeline = [
     <button class="btn btn-primary" onclick="openModal('eventModal')">＋ Add Disaster Event</button>
 </div>
 
-<div class="grid g3">
+<?php if ($successMsg): ?>
+    <div class="alert alert-success mb"><?= htmlspecialchars($successMsg) ?></div>
+<?php endif; ?>
+<?php if ($errorMsg): ?>
+    <div class="alert alert-danger mb"><?= htmlspecialchars($errorMsg) ?></div>
+<?php endif; ?>
+
+<div style="display:flex; gap:16px; overflow-x:auto; padding-bottom:8px;">
+    <?php if (empty($events)): ?>
+        <div class="card empty" style="flex:1;">No disaster events recorded yet.</div>
+    <?php endif; ?>
     <?php foreach ($events as $e): ?>
-        <div class="card">
+        <div class="card" style="flex:0 0 320px;">
             <div class="page-head card-head-gap">
                 <div>
-                    <h3><?= $e[1] ?></h3>
-                    <div class="mini"><?= $e[0] ?> · <?= $e[2] ?></div>
+                    <h3><?= htmlspecialchars($e['event_name']) ?></h3>
+                    <div class="mini">DE-<?= htmlspecialchars($e['event_id']) ?> · <?= htmlspecialchars($e['type']) ?></div>
                 </div>
-                <?= status_badge($e[4]) ?>
             </div>
 
-            <p class="mini"><b>Date:</b> <?= $e[3] ?> · <b>Priority:</b> <?= status_badge($e[5]) ?></p>
-            <p class="event-desc"><?= $e[6] ?></p>
+            <p class="mini"><b>Date:</b> <?= htmlspecialchars($e['date']) ?></p>
+            <p class="event-desc"><?= htmlspecialchars($e['description']) ?></p>
 
             <div class="actions">
-                <button class="btn btn-light">View Details</button>
-                <button class="btn btn-primary">Manage Response</button>
+                <button class="btn btn-light" onclick="openModal('viewModal-<?= $e['event_id'] ?>')">View Details</button>
             </div>
         </div>
     <?php endforeach; ?>
@@ -62,16 +105,17 @@ $timeline = [
             <button class="icon-btn" onclick="closeModal('eventModal')">✕</button>
         </div>
 
-        <form onsubmit="event.preventDefault(); alert('Disaster event added.'); closeModal('eventModal')">
+        <form method="post">
+            <input type="hidden" name="add_event" value="1">
             <div class="form-grid">
                 <div class="field">
                     <label>Event Name</label>
-                    <input required>
+                    <input name="event_name" required>
                 </div>
 
                 <div class="field">
                     <label>Type</label>
-                    <select>
+                    <select name="type">
                         <option>Typhoon</option>
                         <option>Flood</option>
                         <option>Earthquake</option>
@@ -82,21 +126,12 @@ $timeline = [
 
                 <div class="field">
                     <label>Date</label>
-                    <input type="date" required>
-                </div>
-
-                <div class="field">
-                    <label>Priority</label>
-                    <select>
-                        <option>High</option>
-                        <option>Medium</option>
-                        <option>Low</option>
-                    </select>
+                    <input type="date" name="date" required>
                 </div>
 
                 <div class="field field-full">
                     <label>Description</label>
-                    <textarea></textarea>
+                    <textarea name="description"></textarea>
                 </div>
             </div>
 
@@ -106,5 +141,43 @@ $timeline = [
         </form>
     </div>
 </div>
+
+<?php foreach ($events as $e):
+    $reporter = trim(($e['first_name'] ?? '') . ' ' . ($e['last_name'] ?? ''));
+?>
+    <div id="viewModal-<?= $e['event_id'] ?>" class="modal">
+        <div class="modal-box">
+            <div class="modal-head">
+                <h2><?= htmlspecialchars($e['event_name']) ?></h2>
+                <button class="icon-btn" onclick="closeModal('viewModal-<?= $e['event_id'] ?>')">✕</button>
+            </div>
+            <div class="form-grid">
+                <div class="field">
+                    <label>Event ID</label>
+                    <p>DE-<?= htmlspecialchars($e['event_id']) ?></p>
+                </div>
+                <div class="field">
+                    <label>Type</label>
+                    <p><?= htmlspecialchars($e['type']) ?></p>
+                </div>
+                <div class="field">
+                    <label>Date</label>
+                    <p><?= htmlspecialchars($e['date']) ?></p>
+                </div>
+                <div class="field">
+                    <label>Logged By</label>
+                    <p><?= htmlspecialchars($reporter ?: 'Unknown') ?></p>
+                </div>
+                <div class="field field-full">
+                    <label>Description</label>
+                    <p><?= nl2br(htmlspecialchars($e['description'])) ?></p>
+                </div>
+            </div>
+            <div class="actions mt">
+                <button type="button" class="btn btn-light" onclick="closeModal('viewModal-<?= $e['event_id'] ?>')">Close</button>
+            </div>
+        </div>
+    </div>
+<?php endforeach; ?>
 
 <?php page_end(); ?>
