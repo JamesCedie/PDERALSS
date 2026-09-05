@@ -6,17 +6,17 @@ if (session_status() === PHP_SESSION_NONE) {
 $current = basename($_SERVER['PHP_SELF']);
 
 $nav = [
-    ['dashboard.php',           'Dashboard',           '▦'],
-    ['households.php',          'Households',          '👥'],
-    ['casualties.php',          'Casualties',          '⚠'],
-    ['disasters.php',           'Disaster Events',     '☁'],
-    ['damage-assessment.php',   'Damage Assessment',   '✓'],
-    ['evacuation-centers.php',  'Evacuation Centers',  '⌂'],
-    ['vehicle-requests.php',    'Vehicle Requests',    '🚚'],
-    ['relief-goods.php',        'Relief Goods',        '▣'],
-    ['reports.php',             'Reports',             '▤'],
-    ['notifications.php',       'Notifications',       '🔔'],
-    ['users.php',               'User Management',     '⚙'],
+    ['dashboard.php',           'Dashboard'],
+    ['households.php',          'Households'],
+    ['casualties.php',          'Casualties'],
+    ['disasters.php',           'Disaster Events'],
+    ['damage-assessment.php',   'Damage Assessment'],
+    ['evacuation-centers.php',  'Evacuation Centers'],
+    ['vehicle-requests.php',    'Vehicle Requests'],
+    ['relief-goods.php',        'Relief Goods'],
+    ['reports.php',             'Reports'],
+    ['notifications.php',       'Notifications'],
+    ['users.php',               'User Management'],
 ];
 
 function page_start($title = 'LGU Disaster Management System')
@@ -34,13 +34,13 @@ function page_start($title = 'LGU Disaster Management System')
 </head>
 <body>
     <div class="app">
+        <div id="sidebarOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:19;"></div>
         <aside id="sidebar" class="sidebar">
             <div class="brand">MDRRMO Portal</div>
             <nav class="nav">
                 <?php foreach ($nav as $item): ?>
                     <?php if (!function_exists('can_access') || can_access($item[0])): ?>
                         <a href="<?= $item[0] ?>" class="<?= $current === $item[0] ? 'active' : '' ?>">
-                            <span class="nav-icon"><?= $item[2] ?></span>
                             <span><?= $item[1] ?></span>
                         </a>
                     <?php endif; ?>
@@ -56,7 +56,6 @@ function page_start($title = 'LGU Disaster Management System')
                 </div>
 
                 <div class="top-right">
-                    <span>🔔 <span class="badge b-red">3</span></span>
                     <div class="user">
                         <div class="user-name"><?= htmlspecialchars($_SESSION['user']['name']) ?></div>
                         <div class="user-role"><?= htmlspecialchars($_SESSION['user']['role']) ?></div>

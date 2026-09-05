@@ -1,14 +1,27 @@
 function toggleSidebar() {
     const s = document.getElementById('sidebar');
     const m = document.getElementById('main');
+    const overlay = document.getElementById('sidebarOverlay');
 
-    if (window.innerWidth <= 800) {
-        s.classList.toggle('mobile-open');
+    if (window.innerWidth <= 1100) {
+        const isOpen = s.classList.toggle('sidebar-open');
+        if (overlay) overlay.style.display = isOpen ? 'block' : 'none';
     } else {
         s.classList.toggle('collapsed');
         m.classList.toggle('expanded');
     }
 }
+
+// Close the sidebar when the overlay is tapped (all small screens)
+document.addEventListener('DOMContentLoaded', function () {
+    const overlay = document.getElementById('sidebarOverlay');
+    if (overlay) {
+        overlay.addEventListener('click', function () {
+            document.getElementById('sidebar').classList.remove('sidebar-open');
+            overlay.style.display = 'none';
+        });
+    }
+});
 
 function openModal(id) {
     document.getElementById(id).classList.add('show');
