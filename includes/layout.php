@@ -8,10 +8,8 @@ $current = basename($_SERVER['PHP_SELF']);
 $nav = [
     ['dashboard.php',           'Dashboard'],
     ['households.php',          'Households'],
-    ['casualties.php',          'Casualties'],
     ['disasters.php',           'Disaster Events'],
     ['damage-assessment.php',   'Damage Assessment'],
-    ['evacuation-centers.php',  'Evacuation Centers'],
     ['vehicle-requests.php',    'Vehicle Requests'],
     ['relief-goods.php',        'Relief Goods'],
     ['reports.php',             'Reports'],

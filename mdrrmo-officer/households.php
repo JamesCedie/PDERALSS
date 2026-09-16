@@ -5,7 +5,6 @@ page_start('Household Management');
 
 $households = db_select('household', '1=1', [], '*', 'barangay ASC, household_id DESC');
 
-// Group households by barangay for the "folder" view.
 $byBarangay = [];
 foreach ($households as $h) {
     $byBarangay[$h['barangay']][] = $h;
@@ -22,16 +21,12 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
     <h1 class="page-title">Household Management</h1>
 </div>
 
+<!-- Stat cards: no emojis, no icon container, just number + label -->
 <div class="grid g4">
-    <?php foreach([[$totalHouseholds, 'Total Households', 'blue'], [$fourPsCount, '4Ps Member Households', 'green'], [$totalPwd, 'Total PWD', 'yellow'], [$totalSeniors, 'Total Senior Citizens', 'purple']] as $s): ?>
+    <?php foreach([[$totalHouseholds, 'Total Households'], [$fourPsCount, '4Ps Member Households'], [$totalPwd, 'Total PWD'], [$totalSeniors, 'Total Senior Citizens']] as $s): ?>
         <div class="card">
-            <div class="stat">
-                <div class="stat-icon <?=$s[2]?>">👥</div>
-                <div>
-                    <div class="stat-value"><?=$s[0]?></div>
-                    <div class="stat-label"><?=$s[1]?></div>
-                </div>
-            </div>
+            <div class="stat-value"><?= $s[0] ?></div>
+            <div class="stat-label"><?= $s[1] ?></div>
         </div>
     <?php endforeach; ?>
 </div>
@@ -44,13 +39,8 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
     <div class="grid g3">
         <?php foreach ($byBarangay as $barangay => $list): $bIndex = md5($barangay); ?>
             <div class="card">
-                <div class="stat">
-                    <div class="stat-icon blue">📁</div>
-                    <div>
-                        <div class="stat-value"><?= count($list) ?></div>
-                        <div class="stat-label"><?= htmlspecialchars($barangay) ?></div>
-                    </div>
-                </div>
+                <div class="stat-value"><?= count($list) ?></div>
+                <div class="stat-label"><?= htmlspecialchars($barangay) ?></div>
                 <div class="actions mt">
                     <button class="btn btn-primary btn-block" onclick="openModal('barangayModal-<?= $bIndex ?>')">View</button>
                 </div>
@@ -59,9 +49,10 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
     </div>
 </div>
 
+<!-- Per-barangay detail modals with all fields -->
 <?php foreach ($byBarangay as $barangay => $list): $bIndex = md5($barangay); ?>
     <div id="barangayModal-<?= $bIndex ?>" class="modal">
-        <div class="modal-box" style="max-width: 900px;">
+        <div class="modal-box" style="max-width:960px;">
             <div class="modal-head">
                 <h2><?= htmlspecialchars($barangay) ?> — Households</h2>
                 <button class="icon-btn" onclick="closeModal('barangayModal-<?= $bIndex ?>')">✕</button>
@@ -72,22 +63,37 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                         <tr>
                             <th>ID</th>
                             <th>Family Head</th>
-                            <th>Members</th>
+                            <th>Age</th>
+                            <th>Sex</th>
+                            <th>Civil Status</th>
+                            <th>Education</th>
+                            <th>Occupation</th>
+                            <th>Contact No.</th>
+                            <th>DOB</th>
                             <th>4Ps</th>
+                            <th>Members</th>
                             <th>PWD</th>
-                            <th>Senior Citizens</th>
+                            <th>Seniors</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($list as $h):
-                            $fullName = trim($h['firstname'] . ' ' . $h['middlename'] . ' ' . $h['lastname'] . ' ' . $h['nameextension']);
-                            $fullName = preg_replace('/\s+/', ' ', $fullName);
+                            $fullName = preg_replace('/\s+/', ' ', trim(implode(' ', array_filter([
+                                $h['firstname'], $h['middlename'], $h['lastname'], $h['nameextension']
+                            ]))));
                         ?>
                             <tr>
                                 <td><?= htmlspecialchars($h['household_id']) ?></td>
                                 <td><?= htmlspecialchars($fullName) ?></td>
-                                <td><?= htmlspecialchars($h['total_family_members']) ?></td>
+                                <td><?= htmlspecialchars($h['age'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($h['sex'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($h['civil_status'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($h['educational_attainment'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($h['occupation'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($h['contact_no'] ?? '—') ?></td>
+                                <td><?= htmlspecialchars($h['date_of_birth'] ?? '—') ?></td>
                                 <td><?= status_badge($h['is_4ps_member']) ?></td>
+                                <td><?= htmlspecialchars($h['total_family_members']) ?></td>
                                 <td><?= htmlspecialchars($h['pwd_count']) ?></td>
                                 <td><?= htmlspecialchars($h['senior_citizens']) ?></td>
                             </tr>
