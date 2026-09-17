@@ -159,6 +159,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_household'])) {
     }
 }
 
+// ── Stage 2: Back to Step 1 (delete the household row just created and return to Add form) ──
+if (isset($_GET['stage']) && $_GET['stage'] === 'back' && isset($_SESSION['pending_household_id'])) {
+    $idToDelete = $_SESSION['pending_household_id'];
+    db_delete('household', 'household_id = ?', [$idToDelete]);
+    unset($_SESSION['pending_household_id'], $_SESSION['pending_total_members']);
+    header('Location: households.php?reopen=1');
+    exit;
+}
 require '../includes/layout.php';
 page_start('Household Management');
 
@@ -235,6 +243,7 @@ if (isset($_GET['stage']) && $_GET['stage'] === '2' && isset($_SESSION['pending_
                 <?php endif; ?>
             <?php endfor; ?>
             <div class="actions mt">
+                <a href="households.php?stage=back" class="btn btn-light">← Back to Step 1</a>
                 <button class="btn btn-primary">Save Family Composition</button>
             </div>
         </form>
@@ -644,3 +653,8 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
 <?php endforeach; ?>
 
 <?php page_end(); ?>
+<script>
+<?php if (isset($_GET['reopen'])): ?>
+openModal('householdModal');
+<?php endif; ?>
+</script>

@@ -1,21 +1,6 @@
 <?php
 /**
- * Role-Based Access Control
- * -------------------------
- * Restricts which pages each role may open, and lets includes/layout.php
- * hide nav links a role can't use. Based on the system's use case diagram,
- * the Social Worker only has access to:
- *   - Manage Household Data      -> households.php
- *   - Show Casualty Data         -> casualties.php   (<<include>> of Household Data)
- *   - Manage Evacuation Center   -> evacuation-centers.php
- *   - Upload Damage Assessment   -> damage-assessment.php
- *   - Request Vehicle            -> vehicle-requests.php
- *   - Generate Reports           -> reports.php
- *   - Record Disaster Event      -> disasters.php
- *   - dashboard.php (landing page after login)
- *
- * MDRRMO Officer keeps full access, including User Management, Relief
- * Goods, and Notifications, which are outside the Social Worker's use cases.
+ * Role-Based Access Control + Single-Session Enforcement
  */
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -23,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 const ROLE_ACCESS = [
-    'MDRRMO Officer' => ['*'], // full system access
+    'MDRRMO Officer' => ['*'],
 
     'Social Worker' => [
         'dashboard.php',
@@ -37,17 +22,41 @@ const ROLE_ACCESS = [
     ],
 ];
 
-// Which folder each role's dashboard lives in, relative to the project root.
 const ROLE_HOME = [
     'MDRRMO Officer' => 'mdrrmo-officer/dashboard.php',
     'Social Worker'  => 'social-worker/dashboard.php',
 ];
 
 /**
- * Blocks the request unless the logged-in user's role is permitted to view
- * the current script. Call this at the very top of every protected page,
- * before includes/layout.php loads.
+ * Single-session enforcement.
+ * Stores a unique session token in the DB (users.session_token).
+ * If a new login overwrites the token, older sessions are invalidated
+ * on their next page load.
  */
+function enforce_single_session(): void
+{
+    $user = $_SESSION['user'] ?? null;
+    if (!$user || empty($user['id'])) return;
+
+    require_once __DIR__ . '/db.php';
+
+    $sessionToken = $_SESSION['session_token'] ?? null;
+    if (!$sessionToken) {
+        // No token in this session — force re-login
+        session_destroy();
+        header('Location: ../login.php?reason=session');
+        exit;
+    }
+
+    $dbUser = db_select_one('users', 'user_id = ?', [$user['id']], 'session_token');
+    if (!$dbUser || $dbUser['session_token'] !== $sessionToken) {
+        // Token mismatch — another device/browser logged in with this account
+        session_destroy();
+        header('Location: ../login.php?reason=session');
+        exit;
+    }
+}
+
 function require_page_access(): void
 {
     $user = $_SESSION['user'] ?? null;
@@ -57,12 +66,14 @@ function require_page_access(): void
         exit;
     }
 
+    enforce_single_session();
+
     $role    = $user['role'] ?? '';
     $page    = basename($_SERVER['SCRIPT_NAME']);
     $allowed = ROLE_ACCESS[$role] ?? [];
 
     if (in_array('*', $allowed, true) || in_array($page, $allowed, true)) {
-        return; // access granted
+        return;
     }
 
     http_response_code(403);
@@ -92,15 +103,6 @@ function require_page_access(): void
     exit;
 }
 
-/**
- * Returns true if the current session's role may access the given page
- * filename (e.g. 'users.php'). Used in includes/layout.php to hide nav
- * links a role can't use:
- *
- *   <?php if (can_access($item[0])): ?>
- *       <a href="...">...</a>
- *   <?php endif; ?>
- */
 function can_access(string $page): bool
 {
     $role    = $_SESSION['user']['role'] ?? '';

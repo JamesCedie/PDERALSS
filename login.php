@@ -2,51 +2,45 @@
 session_start();
 require_once 'includes/db.php';
 
-// Handle the "Forgot Password" username lookup (called via fetch() from this
-// same page's JS). Responds with JSON and exits, without touching the normal
-// login flow or rendering any HTML below.
+$error = null;
+
+// Show session-kicked message
+$reason = $_GET['reason'] ?? '';
+
+// Handle "Forgot Password?" lookup (called via fetch from this page)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lookup_username'])) {
     header('Content-Type: application/json');
-
     $lookupUsername = trim($_POST['username'] ?? '');
-
-    if ($lookupUsername === '') {
-        echo json_encode(['success' => false, 'message' => 'Please enter your username first.']);
-        exit;
-    }
-
+    if ($lookupUsername === '') { echo json_encode(['success' => false, 'message' => 'Please enter your username first.']); exit; }
     $lookupUser = db_select_one('users', 'username = ?', [$lookupUsername]);
-
-    if (!$lookupUser) {
-        echo json_encode(['success' => false, 'message' => 'No account found for that username.']);
-        exit;
-    }
-
-    // Mask the email so it isn't exposed in full over the network,
-    // e.g. "juan.delacruz@mdrrmo.gov.ph" -> "j***********@mdrrmo.gov.ph"
+    if (!$lookupUser) { echo json_encode(['success' => false, 'message' => 'No account found for that username.']); exit; }
     $parts  = explode('@', $lookupUser['email']);
     $local  = $parts[0] ?? '';
     $domain = $parts[1] ?? '';
     $masked = (strlen($local) > 1 ? $local[0] . str_repeat('*', strlen($local) - 1) : $local) . '@' . $domain;
-
     echo json_encode(['success' => true, 'masked_email' => $masked]);
     exit;
 }
 
-$error = null;
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
     $user = db_select_one('users', 'username = ?', [$username]);
 
     if ($user && password_verify($password, $user['password'])) {
+        // Generate a unique session token and store it in the DB
+        // This invalidates any existing session for this account (single-session enforcement)
+        $token = bin2hex(random_bytes(32));
+        db_update('users', ['session_token' => $token], 'user_id = ?', [$user['user_id']]);
+
         $_SESSION['user'] = [
             'id'   => $user['user_id'],
             'name' => trim($user['first_name'] . ' ' . $user['last_name']),
             'role' => $user['role'],
         ];
+        $_SESSION['session_token'] = $token;
+
         require_once 'includes/access.php';
         $home = ROLE_HOME[$user['role']] ?? 'login.php';
         header('Location: ' . $home);
@@ -71,6 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <h1>Post-Disaster Evacuation Resource Allocation and Logistics Scheduling System</h1>
             <p>LGU/MDRRMO Management Portal</p>
 
+            <?php if ($reason === 'session'): ?>
+                <div class="alert alert-warning mb">This account was logged in from another device. Please log in again.</div>
+            <?php endif; ?>
+
             <?php if ($error): ?>
                 <div class="alert alert-danger mb"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
@@ -88,12 +86,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
 
             <p class="mini mt" style="text-align:center">
-                <a href="#" onclick="event.preventDefault(); requestOtp()">Forgot Password?</a>
+                <a href="#" onclick="event.preventDefault(); openModal('forgotPasswordModal')">Forgot Password?</a>
             </p>
         </div>
     </div>
 
-    <!-- OTP entry -->
+    <!-- OTP entry modal -->
+    <div id="forgotPasswordModal" class="modal">
+        <div class="modal-box">
+            <div class="modal-head">
+                <h2>Forgot Password</h2>
+                <button class="icon-btn" onclick="closeModal('forgotPasswordModal')">✕</button>
+            </div>
+            <p class="mini mb">Enter your username and we'll send a code to the email on your account.</p>
+            <form onsubmit="event.preventDefault(); requestOtp()">
+                <div class="field mb">
+                    <label>Username</label>
+                    <input type="text" id="forgotUsername" placeholder="Enter your username" required>
+                </div>
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary btn-block">Send OTP</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="otpModal" class="modal">
         <div class="modal-box">
             <div class="modal-head">
