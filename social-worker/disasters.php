@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/access.php'; require_page_access();
 require_once '../includes/db.php';
+db_ensure_disaster_event_status();
 
 $currentUser         = db_select_one('users', 'user_id = ?', [$_SESSION['user']['id'] ?? null]);
 $socialWorkerAddress = $currentUser['address'] ?? '';
@@ -44,30 +45,35 @@ if (!empty($events)) {
     }
 }
 ?>
-
-<div class="page-head">
-    <h1 class="page-title">Disaster Events</h1>
+<div class="sw-impact-title">Current Cumulative Evacuation Impact</div>
+<div class="grid g3 sw-impact-cards">
+    <div class="card"><div class="stat-label">Total Evacuees</div><div class="stat-value"><?= htmlspecialchars($stats[0]) ?></div></div>
+    <div class="card"><div class="stat-label">Evacuated Households</div><div class="stat-value"><?= htmlspecialchars($stats[1]) ?></div></div>
+    <div class="card"><div class="stat-label">Reported Casualties</div><div class="stat-value"><?= htmlspecialchars($stats[2]) ?></div></div>
 </div>
 
-<!-- Scrollable event cards -->
-<div style="display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;">
+<div class="sw-incidents-title" style="margin-top:32px;">Monitored Incidents</div>
+<div class="sw-events-row">
     <?php if (empty($events)): ?>
         <div class="card empty" style="flex:1;">No disaster events recorded yet.</div>
     <?php endif; ?>
+
     <?php foreach ($events as $e):
         $isActive = ($e['status'] ?? 'Active') === 'Active';
     ?>
-        <div class="card" style="flex:0 0 320px;">
-            <div class="page-head card-head-gap">
-                <div>
-                    <h3><?= htmlspecialchars($e['event_name']) ?></h3>
-                    <div class="mini">DE-<?= htmlspecialchars($e['event_id']) ?> · <?= htmlspecialchars($e['type']) ?></div>
-                </div>
-                <?= status_badge($isActive ? 'Active' : 'Completed') ?>
+        <div class="card sw-event-card">
+            <h3><?= htmlspecialchars($e['event_name']) ?> Event</h3>
+            <div class="event-code">DE-<?= htmlspecialchars($e['event_id']) ?> &nbsp;·&nbsp; <?= htmlspecialchars($e['type']) ?></div>
+            <div class="event-status-row" style="justify-content:flex-start;margin:0 0 14px;">
+                <?= status_badge($isActive ? 'Active' : 'Passed') ?>
             </div>
-            <p class="mini"><b>Date:</b> <?= htmlspecialchars($e['date']) ?></p>
-            <p class="event-desc"><?= htmlspecialchars($e['description']) ?></p>
-            <div class="actions">
+
+            <div class="sw-event-description">
+                <span class="event-date">▣ &nbsp;Reported: <?= htmlspecialchars($e['date']) ?></span>
+                <?= htmlspecialchars($e['description']) ?>
+            </div>
+
+            <div class="sw-event-actions">
                 <?php if ($isActive): ?>
                     <a href="evacuation-centers.php?event_id=<?= $e['event_id'] ?>" class="btn btn-light">Manage Evacuation Centers</a>
                     <a href="casualties.php?event_id=<?= $e['event_id'] ?>" class="btn btn-light">Manage Casualties</a>
@@ -79,46 +85,26 @@ if (!empty($events)) {
     <?php endforeach; ?>
 </div>
 
-<!-- Current Disaster Events summary -->
-<?php if (!empty($events)): ?>
-<div class="card mt">
-    <h2>Current Disaster Events</h2>
-    <table class="table">
-        <tbody>
-            <tr><td><b>Total Evacuees</b></td><td><?= $stats[0] ?></td></tr>
-            <tr><td><b>Evacuated Households</b></td><td><?= $stats[1] ?></td></tr>
-            <tr><td><b>Reported Casualties</b></td><td><?= $stats[2] ?></td></tr>
-        </tbody>
-    </table>
-</div>
-<?php endif; ?>
-
-<!-- View Details modals for finished events -->
 <?php foreach ($events as $e):
     if (($e['status'] ?? 'Active') === 'Active') continue;
     $sum = $eventSummaries[$e['event_id']] ?? ['evacuees' => 0, 'households' => 0, 'casualties' => 0];
 ?>
-    <div id="viewModal-<?= $e['event_id'] ?>" class="modal">
-        <div class="modal-box">
-            <div class="modal-head">
-                <h2><?= htmlspecialchars($e['event_name']) ?></h2>
-                <button class="icon-btn" onclick="closeModal('viewModal-<?= $e['event_id'] ?>')">✕</button>
-            </div>
-            <p class="mini"><b>Type:</b> <?= htmlspecialchars($e['type']) ?> &nbsp;·&nbsp; <b>Date:</b> <?= htmlspecialchars($e['date']) ?></p>
-            <p class="event-desc"><?= htmlspecialchars($e['description']) ?></p>
-            <h3 style="margin:14px 0 8px;">Event Summary — <?= htmlspecialchars($socialWorkerAddress) ?></h3>
-            <table class="table">
-                <tbody>
-                    <tr><td><b>People Evacuated</b></td><td><?= $sum['evacuees'] ?></td></tr>
-                    <tr><td><b>Households Evacuated</b></td><td><?= $sum['households'] ?></td></tr>
-                    <tr><td><b>Casualties Reported</b></td><td><?= $sum['casualties'] ?></td></tr>
-                </tbody>
-            </table>
-            <div class="actions mt">
-                <button type="button" class="btn btn-light" onclick="closeModal('viewModal-<?= $e['event_id'] ?>')">Close</button>
-            </div>
+<div id="viewModal-<?= $e['event_id'] ?>" class="modal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <div><h2><?= htmlspecialchars($e['event_name']) ?></h2><div class="mini"><?= htmlspecialchars($e['type']) ?> · <?= htmlspecialchars($e['date']) ?></div></div>
+            <button class="icon-btn" onclick="closeModal('viewModal-<?= $e['event_id'] ?>')">×</button>
         </div>
+        <p class="mini"><?= htmlspecialchars($e['description']) ?></p>
+        <div class="sw-modal-section-title">Event Summary — All Reports</div>
+        <div class="sw-view-grid">
+            <div class="sw-view-item"><label>People Evacuated</label><div><?= htmlspecialchars($sum['evacuees']) ?></div></div>
+            <div class="sw-view-item"><label>Households Evacuated</label><div><?= htmlspecialchars($sum['households']) ?></div></div>
+            <div class="sw-view-item"><label>Casualties Reported</label><div><?= htmlspecialchars($sum['casualties']) ?></div></div>
+        </div>
+        <div class="actions"><button class="btn btn-primary" onclick="closeModal('viewModal-<?= $e['event_id'] ?>')">Close</button></div>
     </div>
+</div>
 <?php endforeach; ?>
 
 <?php page_end(); ?>

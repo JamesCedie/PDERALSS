@@ -82,6 +82,32 @@ function db(): PDO
 }
 
 /**
+ * Ensures the disaster lifecycle field exists. Older deployments of this
+ * project did not have a status column, while the current UI needs Active/Passed
+ * to be persisted and shared by both MDRRMO and Social Worker pages.
+ */
+function db_ensure_disaster_event_status(): void
+{
+    static $done = false;
+    if ($done) return;
+
+    $exists = db_query(
+        "SELECT 1
+         FROM information_schema.columns
+         WHERE table_schema = current_schema()
+           AND table_name = 'disaster_events'
+           AND column_name = 'status'
+         LIMIT 1"
+    )->fetchColumn();
+
+    if (!$exists) {
+        db()->exec("ALTER TABLE disaster_events ADD COLUMN status VARCHAR(10) NOT NULL DEFAULT 'Active'");
+    }
+
+    $done = true;
+}
+
+/**
  * Runs a raw prepared query and returns the PDOStatement.
  * Use this directly for anything the helpers below don't cover (JOINs, etc.).
  */

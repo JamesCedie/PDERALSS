@@ -40,7 +40,7 @@ $recent = [
                 <div class="report-type-icon">▤</div>
                 <h3><?=$t[0]?></h3>
                 <p class="mini"><?=$t[1]?></p>
-                <button class="btn btn-primary btn-block" onclick="alert('Generating <?=$t[0]?>...')">Generate</button>
+                <button class="btn btn-primary btn-block" onclick="showToast('Generating <?=$t[0]?>...', 'info')">Generate</button>
             </div>
         <?php endforeach; ?>
     </div>

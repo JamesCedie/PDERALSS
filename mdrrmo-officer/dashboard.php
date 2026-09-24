@@ -45,7 +45,7 @@
             ['danger',  'Low stock alert: Water supplies below threshold',         '1 hour ago'],
             ['success', 'Vehicle request approved for Brgy. Molo',                 '2 hours ago'],
         ] as $a): ?>
-            <div class="alert alert-<?=$a[0]?>">
+            <div class="alert dashboard-alert alert-<?=$a[0]?>">
                 <div class="alert-message"><?=$a[1]?></div>
                 <div class="mini"><?=$a[2]?></div>
             </div>

@@ -87,7 +87,7 @@ $rows = [
             <button class="icon-btn" onclick="closeModal('damageModal')">✕</button>
         </div>
 
-        <form onsubmit="event.preventDefault(); alert('Assessment submitted for verification.'); closeModal('damageModal')">
+        <form onsubmit="event.preventDefault(); showToast('Assessment submitted for verification.', 'success'); closeModal('damageModal')">
             <div class="form-grid">
                 <div class="field">
                     <label>Barangay</label>

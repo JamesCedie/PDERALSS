@@ -42,8 +42,11 @@ function confirmAction(message) {
  * Safe to call even on pages without a #otpModal / username field.
  */
 function requestOtp() {
-    const usernameField = document.querySelector('[name="username"]');
-    const username = usernameField ? usernameField.value.trim() : '';
+    const forgotField = document.getElementById('forgotUsername');
+    const loginField = document.querySelector('form [name="username"]');
+    const username = (forgotField && forgotField.value.trim())
+        ? forgotField.value.trim()
+        : (loginField ? loginField.value.trim() : '');
 
     if (!username) {
         alert('Please enter your username first.');
@@ -74,3 +77,20 @@ document.addEventListener('click', function (e) {
         e.target.classList.remove('show');
     }
 });
+function showToast(message, type = 'info') {
+    const container = document.getElementById('swToastContainer');
+    if (!container) {
+        // Keep non-social-worker pages using their normal browser behavior.
+        return;
+    }
+    const toast = document.createElement('div');
+    toast.className = 'sw-toast sw-toast-' + type;
+    toast.setAttribute('role', 'status');
+    toast.textContent = message;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    window.setTimeout(() => {
+        toast.classList.remove('show');
+        window.setTimeout(() => toast.remove(), 180);
+    }, 2800);
+}

@@ -1,56 +1,108 @@
 <?php
-require_once '../includes/access.php'; require_page_access(); require '../includes/layout.php';
+require_once '../includes/access.php'; require_page_access();
+require_once '../includes/db.php';
+db_ensure_disaster_event_status();
+require '../includes/layout.php';
+
+$eventId = (int) ($_GET['event_id'] ?? 0);
+$currentEvent = $eventId ? db_select_one('disaster_events', 'event_id = ?', [$eventId]) : null;
+
 page_start('Evacuation Centers');
 
-$centers = [
-    ['EC-001', 'Center Alpha',   'Brgy. Jaro',        '500', '475', 'Near Capacity'],
-    ['EC-002', 'Center Beta',    'Brgy. Molo',         '400', '220', 'Available'],
-    ['EC-003', 'Center Gamma',   'Brgy. Mandurriao',   '350', '180', 'Available'],
-    ['EC-004', 'Center Delta',   'Brgy. Arevalo',      '300', '300', 'Full'],
-    ['EC-005', 'Center Epsilon', 'Brgy. La Paz',       '450', '240', 'Available'],
+// MDRRMO is not barangay-scoped. The summary below is therefore filtered only
+// by event_id and combines every barangay that reported evacuees for that event.
+$summary = [
+    'people'    => 0,
+    'households'=> 0,
+    'barangays' => 0,
 ];
+$barangays = [];
+
+if ($currentEvent) {
+    $summary = db_query(
+        "SELECT
+            COALESCE(SUM(household_no), 0) AS people,
+            COUNT(*) AS households,
+            COUNT(DISTINCT barangay) AS barangays
+         FROM evacuation_evacuees
+         WHERE event_id = ?",
+        [$eventId]
+    )->fetch() ?: $summary;
+
+    $barangays = db_query(
+        "SELECT barangay,
+                COUNT(*) AS households,
+                COALESCE(SUM(household_no), 0) AS people
+         FROM evacuation_evacuees
+         WHERE event_id = ?
+         GROUP BY barangay
+         ORDER BY barangay ASC",
+        [$eventId]
+    )->fetchAll();
+}
 ?>
 
 <div class="page-head">
-    <h1 class="page-title">Evacuation Center Management</h1>
-    <a href="disasters.php" class="btn btn-light">← Back to Disaster Events</a>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <a href="disasters.php" class="btn btn-light">← Disaster Events</a>
+        <h1 class="page-title">Evacuation Center Management</h1>
+    </div>
 </div>
 
-<!-- Stat cards: no emojis, no icon container -->
-<div class="grid g4">
-    <?php foreach([['12', 'Total Centers'], ['8', 'Available'], ['3', 'Near Capacity'], ['1', 'Full']] as $s): ?>
-        <div class="card">
-            <div class="stat-value"><?= $s[0] ?></div>
-            <div class="stat-label"><?= $s[1] ?></div>
+<?php if (!$currentEvent): ?>
+    <div class="card empty">Select a disaster event from Disaster Events to view its evacuation-center summary.</div>
+<?php else: ?>
+    <div class="event-status-row" style="justify-content:flex-start;margin-top:0;">
+        <div class="mini">Event: <strong><?= htmlspecialchars($currentEvent['event_name']) ?></strong> · <?= htmlspecialchars($currentEvent['type']) ?> · <?= htmlspecialchars($currentEvent['date']) ?></div>
+        <?= status_badge(($currentEvent['status'] ?? 'Active') === 'Active' ? 'Active' : 'Passed') ?>
+    </div>
+
+    <div class="grid g3 md-event-summary-grid">
+        <div class="card md-event-summary-card">
+            <div class="stat-value"><?= htmlspecialchars($summary['people']) ?></div>
+            <div class="stat-label">Total People Evacuated</div>
         </div>
-    <?php endforeach; ?>
-</div>
-
-<div class="grid g2 mt">
-    <div class="card">
-        <h2>Evacuation Centers Map</h2>
-        <div class="map">
-            <?php foreach([['Alpha', 18, 25], ['Beta', 40, 45], ['Gamma', 65, 20], ['Delta', 70, 65], ['Epsilon', 30, 70]] as $p): ?>
-                <div class="pin" style="--x:<?=$p[1]?>%;--y:<?=$p[2]?>%"><?=$p[0]?></div>
-            <?php endforeach; ?>
+        <div class="card md-event-summary-card">
+            <div class="stat-value"><?= htmlspecialchars($summary['households']) ?></div>
+            <div class="stat-label">Evacuated Households</div>
+        </div>
+        <div class="card md-event-summary-card">
+            <div class="stat-value"><?= htmlspecialchars($summary['barangays']) ?></div>
+            <div class="stat-label">Affected Barangays Reporting</div>
         </div>
     </div>
 
-    <div class="card">
-        <h2>Evacuation Center Overview</h2>
-        <?php foreach($centers as $c): $pct = round($c[4] / $c[3] * 100); ?>
-            <div class="center-row">
-                <div class="center-row-head">
-                    <b><?=$c[1]?></b>
-                    <?=status_badge($c[5])?>
-                </div>
-                <div class="mini"><?=$c[2]?> · <?=$c[4]?> / <?=$c[3]?> occupants</div>
-                <div class="progress-track">
-                    <div class="progress-fill" style="--fill:<?=$pct?>%"></div>
-                </div>
+    <div class="card mt">
+        <h2>Event Evacuation Overview</h2>
+        <p class="mini">This view is event-specific and combines evacuation reports from all barangays affected by <strong><?= htmlspecialchars($currentEvent['event_name']) ?></strong>.</p>
+
+        <?php if (empty($barangays)): ?>
+            <div class="empty">No evacuation records have been reported for this event yet.</div>
+        <?php else: ?>
+            <div class="md-affected-barangays">
+                <?php foreach ($barangays as $row): ?>
+                    <span class="barangay-chip"><?= htmlspecialchars($row['barangay']) ?> · <?= htmlspecialchars($row['people']) ?> people</span>
+                <?php endforeach; ?>
             </div>
-        <?php endforeach; ?>
+
+            <div class="table-wrap mt">
+                <table class="table">
+                    <thead>
+                        <tr><th>Barangay Reporting</th><th>Household Records</th><th>People Evacuated</th></tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($barangays as $row): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($row['barangay']) ?></td>
+                            <td><?= htmlspecialchars($row['households']) ?></td>
+                            <td><?= htmlspecialchars($row['people']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
     </div>
-</div>
+<?php endif; ?>
 
 <?php page_end(); ?>

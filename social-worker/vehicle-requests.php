@@ -62,8 +62,8 @@ $counts = ['Pending' => 1, 'Approved' => 1, 'Scheduled' => 1, 'Completed' => 1];
                         <td><?=$r[7]?></td>
                         <td class="actions">
                             <?php if($r[6] === 'Pending'): ?>
-                                <button class="btn btn-success" onclick="alert('Request approved.')">Approve</button>
-                                <button class="btn btn-danger" onclick="alert('Request rejected.')">Reject</button>
+                                <button class="btn btn-success" onclick="showToast('Request approved.', 'success')">Approve</button>
+                                <button class="btn btn-danger" onclick="showToast('Request rejected.', 'danger')">Reject</button>
                             <?php else: ?>
                                 <button class="btn btn-light">View</button>
                             <?php endif; ?>
@@ -81,7 +81,7 @@ $counts = ['Pending' => 1, 'Approved' => 1, 'Scheduled' => 1, 'Completed' => 1];
             <h2>New Vehicle Request</h2>
             <button class="icon-btn" onclick="closeModal('vehicleModal')">✕</button>
         </div>
-        <form onsubmit="event.preventDefault();alert('Vehicle request submitted.');closeModal('vehicleModal')">
+        <form onsubmit="event.preventDefault();showToast('Vehicle request submitted.', 'success');closeModal('vehicleModal')">
             <div class="form-grid">
                 <div class="field">
                     <label>Barangay</label>
