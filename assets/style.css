@@ -1665,3 +1665,23 @@ textarea {
     .sw-ui .sw-section-head { gap: 14px; }
     .sw-toast-container { right: 20px; top: 96px; }
 }
+
+/* Social Worker casualty inline save feedback */
+.sw-inline-alert {
+    margin: 14px 0 18px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+.sw-inline-success {
+    background: #eaf7ef;
+    color: #17663a;
+    border-color: #b9e3c8;
+}
+.sw-inline-error {
+    background: #fff0f0;
+    color: #a62b2b;
+    border-color: #efbcbc;
+}

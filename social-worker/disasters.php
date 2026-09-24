@@ -2,6 +2,7 @@
 require_once '../includes/access.php'; require_page_access();
 require_once '../includes/db.php';
 db_ensure_disaster_event_status();
+db_ensure_casualties_table();
 
 $currentUser         = db_select_one('users', 'user_id = ?', [$_SESSION['user']['id'] ?? null]);
 $socialWorkerAddress = $currentUser['address'] ?? '';
@@ -28,7 +29,7 @@ foreach ($events as $e) {
         $eventSummaries[$e['event_id']] = [
             'evacuees'   => $evac['people'] ?? 0,
             'households' => $evac['hh'] ?? 0,
-            'casualties' => '—', // casualties table not yet built
+            'casualties' => (int) db_query('SELECT COUNT(*) FROM public.casualties WHERE event_id = ? AND barangay = ?', [$e['event_id'], $socialWorkerAddress])->fetchColumn()
         ];
     }
 }
@@ -41,7 +42,8 @@ if (!empty($events)) {
     }
     if ($latestActive) {
         $ev = db_query('SELECT COUNT(*) as hh, COALESCE(SUM(household_no),0) as people FROM evacuation_evacuees WHERE event_id = ? AND barangay = ?', [$latestActive['event_id'], $socialWorkerAddress])->fetch();
-        $stats = [$ev['people'] ?? 0, $ev['hh'] ?? 0, '—']; // casualties not yet available
+        $cas = db_query('SELECT COUNT(*) FROM public.casualties WHERE event_id = ? AND barangay = ?', [$latestActive['event_id'], $socialWorkerAddress])->fetchColumn();
+        $stats = [$ev['people'] ?? 0, $ev['hh'] ?? 0, (int) $cas];
     }
 }
 ?>
