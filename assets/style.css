@@ -1685,7 +1685,6 @@ textarea {
     color: #a62b2b;
     border-color: #efbcbc;
 }
-<<<<<<< HEAD
 
 /* ==========================================================
    Vehicle Requests (Social Worker + MDRRMO) — dark PDERALSS UI
@@ -1953,5 +1952,3 @@ textarea {
 /* Damage assessment view modal */
 .md-view-modal { width:min(520px, calc(100vw - 40px)) !important; }
 .md-view-wide { grid-column:1 / -1; }
-=======
->>>>>>> c30f084779a5c5d2486373655c78752b847aa929

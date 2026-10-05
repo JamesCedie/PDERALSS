@@ -94,7 +94,6 @@ function showToast(message, type = 'info') {
         window.setTimeout(() => toast.remove(), 180);
     }, 2800);
 }
-<<<<<<< HEAD
 
 /**
  * MD pages: client-side filter for a table. Rows opt in with data-search="lowercase text".
@@ -117,5 +116,3 @@ function mdBindSearch(inputId, tableId, noMatchId) {
         if (none) none.hidden = shown > 0 || rows.length === 0;
     });
 }
-=======
->>>>>>> c30f084779a5c5d2486373655c78752b847aa929
