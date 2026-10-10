@@ -1,4 +1,4 @@
-```dockerfile
+
 FROM php:8.2-apache
 
 # Dependencies for PostgreSQL, image processing, cURL, and multibyte text
@@ -25,4 +25,3 @@ COPY . /var/www/html/
 RUN chown -R www-data:www-data /var/www/html
 
 EXPOSE 80
-```
