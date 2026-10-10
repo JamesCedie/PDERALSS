@@ -14,3 +14,11 @@ services:
         sync: false
       - key: DB_PASS
         sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: WATERMARK_SECRET
+        sync: false
+      - key: NOMINATIM_EMAIL
+        sync: false

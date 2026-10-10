@@ -1685,3 +1685,327 @@ textarea {
     color: #a62b2b;
     border-color: #efbcbc;
 }
+
+/* ==========================================================
+   Vehicle Requests (Social Worker + MDRRMO) — dark PDERALSS UI
+   ========================================================== */
+.vr-head { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:22px; }
+.vr-head .assigned-label { margin:0; }
+.vr-section-title { font-size:15px; font-weight:700; margin:0 0 12px; color:var(--sw-text); }
+.vr-table-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin:26px 0 12px; }
+.vr-table-head .vr-section-title { margin:0; }
+.vr-link { color:#3d95e0; font-size:12px; text-decoration:none; }
+.vr-link:hover { text-decoration:underline; }
+
+.vr-cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.vr-card {
+    background:var(--sw-card);
+    border:1px solid var(--sw-border);
+    border-radius:10px;
+    padding:16px 18px 18px;
+    min-height:104px;
+}
+.vr-card-top { display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--sw-muted); }
+.vr-card-value { font-size:34px; font-weight:700; line-height:1; margin-top:16px; color:var(--sw-text); }
+.vr-dot { width:7px; height:7px; border-radius:50%; display:inline-block; background:#64748b; }
+.vr-dot.approved  { background:#3ea66b; }
+.vr-dot.pending   { background:#e0a83a; }
+.vr-dot.scheduled { background:#3d8fe0; }
+.vr-dot.completed { background:#8a78d9; }
+
+.vr-badge {
+    display:inline-block; padding:2px 9px; border-radius:5px; font-size:11px; font-weight:600;
+    border:1px solid transparent; line-height:1.5; white-space:nowrap;
+}
+.vr-badge.pending   { color:#f0b94d; background:rgba(224,168,58,.12);  border-color:rgba(224,168,58,.5); }
+.vr-badge.approved  { color:#4ec27f; background:rgba(62,166,107,.12);  border-color:rgba(62,166,107,.5); }
+.vr-badge.scheduled { color:#5aa6f0; background:rgba(61,143,224,.12);  border-color:rgba(61,143,224,.5); }
+.vr-badge.completed { color:#a898ee; background:rgba(138,120,217,.14); border-color:rgba(138,120,217,.5); }
+.vr-badge.rejected  { color:#f27a7a; background:rgba(239,68,68,.12);   border-color:rgba(239,68,68,.5); }
+.vr-badge.urgency-high   { color:#f5a04a; background:rgba(245,160,74,.12); border-color:rgba(245,160,74,.5); }
+.vr-badge.urgency-medium { color:#f0b94d; background:rgba(224,168,58,.12); border-color:rgba(224,168,58,.5); }
+.vr-badge.urgency-low    { color:#4ec27f; background:rgba(62,166,107,.12); border-color:rgba(62,166,107,.5); }
+
+.vr-page .table td, .vr-page .table th { white-space:nowrap; }
+.vr-page .table .vr-right { text-align:right; }
+.vr-code { color:var(--sw-soft); font-size:11px; margin-top:2px; }
+.vr-muted { color:var(--sw-soft); }
+.sw-ui .btn-dark-sm {
+    background:#13283d; border:1px solid #1d3a57; color:#e6eef7;
+    padding:4px 12px; font-size:12px; border-radius:6px; cursor:pointer;
+}
+.sw-ui .btn-dark-sm:hover { background:#1a3550; }
+.sw-ui .btn-reject { background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.6); color:#f27a7a; }
+.sw-ui .btn-reject:hover { background:rgba(239,68,68,.28); }
+.sw-ui .btn[disabled] { opacity:.5; cursor:not-allowed; }
+
+.vr-filters { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.vr-filters .vr-search { flex:1; min-width:240px; margin:0; height:40px; }
+.vr-filters select, .vr-filters input[type=date] {
+    height:40px; background:#0d1d2f; border:1px solid #0e2339; border-radius:7px;
+    color:#dbe6f0; font-size:12px; padding:0 12px; color-scheme:dark;
+}
+
+.vr-pager { display:flex; align-items:center; justify-content:center; gap:14px; margin-top:16px; }
+
+.vr-modal { width:min(460px, calc(100vw - 40px)) !important; }
+.vr-form { display:grid; grid-template-columns:1fr 1fr; gap:14px 14px; }
+.vr-form .field.full { grid-column:1 / -1; }
+.vr-form .field textarea { min-height:84px; resize:vertical; }
+.vr-readonly {
+    background:var(--sw-input); border:1px solid #17304a; border-radius:6px;
+    padding:10px 12px; font-size:13px; min-height:38px; color:#dbe6f0;
+    display:flex; align-items:center;
+}
+.vr-readonly.vr-notes { min-height:72px; align-items:flex-start; white-space:pre-wrap; word-break:break-word; }
+.vr-assign {
+    background:#0b1a29; border:1px solid #17304a; border-radius:8px; padding:12px;
+}
+.vr-actions { grid-column:1 / -1; display:flex; justify-content:flex-end; gap:10px; margin-top:6px; border-top:1px solid #17304a; padding-top:16px; }
+.vr-actions .btn-primary { min-width:110px; }
+.vr-actions-split { justify-content:space-between; }
+.vr-actions-right { display:flex; gap:10px; }
+
+@media (max-width: 1100px) {
+    .vr-cards { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 560px) {
+    .vr-form { grid-template-columns:1fr; }
+    .vr-cards { grid-template-columns:1fr 1fr; }
+}
+
+/* ==========================================================
+   MDRRMO pages — dark PDERALSS theme (matches Vehicle Requests)
+   Everything is scoped to .md-ui so Social Worker pages are untouched.
+   ========================================================== */
+/* Titles live in the top bar, so hide the in-page duplicates (also inside back-button rows). */
+.md-ui .page-head .page-title { display:none; }
+.md-ui .page-head:not(:has(.btn, .actions, form, a)) { display:none; }
+.md-ui .page-head > div:has(> .page-title:last-child:not(:only-child)) { gap:12px; }
+.md-ui .page-head > div > a.btn-light { background:#0b67ad; border-color:#0b67ad; color:#fff; }
+
+/* Cards & stat tiles */
+.md-ui .card { background:var(--sw-card); border:1px solid var(--sw-border); border-radius:10px; box-shadow:none; }
+.md-ui .card .card { background:#0d1d2f; border-color:#17304a; }
+.md-ui .card h2 { font-size:15px; font-weight:700; }
+.md-ui .stat-icon { background:rgba(61,143,224,.14) !important; border:1px solid rgba(61,143,224,.45); color:#5aa6f0; }
+.md-ui .stat-icon.green  { background:rgba(62,166,107,.14) !important;  border-color:rgba(62,166,107,.5);  color:#4ec27f; }
+.md-ui .stat-icon.yellow { background:rgba(224,168,58,.14) !important;  border-color:rgba(224,168,58,.5);  color:#f0b94d; }
+.md-ui .stat-icon.red    { background:rgba(239,68,68,.14) !important;   border-color:rgba(239,68,68,.5);   color:#f27a7a; }
+.md-ui .stat-icon.purple { background:rgba(138,120,217,.16) !important; border-color:rgba(138,120,217,.5); color:#a898ee; }
+.md-ui .stat-icon.gray   { background:rgba(148,163,184,.14) !important; border-color:rgba(148,163,184,.4); color:#a9b8ca; }
+
+/* Tables */
+.md-ui .card > .table-wrap, .md-ui .card > .table-wrap:first-child { border:1px solid var(--sw-border); border-radius:10px; overflow:hidden; }
+.md-ui .table th { background:#0d1d2f; color:var(--sw-muted); border-bottom:1px solid #17304a; }
+.md-ui .table td { border-bottom:1px solid #12263a; color:#dbe6f0; }
+
+/* Badges follow the vehicle-request colour coding */
+.md-ui .badge { border:1px solid transparent; padding:2px 9px; font-size:11px; }
+.md-ui .b-green  { background:rgba(62,166,107,.12);  color:#4ec27f; border-color:rgba(62,166,107,.5); }
+.md-ui .b-red    { background:rgba(239,68,68,.12);   color:#f27a7a; border-color:rgba(239,68,68,.5); }
+.md-ui .b-yellow { background:rgba(224,168,58,.12);  color:#f0b94d; border-color:rgba(224,168,58,.5); }
+.md-ui .b-blue   { background:rgba(61,143,224,.12);  color:#5aa6f0; border-color:rgba(61,143,224,.5); }
+.md-ui .b-gray   { background:rgba(148,163,184,.12); color:#a9b8ca; border-color:rgba(148,163,184,.4); }
+.md-ui .b-purple { background:rgba(138,120,217,.14); color:#a898ee; border-color:rgba(138,120,217,.5); }
+
+/* Buttons */
+.md-ui .btn-danger { background:rgba(239,68,68,.15); border:1px solid rgba(239,68,68,.6); color:#f27a7a; }
+.md-ui .btn-danger:hover { background:rgba(239,68,68,.28); }
+.md-ui .btn-warning { background:rgba(224,168,58,.15); border:1px solid rgba(224,168,58,.6); color:#f0b94d; }
+.md-ui .btn-block { width:100%; justify-content:center; }
+
+/* Map, pins, progress, misc */
+.md-ui .map { background:linear-gradient(135deg,#0d2238,#0b1a29); border:1px solid #17304a; }
+.md-ui .pin { background:#0b1a29; border:1px solid #3d8fe0; color:#dbe6f0; box-shadow:none; }
+.md-ui .map-caption { background:#0b1a29; border:1px solid #17304a; color:var(--sw-muted); }
+.md-ui .progress-track { background:#12263a; }
+.md-ui .progress-fill { background:#3d8fe0; }
+.md-ui .progress-fill--red { background:#ef4444; }
+.md-ui .barangay-summary, .md-ui .report-type-card { background:#0d1d2f; border:1px solid #17304a; }
+.md-ui .event-desc, .md-ui .permission-list { color:var(--sw-muted); }
+.md-ui .timeline { border-left-color:#17304a; }
+.md-ui .footer-note { color:var(--sw-soft); }
+.md-ui .stat-label, .md-ui .mini, .md-ui .empty { color:var(--sw-muted); }
+.md-ui .notif-alert { cursor:pointer; }
+.md-ui .dashboard-alert { background:#0b1a29; }
+
+/* Forms & modals in MD pages */
+.md-ui .field input[type=date], .md-ui .field input[type=number] { color-scheme:dark; }
+.md-ui .field input, .md-ui .field select, .md-ui .field textarea { border:1px solid #17304a; }
+.md-ui .event-status-active  { background:rgba(62,166,107,.14) !important; border:1px solid rgba(62,166,107,.5) !important; color:#4ec27f !important; }
+.md-ui .event-status-passed  { background:rgba(148,163,184,.12) !important; border:1px solid rgba(148,163,184,.4) !important; color:#a9b8ca !important; }
+
+/* MDRRMO household directory */
+.hh-dir-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin:26px 0 12px; }
+.hh-dir-head .sw-records-title { margin:0; }
+.hh-count { color:var(--sw-muted); font-size:12px; }
+.hh-folders { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.hh-folder {
+    background:var(--sw-card); border:1px solid var(--sw-border); border-radius:10px;
+    padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:14px;
+}
+.hh-folder-name { font-size:15px; font-weight:700; color:var(--sw-text); }
+.hh-folder-meta { font-size:11px; color:var(--sw-soft); margin-top:3px; min-height:14px; }
+.hh-folder-count { margin-top:12px; display:flex; align-items:baseline; gap:6px; }
+.hh-folder-count strong { font-size:30px; line-height:1; color:var(--sw-text); }
+.hh-folder-count span { font-size:11px; color:var(--sw-muted); }
+.hh-actions { white-space:nowrap; }
+.hh-actions .btn { margin-left:6px; }
+.hh-page .assigned-label { margin:0 0 18px; }
+.hh-page .sw-summary-card { min-height:104px; }
+.hh-page .sw-summary-card .stat-value { font-size:40px; }
+.md-ui .sw-view-item div { overflow-wrap:anywhere; }
+@media (max-width: 760px) { .hh-folders { grid-template-columns:1fr; } }
+.hh-page .table .vr-right { text-align:right; }
+
+/* ==========================================================
+   MDRRMO monitoring pages — Disaster Events, Casualty,
+   Evacuation Center, Damage Assessment (scoped to .md-page)
+   ========================================================== */
+.md-page .sw-event-label { margin:4px 0 22px; }
+.md-page .sw-casualty-title { margin:0 0 12px; }
+.md-page .sw-casualty-title.mt { margin-top:26px; }
+.md-page .sw-search { margin:0 0 14px; }
+.md-page .sw-summary-card { min-height:104px; padding:18px 20px; }
+.md-page .sw-summary-card .stat-value { font-size:40px; line-height:1; margin-top:10px; }
+.md-page .table .vr-right { text-align:right; }
+
+/* Big count card + breakdown card side by side */
+.md-split { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:16px; }
+.md-split .sw-total-card, .md-split .sw-breakdown-card { min-height:0; }
+.md-split .sw-total-card .stat-value { font-size:64px; line-height:1; margin-top:14px; }
+.md-breakdown-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media (max-width: 860px) { .md-split { grid-template-columns:1fr; } }
+
+/* Disaster Events */
+.md-panel { padding:20px; }
+.md-panel h2 { margin:0; }
+.md-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.md-event-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.md-event-card { padding:16px; display:flex; flex-direction:column; }
+.md-event-card h3 { margin:0 0 3px; font-size:14px; }
+.md-event-card .event-desc { flex:1; margin:0 0 14px; font-size:12px; overflow-wrap:anywhere; }
+.md-event-actions--stack { flex-direction:column; flex-wrap:nowrap; }
+.md-event-actions--stack .btn { flex:0 0 auto; width:100%; }
+.md-btn-icon { width:14px; height:14px; margin-right:7px; vertical-align:-2px; }
+.md-panel .sw-data-table { margin-top:14px; }
+.md-event-modal { width:min(460px, calc(100vw - 40px)) !important; }
+.md-event-modal .form-grid { grid-template-columns:1fr; }
+.md-event-modal textarea { min-height:90px; resize:vertical; }
+.md-event-modal .actions .btn-primary { min-width:76px; }
+@media (max-width: 1100px) { .md-event-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width: 700px)  { .md-event-grid { grid-template-columns:1fr; } }
+
+/* Evacuation map card */
+.md-map-card { padding:18px; }
+.md-map-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.md-map-head h2 { margin:0 0 3px; }
+.md-map-body { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(0,1fr); gap:14px; }
+.md-map {
+    position:relative; height:340px; overflow:hidden;
+    background:linear-gradient(135deg,#0d2238,#0b1a29); border:1px solid #17304a; border-radius:10px;
+}
+.md-map-bg { position:absolute; inset:0; width:100%; height:100%; }
+.md-map-label { position:absolute; top:10px; left:12px; font-size:9px; letter-spacing:.12em; color:var(--sw-soft); }
+.md-map-zoom { position:absolute; top:10px; right:10px; z-index:3; display:flex; flex-direction:column; gap:1px; }
+.md-map-zoom button {
+    width:24px; height:24px; background:#0b1a29; border:1px solid #17304a; color:#dbe6f0; cursor:pointer; font-size:14px; line-height:1;
+}
+.md-map-zoom button:first-child { border-radius:5px 5px 0 0; }
+.md-map-zoom button:last-child  { border-radius:0 0 5px 5px; }
+.md-map-layer { position:absolute; inset:0; transition:transform .15s ease; transform-origin:50% 50%; }
+.md-pin {
+    position:absolute; transform:translate(-50%,-50%); background:none; border:0; padding:0; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+}
+.md-pin-label {
+    background:#0b1a29; border:1px solid #3d8fe0; color:#dbe6f0; border-radius:999px;
+    padding:3px 9px; font-size:10px; white-space:nowrap;
+}
+.md-pin-dot {
+    width:18px; height:18px; display:grid; place-items:center; font-size:11px; border-radius:4px;
+    background:rgba(62,166,107,.2); border:1px solid rgba(62,166,107,.7); color:#4ec27f;
+}
+.md-pin:hover .md-pin-label, .md-pin.active .md-pin-label { background:#0d5d9e; border-color:#5aa6f0; color:#fff; }
+.md-pin.active .md-pin-dot { background:#3ea66b; color:#fff; }
+.md-map-legend {
+    position:absolute; left:12px; right:12px; bottom:8px; display:flex; gap:14px; align-items:center;
+    font-size:10px; color:var(--sw-muted);
+}
+.md-map-legend .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; }
+.md-map-legend .dot.blue { background:#3d8fe0; }
+.md-map-legend .dot.green { background:#4ec27f; }
+.md-map-count { margin-left:auto; }
+.md-center-panel { background:#0d1d2f; border:1px solid #17304a; border-radius:10px; padding:16px; display:flex; flex-direction:column; gap:10px; }
+.md-center-kicker { font-size:9px; letter-spacing:.12em; color:var(--sw-soft); }
+.md-center-panel h3 { margin:0; font-size:15px; }
+.md-center-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:4px; }
+.md-center-stats .sw-breakdown-item { min-height:0; }
+.md-center-stats label { font-size:9px !important; letter-spacing:.06em; }
+.md-center-status { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border:1px solid #17304a; border-radius:8px; }
+.md-center-panel .btn-block { margin-top:auto; }
+.md-map-full .md-map { height:560px; }
+.md-map-full .md-map-body { grid-template-columns:minmax(0,2.4fr) minmax(0,1fr); }
+@media (max-width: 900px) { .md-map-body { grid-template-columns:1fr; } }
+
+/* Damage assessment view modal */
+.md-view-modal { width:min(520px, calc(100vw - 40px)) !important; }
+.md-view-wide { grid-column:1 / -1; }
+
+/* Leaflet (OpenStreetMap) inside the evacuation map card */
+.md-leaflet { position:absolute; inset:0; z-index:0; background:#0d2238; }
+.md-map .md-map-label, .md-map .md-map-legend { z-index:2; }
+.md-map .md-map-label { background:rgba(11,26,41,.85); padding:3px 7px; border-radius:5px; }
+.md-map .md-map-legend { background:rgba(11,26,41,.85); padding:5px 10px; border-radius:6px; left:10px; right:auto; width:calc(100% - 20px); bottom:8px; }
+.md-map .leaflet-bottom { bottom:34px; }
+.md-leaflet-pin { background:none; border:0; }
+.md-leaflet-pin .md-pin { pointer-events:auto; }
+
+/* Damage assessment: photo evidence + georeference */
+.da-preview { display:block; max-width:100%; max-height:170px; margin-top:8px; border-radius:8px; border:1px solid #17304a; }
+.da-loc-status { font-size:12px; color:var(--sw-muted); margin:2px 0 8px; }
+.da-map, .md-dmg-map { position:relative; z-index:0; height:200px; border-radius:8px; border:1px solid #17304a; overflow:hidden; margin:8px 0; background:#0d2238; }
+.md-dmg-map { margin-top:10px; }
+.md-dmg-photo { display:block; width:100%; max-height:340px; object-fit:contain; border-radius:8px; border:1px solid #17304a; background:#0d1d2f; }
+.md-dmg-link { color:#5aa6f0; }
+
+/* In-app camera (damage assessment) */
+.da-camera { position:relative; background:#000; border-radius:8px; border:1px solid #17304a; overflow:hidden; min-height:180px; }
+.da-video, .da-shot { display:block; width:100%; max-height:300px; object-fit:contain; background:#000; }
+.da-video[hidden], .da-shot[hidden] { display:none; }
+.da-cam-msg { position:absolute; inset:0; display:grid; place-items:center; padding:14px; text-align:center; font-size:12px; color:#dbe6f0; background:rgba(0,0,0,.55); }
+.da-cam-msg[hidden] { display:none; }
+.da-cam-actions { display:flex; gap:8px; margin:8px 0; }
+
+.da-map[hidden] { display:none; }
+.da-map { pointer-events:none; }
+
+/* Stamp preview over the captured photo */
+.da-stamp { position:absolute; left:0; right:0; bottom:0; padding:8px 10px; font-size:11px; line-height:1.5; color:#fff; background:rgba(0,0,0,.62); text-align:left; }
+.da-stamp[hidden] { display:none; }
+
+
+/* ---- Social Worker: search bar on Household, occupancy dropdown on Evacuation Center ---- */
+.sw-household-list .sw-search { margin: 0 0 14px; }
+.sw-status-form { margin: 0 0 14px; }
+.sw-status-select {
+    min-width: 225px; height: 46px; padding: 0 42px 0 15px;
+    background: #0d1d2f url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%238ba1b9' stroke-width='1.6'/></svg>") no-repeat right 15px center;
+    border: 1px solid #17304a; border-radius: 7px;
+    color: #dbe6f0; font-size: 14px; font-family: inherit;
+    -webkit-appearance: none; appearance: none; cursor: pointer;
+}
+.sw-status-select:hover { border-color: #24507a; }
+.sw-status-select:focus { outline: 0; border-color: #2a6aa6; }
+.sw-status-select option { background: #0e1d2e; color: #fff; }
+@media (max-width: 600px) { .sw-status-select { width: 100%; } }
+
+
+/* ---- Disaster Events sidebar tree ---- */
+.nav .nav-tree { position: relative; margin: 2px 0 6px 22px; padding-left: 0; }
+.nav .nav-tree::before { content: ""; position: absolute; left: 0; top: 0; bottom: 18px; width: 1px; background: #1f3d5a; }
+.nav .nav-tree-item { position: relative; display: block; margin: 2px 0 2px 14px; padding: 8px 12px; font-size: 13px; border-radius: 8px; }
+.nav .nav-tree-item::before { content: ""; position: absolute; left: -14px; top: 50%; width: 12px; height: 1px; background: #1f3d5a; }
+.sw-ui .nav a.nav-tree-item { padding: 8px 12px; font-size: 13px; }
+.sw-ui .nav a.nav-tree-item.active { font-weight: 600; }

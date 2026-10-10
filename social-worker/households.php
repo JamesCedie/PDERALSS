@@ -237,9 +237,13 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
     </div>
 
     <div class="sw-records-title">Household Records</div>
+    <label class="sw-search">
+        <span aria-hidden="true">⌕</span>
+        <input type="search" id="swSearch" placeholder="Search..." autocomplete="off">
+    </label>
     <div class="sw-records">
         <div class="table-wrap">
-            <table class="table sw-table">
+            <table class="table sw-table" id="swTable">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -257,21 +261,23 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                             $h['firstname'], $h['middlename'], $h['lastname'], $h['nameextension']
                         ]))));
                     ?>
-                        <tr>
+                        <tr data-search="<?= htmlspecialchars(strtolower($h['household_id'] . ' ' . $fullName)) ?>">
                             <td><?= htmlspecialchars($h['household_id']) ?></td>
                             <td><strong><?= htmlspecialchars($fullName) ?></strong></td>
                             <td><?= htmlspecialchars($h['total_family_members']) ?></td>
                             <td class="sw-record-actions">
-                                <button class="btn btn-light" onclick="openModal('viewModal-<?= $h['household_id'] ?>')">View</button>
-                                <button class="btn btn-success" onclick="openModal('editModal-<?= $h['household_id'] ?>')">Edit</button>
+                                <button class="btn btn-dark-sm" onclick="openModal('viewModal-<?= $h['household_id'] ?>')">View</button>
+                                <button class="btn btn-dark-sm" onclick="openModal('editModal-<?= $h['household_id'] ?>')">Edit</button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
+                    <tr id="swNoMatch" hidden><td colspan="4" class="empty">No households match your search.</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+<script>document.addEventListener('DOMContentLoaded', function () { mdBindSearch('swSearch', 'swTable', 'swNoMatch'); });</script>
 
 <!-- Step 1: Add Household -->
 <div id="householdModal" class="modal">

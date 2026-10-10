@@ -94,3 +94,25 @@ function showToast(message, type = 'info') {
         window.setTimeout(() => toast.remove(), 180);
     }, 2800);
 }
+
+/**
+ * MD pages: client-side filter for a table. Rows opt in with data-search="lowercase text".
+ * An optional "no match" row (hidden by default) is shown when nothing matches.
+ */
+function mdBindSearch(inputId, tableId, noMatchId) {
+    const box = document.getElementById(inputId);
+    const table = document.getElementById(tableId);
+    if (!box || !table) return;
+    const rows = table.querySelectorAll('tbody tr[data-search]');
+    const none = noMatchId ? document.getElementById(noMatchId) : null;
+    box.addEventListener('input', function () {
+        const q = box.value.trim().toLowerCase();
+        let shown = 0;
+        rows.forEach(function (r) {
+            const match = r.dataset.search.indexOf(q) !== -1;
+            r.hidden = !match;
+            if (match) shown++;
+        });
+        if (none) none.hidden = shown > 0 || rows.length === 0;
+    });
+}

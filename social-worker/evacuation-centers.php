@@ -1,7 +1,9 @@
 <?php
 require_once '../includes/access.php'; require_page_access();
 require_once '../includes/db.php';
+require_once '../includes/md.php';
 db_ensure_disaster_event_status();
+db_ensure_evac_center_status_table();
 
 $currentUser         = db_select_one('users', 'user_id = ?', [$_SESSION['user']['id'] ?? null]);
 $socialWorkerAddress = $currentUser['address'] ?? '';
@@ -17,8 +19,17 @@ $currentEvent = $eventId ? db_select_one('disaster_events', 'event_id = ?', [$ev
 $successMsg = null;
 $errorMsg   = null;
 
+// A center marked Full cannot take new evacuees.
+$centerIsFull = false;
+if ($eventId && $socialWorkerAddress) {
+    $fullRow = db_select_one('evacuation_center_status', 'event_id = ? AND barangay = ?', [$eventId, $socialWorkerAddress], 'status');
+    $centerIsFull = ($fullRow['status'] ?? '') === 'Full';
+}
+
 // Handle Add Evacuee (from DB or manual)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evacuee']) && $eventId) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evacuee']) && $eventId && $centerIsFull) {
+    $errorMsg = 'This evacuation center is marked Full. Set it back to Available to add more evacuees.';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evacuee']) && $eventId) {
     $name        = trim($_POST['name'] ?? '');
     $householdId = (int) ($_POST['household_id'] ?? 0) ?: null;
     $householdNo = (int) ($_POST['household_no'] ?? 0) ?: null;
@@ -37,6 +48,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evacuee']) && $ev
         exit;
     }
     $errorMsg = 'Please enter a name.';
+}
+
+// Handle the Occupancy Status dropdown (saved per event + barangay)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['set_center_status']) && $eventId) {
+    $newStatus = (string) ($_POST['center_status'] ?? '');
+    if (!md_csrf_valid()) {
+        $errorMsg = 'Your session expired. Please reload the page and try again.';
+    } elseif (!$currentEvent || ($currentEvent['status'] ?? 'Active') !== 'Active') {
+        $errorMsg = 'This disaster event is no longer active, so the status can no longer be changed.';
+    } elseif (!$socialWorkerAddress) {
+        $errorMsg = 'Your account has no barangay assigned. Please contact an MDRRMO Officer.';
+    } elseif (!in_array($newStatus, EVAC_CENTER_SW_OPTIONS, true)) {
+        $errorMsg = 'Please choose a valid occupancy status.';
+    } else {
+        db_query(
+            'INSERT INTO public.evacuation_center_status (event_id, barangay, status, updated_by, updated_at)
+             VALUES (?, ?, ?, ?, NOW())
+             ON CONFLICT (event_id, barangay)
+             DO UPDATE SET status = EXCLUDED.status, updated_by = EXCLUDED.updated_by, updated_at = NOW()',
+            [$eventId, $socialWorkerAddress, $newStatus, $_SESSION['user']['id'] ?? null]
+        );
+        $_SESSION['flash_success'] = 'Occupancy status set to ' . $newStatus . '.';
+        header('Location: evacuation-centers.php?event_id=' . $eventId);
+        exit;
+    }
 }
 
 // AJAX: search household heads from database by name (barangay-scoped)
@@ -71,37 +107,68 @@ if (isset($_SESSION['flash_success'])) { $successMsg = $_SESSION['flash_success'
 $evacuees    = $eventId ? db_select('evacuation_evacuees', 'event_id = ? AND barangay = ?', [$eventId, $socialWorkerAddress], '*', 'created_at DESC') : [];
 $totalPeople = array_sum(array_column($evacuees, 'household_no'));
 $totalHH     = count($evacuees);
+
+$storedStatus  = ($eventId && $socialWorkerAddress)
+    ? db_select_one('evacuation_center_status', 'event_id = ? AND barangay = ?', [$eventId, $socialWorkerAddress], 'status')
+    : null;
+$centerStatus  = $storedStatus['status'] ?? 'Available';
+// Legacy values (Occupied / Near Capacity) are no longer selectable; show them as Available in the dropdown.
+$centerSelect  = in_array($centerStatus, EVAC_CENTER_SW_OPTIONS, true) ? $centerStatus : 'Available';
+$eventIsActive = $currentEvent && ($currentEvent['status'] ?? 'Active') === 'Active';
 ?>
 
+<div class="md-page">
 <div class="sw-section-head">
     <?php if ($currentEvent): ?>
-        <div class="sw-event-label">Event:<strong><?= htmlspecialchars($currentEvent['event_name']) ?> · <?= htmlspecialchars($socialWorkerAddress) ?></strong></div>
+        <div class="sw-event-label">Event:<strong><?= md_h($currentEvent['event_name']) ?> · <?= md_h(md_short_barangay((string) $socialWorkerAddress)) ?></strong></div>
     <?php endif; ?>
-    <?php if ($currentEvent && ($currentEvent['status'] ?? 'Active') === 'Active'): ?>
-        <button class="btn btn-primary" onclick="openModal('addEvacueeModal')">＋ &nbsp;Add Evacuee</button>
+    <?php if ($eventIsActive): ?>
+        <?php if ($centerStatus === 'Full'): ?>
+            <button class="btn btn-primary" disabled style="opacity:.5;cursor:not-allowed;" title="This evacuation center is Full. Set it to Available to add evacuees.">＋ &nbsp;Add Evacuee</button>
+        <?php else: ?>
+            <button class="btn btn-primary" onclick="openModal('addEvacueeModal')">＋ &nbsp;Add Evacuee</button>
+        <?php endif; ?>
     <?php endif; ?>
 </div>
 
-<?php if ($successMsg): ?><div class="alert alert-success mb"><?= htmlspecialchars($successMsg) ?></div><?php endif; ?>
-<?php if ($errorMsg): ?><div class="alert alert-danger mb"><?= htmlspecialchars($errorMsg) ?></div><?php endif; ?>
+<?php if ($successMsg): ?><div class="sw-inline-alert sw-inline-success"><?= htmlspecialchars($successMsg) ?></div><?php endif; ?>
+<?php if ($errorMsg): ?><div class="sw-inline-alert sw-inline-error"><?= htmlspecialchars($errorMsg) ?></div><?php endif; ?>
 
 <?php if (!$currentEvent): ?>
     <div class="card empty">No active disaster event found.</div>
 <?php else: ?>
-    <div class="sw-occupancy-title">Occupancy Level</div>
-    <div class="grid g2 sw-center-grid">
-        <div class="card"><div class="stat-label">Total People</div><div class="stat-value"><?= htmlspecialchars($totalPeople) ?></div></div>
-        <div class="card"><div class="stat-label">Total Households</div><div class="stat-value"><?= htmlspecialchars($totalHH) ?></div></div>
+    <div class="sw-casualty-title">Occupancy Status</div>
+    <?php if ($eventIsActive): ?>
+        <form method="post" class="sw-status-form">
+            <?= md_csrf_field() ?>
+            <input type="hidden" name="set_center_status" value="1">
+            <input type="hidden" name="event_id" value="<?= (int) $eventId ?>">
+            <select name="center_status" class="sw-status-select" aria-label="Evacuation center occupancy status" onchange="this.form.submit()">
+                <?php foreach (EVAC_CENTER_SW_OPTIONS as $opt): ?>
+                    <option value="<?= md_h($opt) ?>" <?= $opt === $centerSelect ? 'selected' : '' ?>><?= md_h($opt) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </form>
+    <?php else: ?>
+        <div class="sw-status-form"><?= status_badge($centerStatus) ?></div>
+    <?php endif; ?>
+
+    <?php if ($centerStatus === 'Full'): ?><div class="sw-inline-alert sw-inline-error">This center is Full — adding evacuees is disabled. Set the status to Available to add more.</div><?php endif; ?>
+
+    <div class="grid g2 md-stats">
+        <div class="card sw-summary-card"><div class="stat-label">Total People</div><div class="stat-value"><?= htmlspecialchars($totalPeople) ?></div></div>
+        <div class="card sw-summary-card"><div class="stat-label">Total Households</div><div class="stat-value"><?= htmlspecialchars($totalHH) ?></div></div>
     </div>
 
-    <div class="sw-search">
-        <span>⌕</span>
-        <input type="text" id="tableSearch" placeholder="Search..." oninput="filterTable()">
-    </div>
+    <div class="sw-casualty-title mt">Evacuation Records</div>
+    <label class="sw-search">
+        <span aria-hidden="true">⌕</span>
+        <input type="search" id="swSearch" placeholder="Search..." autocomplete="off">
+    </label>
 
     <div class="sw-data-table">
         <div style="max-height:420px;overflow-y:auto;">
-            <table class="table" id="evacueeTable">
+            <table class="table" id="swTable">
                 <thead>
                     <tr><th>Name</th><th>Household No.</th><th>Date/Time</th></tr>
                 </thead>
@@ -109,17 +176,19 @@ $totalHH     = count($evacuees);
                     <?php if (empty($evacuees)): ?>
                         <tr><td colspan="3" class="empty">No evacuees recorded yet.</td></tr>
                     <?php else: foreach ($evacuees as $e): ?>
-                        <tr>
+                        <tr data-search="<?= md_h(strtolower($e['name'])) ?>">
                             <td><?= htmlspecialchars($e['name']) ?></td>
                             <td><?= htmlspecialchars($e['household_no'] ?? '—') ?></td>
                             <td><?= htmlspecialchars(date('M d, Y H:i', strtotime($e['created_at']))) ?></td>
                         </tr>
                     <?php endforeach; endif; ?>
+                    <tr id="swNoMatch" hidden><td colspan="3" class="empty">No evacuees match your search.</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 <?php endif; ?>
+</div>
 
 <!-- Add Evacuee: the same modal transitions through the three PDF states -->
 <div id="addEvacueeModal" class="modal">
@@ -154,12 +223,7 @@ $totalHH     = count($evacuees);
 </div>
 
 <script>
-function filterTable() {
-    const q = document.getElementById('tableSearch').value.toLowerCase();
-    document.querySelectorAll('#evacueeTable tbody tr').forEach(row => {
-        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-    });
-}
+document.addEventListener('DOMContentLoaded', function () { mdBindSearch('swSearch', 'swTable', 'swNoMatch'); });
 function closeEvacModal() { closeModal('addEvacueeModal'); resetEvacModal(); }
 function resetEvacModal() {
     document.getElementById('residentSearch').value = '';

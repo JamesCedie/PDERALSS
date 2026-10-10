@@ -79,6 +79,7 @@ if (!empty($events)) {
                 <?php if ($isActive): ?>
                     <a href="evacuation-centers.php?event_id=<?= $e['event_id'] ?>" class="btn btn-light">Manage Evacuation Centers</a>
                     <a href="casualties.php?event_id=<?= $e['event_id'] ?>" class="btn btn-light">Manage Casualties</a>
+                    <a href="damage-assessment.php?event_id=<?= $e['event_id'] ?>" class="btn btn-light">Damage Assessment</a>
                 <?php else: ?>
                     <button class="btn btn-light" onclick="openModal('viewModal-<?= $e['event_id'] ?>')">View Details</button>
                 <?php endif; ?>

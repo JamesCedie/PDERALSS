@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/access.php'; require_page_access();
 require_once '../includes/db.php';
+require_once '../includes/md.php';
 db_ensure_disaster_event_status();
 db_ensure_casualties_table();
 
@@ -76,9 +77,10 @@ require '../includes/layout.php';
 page_start('Casualty Recording');
 ?>
 
+<div class="md-page">
 <div class="sw-section-head">
     <div class="sw-event-label">
-        Event:<strong><?= htmlspecialchars(($currentEvent['event_name'] ?? 'No event selected') . ($currentEvent ? ' · ' . ($socialWorkerAddress ?: 'No barangay assigned') : '')) ?></strong>
+        Event:<strong><?= md_h(($currentEvent['event_name'] ?? 'No event selected') . ($currentEvent ? ' · ' . ($socialWorkerAddress ? md_short_barangay($socialWorkerAddress) : 'No barangay assigned') : '')) ?></strong>
     </div>
     <?php if ($currentEvent && ($currentEvent['status'] ?? 'Active') === 'Active'): ?>
         <button class="btn btn-primary" onclick="openModal('casualtyModal')">＋ &nbsp;Add Casualty</button>
@@ -92,14 +94,14 @@ page_start('Casualty Recording');
     <div class="sw-inline-alert sw-inline-error"><?= htmlspecialchars($errorMsg) ?></div>
 <?php endif; ?>
 
-<div class="sw-casualty-title">Casualty Count</div>
-<div class="grid g2 sw-casualty-grid">
+<div class="sw-casualty-title">Total Casualties Recorded</div>
+<div class="md-split">
     <div class="card sw-total-card">
-        <div class="stat-label">Total People</div>
+        <div class="stat-label">Casualty Count</div>
         <div class="stat-value"><?= $total ?></div>
     </div>
     <div class="card sw-breakdown-card">
-        <h3>Casualty Breakdown</h3>
+        <h3>Casualty Count Breakdown</h3>
         <div class="sw-breakdown">
             <div class="sw-breakdown-item fatal"><label>Fatalities</label><strong><?= $fatalities ?></strong></div>
             <div class="sw-breakdown-item missing"><label>Missing</label><strong><?= $missing ?></strong></div>
@@ -108,24 +110,32 @@ page_start('Casualty Recording');
     </div>
 </div>
 
-<div class="sw-casualty-title" style="margin-top:25px;">Casualty Records</div>
+<div class="sw-casualty-title mt">Casualty Records</div>
+<label class="sw-search">
+    <span aria-hidden="true">⌕</span>
+    <input type="search" id="swSearch" placeholder="Search..." autocomplete="off">
+</label>
+
 <div class="sw-data-table">
-    <table class="table">
+    <table class="table" id="swTable">
         <thead><tr><th>Name</th><th>Type</th><th>Severity</th><th>Date</th></tr></thead>
         <tbody>
         <?php if (!$rows): ?>
             <tr><td colspan="4" class="empty">No casualties recorded yet.</td></tr>
         <?php else: foreach ($rows as $row): ?>
-            <tr>
+            <tr data-search="<?= md_h(strtolower($row['name'] . ' ' . $row['type'] . ' ' . $row['severity'] . ' ' . $row['date'])) ?>">
                 <td><?= htmlspecialchars($row['name']) ?></td>
                 <td><?= htmlspecialchars($row['type']) ?></td>
                 <td><?= htmlspecialchars($row['severity']) ?></td>
                 <td><?= htmlspecialchars($row['date']) ?></td>
             </tr>
         <?php endforeach; endif; ?>
+        <tr id="swNoMatch" hidden><td colspan="4" class="empty">No casualties match your search.</td></tr>
         </tbody>
     </table>
 </div>
+</div>
+<script>document.addEventListener('DOMContentLoaded', function () { mdBindSearch('swSearch', 'swTable', 'swNoMatch'); });</script>
 
 <div id="casualtyModal" class="modal">
     <div class="modal-box sw-casualty-modal">

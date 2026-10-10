@@ -7,32 +7,51 @@ $current = basename($_SERVER['PHP_SELF']);
 
 $nav = [
     ['dashboard.php',           'Dashboard'],
-    ['households.php',          'Households'],
+    ['households.php',          'Household'],
     ['disasters.php',           'Disaster Events'],
-    ['damage-assessment.php',   'Damage Assessment'],
     ['vehicle-requests.php',    'Vehicle Requests'],
-    ['relief-goods.php',        'Relief Goods'],
     ['reports.php',             'Reports'],
-    ['notifications.php',       'Notifications'],
-    ['users.php',               'User Management'],
 ];
 
-function page_start($title = 'LGU Disaster Management System')
+function page_start($title = 'LGU Disaster Management System', $subtitle = null, $back = null)
 {
     global $nav, $current;
     $isSocialWorker = strpos($_SERVER['SCRIPT_NAME'] ?? '', '/social-worker/') !== false;
+    // Every portal page (Social Worker and MDRRMO) now uses the dark PDERALSS shell.
+    $modern = true;
+    $isMd   = !$isSocialWorker;
     $swNav = [
         ['dashboard.php', 'Dashboard'],
         ['households.php', 'Household'],
         ['disasters.php', 'Disaster Events'],
-        ['damage-assessment.php', 'Damage Assessment'],
         ['vehicle-requests.php', 'Vehicle Requests'],
         ['reports.php', 'Reports'],
     ];
     $activeNav = $isSocialWorker ? $swNav : $nav;
+    // MD sub-pages that belong to the Disaster Events section keep it highlighted.
+    $eventSubPages = [
+        'evacuation-centers.php' => 'Evacuation Centers',
+        'casualties.php'         => 'Casualties',
+        'damage-assessment.php'  => 'Damage Assessment',
+    ];
+    $inEventTree = isset($eventSubPages[$current]);
+    $navCurrent  = $inEventTree ? 'disasters.php' : $current;
+    // Keep the chosen disaster event in the tree links. Social Workers fall back to the latest Active event.
+    $treeEventId = (int) ($_GET['event_id'] ?? 0);
+    if (!$treeEventId && $inEventTree && $isSocialWorker && function_exists('db_select_one')) {
+        try {
+            $latest = db_select_one('disaster_events', "status = 'Active'", [], 'event_id', 'event_id DESC');
+            $treeEventId = (int) ($latest['event_id'] ?? 0);
+        } catch (Throwable $e) { $treeEventId = 0; }
+    }
+    $treeQuery = $treeEventId ? '?event_id=' . $treeEventId : '';
+    $roleLabel  = $isMd ? 'MD Officer' : ($_SESSION['user']['role'] ?? '');
     $backPage = null;
     if ($isSocialWorker && $current === 'evacuation-centers.php') $backPage = 'disasters.php';
     if ($isSocialWorker && $current === 'casualties.php') $backPage = 'disasters.php';
+    if ($isSocialWorker && $current === 'damage-assessment.php') $backPage = 'disasters.php';
+    // Optional back button for the top bar: [href, label]. Pages can pass their own.
+    if (!$back && $backPage) $back = [$backPage, '← Disaster Events'];
 ?>
 <!doctype html>
 <html lang="en">
@@ -42,18 +61,18 @@ function page_start($title = 'LGU Disaster Management System')
     <title><?= htmlspecialchars($title) ?></title>
     <link rel="stylesheet" href="../assets/style.css">
 </head>
-<body class="<?= $isSocialWorker ? 'sw-ui' : 'legacy-ui' ?>">
+<body class="sw-ui <?= $isMd ? 'md-ui' : '' ?>">
     <div class="app">
         <div id="sidebarOverlay" class="sidebar-overlay"></div>
         <aside id="sidebar" class="sidebar">
-            <?php if ($isSocialWorker): ?>
+            <?php if ($modern): ?>
                 <div class="brand sw-brand">
                     <span class="brand-shield" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 3l7 3v5c0 4.7-3 8.1-7 10-4-1.9-7-5.3-7-10V6l7-3z"/>
                         </svg>
                     </span>
-                    <span><strong>PDERALSS</strong><small>PORTAL</small></span>
+                    <span><strong>PDERALSS</strong><small><?= $isMd ? 'MUNICIPAL PORTAL' : 'PORTAL' ?></small></span>
                 </div>
             <?php else: ?>
                 <div class="brand">MDRRMO Portal</div>
@@ -62,18 +81,27 @@ function page_start($title = 'LGU Disaster Management System')
             <nav class="nav">
                 <?php foreach ($activeNav as $item): ?>
                     <?php if (!function_exists('can_access') || can_access($item[0])): ?>
-                        <a href="<?= $item[0] ?>" class="<?= $current === $item[0] ? 'active' : '' ?>">
-                            <?php if ($isSocialWorker): ?><span><?= htmlspecialchars($item[1]) ?></span><?php else: ?><span><?= $item[1] ?></span><?php endif; ?>
+                        <a href="<?= $item[0] ?>" class="<?= $navCurrent === $item[0] ? 'active' : '' ?>">
+                            <span><?= htmlspecialchars($item[1]) ?></span>
                         </a>
+                        <?php if ($item[0] === 'disasters.php' && $inEventTree): ?>
+                            <div class="nav-tree" role="group" aria-label="Disaster event sections">
+                                <?php $last = array_key_last($eventSubPages); foreach ($eventSubPages as $file => $label): ?>
+                                    <a href="<?= $file . htmlspecialchars($treeQuery) ?>" class="nav-tree-item <?= $file === $last ? 'is-last' : '' ?> <?= $current === $file ? 'active' : '' ?>">
+                                        <span><?= htmlspecialchars($label) ?></span>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
                     <?php endif; ?>
                 <?php endforeach; ?>
             </nav>
 
-            <?php if ($isSocialWorker): ?>
+            <?php if ($modern): ?>
                 <div class="sw-sidebar-user">
                     <div>
                         <strong><?= htmlspecialchars($_SESSION['user']['name']) ?></strong>
-                        <small><?= htmlspecialchars($_SESSION['user']['role']) ?></small>
+                        <small><?= htmlspecialchars($roleLabel) ?></small>
                     </div>
                     <a title="Logout" href="../logout.php" aria-label="Logout">↪</a>
                 </div>
@@ -83,11 +111,11 @@ function page_start($title = 'LGU Disaster Management System')
         <div id="main" class="main">
             <header class="topbar">
                 <div class="top-left">
-                    <?php if ($isSocialWorker): ?>
+                    <?php if ($modern): ?>
                         <button class="sw-mobile-menu icon-btn" onclick="toggleSidebar()" aria-label="Open navigation">☰</button>
                         <div class="sw-top-title">
                             <h1><?= htmlspecialchars($title) ?></h1>
-                            <p>LGU Disaster Management System · Central Control</p>
+                            <p><?= htmlspecialchars($subtitle ?? ($isMd ? 'LGU Disaster Management System · Municipality-wide Control' : 'LGU Disaster Management System · Central Control')) ?></p>
                         </div>
                     <?php else: ?>
                         <button class="icon-btn" onclick="toggleSidebar()">☰</button>
@@ -96,9 +124,9 @@ function page_start($title = 'LGU Disaster Management System')
                 </div>
 
                 <div class="top-right">
-                    <?php if ($isSocialWorker && $backPage): ?>
-                        <a class="sw-top-back" href="<?= $backPage ?>">← Disaster Events</a>
-                    <?php elseif (!$isSocialWorker): ?>
+                    <?php if ($back): ?>
+                        <a class="sw-top-back" href="<?= htmlspecialchars($back[0]) ?>"><?= htmlspecialchars($back[1]) ?></a>
+                    <?php elseif (!$modern): ?>
                         <div class="user">
                             <div class="user-name"><?= htmlspecialchars($_SESSION['user']['name']) ?></div>
                             <div class="user-role"><?= htmlspecialchars($_SESSION['user']['role']) ?></div>
@@ -109,7 +137,7 @@ function page_start($title = 'LGU Disaster Management System')
             </header>
 
             <main class="content">
-                <?php if ($isSocialWorker): ?><div id="swToastContainer" class="sw-toast-container" aria-live="polite" aria-atomic="true"></div><?php endif; ?>
+                <?php if ($modern): ?><div id="swToastContainer" class="sw-toast-container" aria-live="polite" aria-atomic="true"></div><?php endif; ?>
 <?php
 }
 
@@ -139,6 +167,7 @@ function status_badge($status)
         'Low'           => 'b-green',
         'Verified'      => 'b-green',
         'Under Review'  => 'b-yellow',
+    'Occupied'      => 'b-yellow',
     ];
 
     $c = $map[$status] ?? 'b-gray';
