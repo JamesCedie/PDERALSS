@@ -2,13 +2,6 @@
 session_start();
 require_once 'includes/db.php';
 
-require_once __DIR__ . '/includes/PHPMailer/src/Exception.php';
-require_once __DIR__ . '/includes/PHPMailer/src/PHPMailer.php';
-require_once __DIR__ . '/includes/PHPMailer/src/SMTP.php';
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
 $error = null;
 
 // Show session-kicked message
@@ -58,25 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lookup_username'])) {
             echo json_encode(['success' => false, 'message' => 'Email failed: ' . ($err ?: $res)]); exit;
         }
     } elseif ($pass === '') {
-        echo json_encode(['success' => false, 'message' => 'No email provider configured. Set RESEND_API_KEY on Render or SMTP_PASS locally.']); exit;
-    } else {
-        $mail = new PHPMailer(true);
-        try {
-            $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = 'pderalss@gmail.com';
-            $mail->Password   = $pass;
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = 587;
-            $mail->setFrom('pderalss@gmail.com', 'PDERALSS Portal');
-            $mail->addAddress($email);
-            $mail->Subject = 'Your OTP Code';
-            $mail->Body    = "Your OTP code is: {$otp}\nIt expires in 5 minutes.";
-            $mail->send();
-        } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Failed to send email: ' . $mail->ErrorInfo]); exit;
-        }
+        echo json_encode(['success' => false, 'message' => 'No email provider configured. Set RESEND_API_KEY in environment.']); exit;
     }
 
     $parts  = explode('@', $email);
