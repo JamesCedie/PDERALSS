@@ -25,21 +25,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lookup_username'])) {
     ];
 
     $pass = getenv('SMTP_PASS') ?: '';
-    $resendKey = getenv('RESEND_API_KEY') ?: '';
+    $brevoKey = getenv('BREVO_API_KEY') ?: '';
 
-    if ($resendKey !== '') {
-        $from = getenv('RESEND_FROM') ?: 'onboarding@resend.dev';
+    if ($brevoKey !== '') {
+        $from = getenv('BREVO_FROM') ?: 'pderalss@gmail.com';
         $payload = json_encode([
-            'from' => $from,
-            'to' => [$email],
+            'sender' => ['email' => $from],
+            'to' => [['email' => $email]],
             'subject' => 'Your OTP Code',
-            'text' => "Your OTP code is: {$otp}\nIt expires in 5 minutes.",
+            'textContent' => "Your OTP code is: {$otp}\nIt expires in 5 minutes.",
         ]);
-        $ch = curl_init('https://api.resend.com/emails');
+        $ch = curl_init('https://api.brevo.com/v3/smtp/email');
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $resendKey,
+            'api-key: ' . $brevoKey,
             'Content-Type: application/json',
         ]);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -50,8 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lookup_username'])) {
         if ($res === false || $http < 200 || $http >= 300) {
             echo json_encode(['success' => false, 'message' => 'Email failed: ' . ($err ?: $res)]); exit;
         }
-    } elseif ($pass === '') {
-        echo json_encode(['success' => false, 'message' => 'No email provider configured. Set RESEND_API_KEY in environment.']); exit;
+    } elseif ($pass !== '') {
+        // fallback if someone sets SMTP_PASS & re-adds PHPMailer
+        echo json_encode(['success' => false, 'message' => 'SMTP path unavailable. Set BREVO_API_KEY.']); exit;
+    } else {
+        echo json_encode(['success' => false, 'message' => 'No email provider configured. Set BREVO_API_KEY in environment.']); exit;
     }
 
     $parts  = explode('@', $email);
