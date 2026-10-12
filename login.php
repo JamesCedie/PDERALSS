@@ -2,23 +2,85 @@
 session_start();
 require_once 'includes/db.php';
 
+require_once __DIR__ . '/includes/PHPMailer/src/Exception.php';
+require_once __DIR__ . '/includes/PHPMailer/src/PHPMailer.php';
+require_once __DIR__ . '/includes/PHPMailer/src/SMTP.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
 $error = null;
 
 // Show session-kicked message
 $reason = $_GET['reason'] ?? '';
 
-// Handle "Forgot Password?" lookup (called via fetch from this page)
+// Handle "Forgot Password?": look up by username, send OTP to that account's email
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lookup_username'])) {
     header('Content-Type: application/json');
     $lookupUsername = trim($_POST['username'] ?? '');
     if ($lookupUsername === '') { echo json_encode(['success' => false, 'message' => 'Please enter your username first.']); exit; }
     $lookupUser = db_select_one('users', 'username = ?', [$lookupUsername]);
     if (!$lookupUser) { echo json_encode(['success' => false, 'message' => 'No account found for that username.']); exit; }
-    $parts  = explode('@', $lookupUser['email']);
+    $email = trim($lookupUser['email'] ?? '');
+    if ($email === '') { echo json_encode(['success' => false, 'message' => 'No email on this account.']); exit; }
+
+    $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $_SESSION['password_reset'] = [
+        'username' => $lookupUsername,
+        'otp'      => $otp,
+        'expires'  => time() + 300,
+    ];
+
+    $pass = getenv('SMTP_PASS') ?: '';
+    if ($pass === '') {
+        echo json_encode(['success' => false, 'message' => 'SMTP password not configured. Set SMTP_PASS in .env.']); exit;
+    }
+
+    $mail = new PHPMailer(true);
+    try {
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'pderalss@gmail.com';
+        $mail->Password   = $pass;
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
+        $mail->setFrom('pderalss@gmail.com', 'PDERALSS Portal');
+        $mail->addAddress($email);
+        $mail->Subject = 'Your OTP Code';
+        $mail->Body    = "Your OTP code is: {$otp}\nIt expires in 5 minutes.";
+        $mail->send();
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Failed to send email: ' . $mail->ErrorInfo]); exit;
+    }
+
+    $parts  = explode('@', $email);
     $local  = $parts[0] ?? '';
     $domain = $parts[1] ?? '';
     $masked = (strlen($local) > 1 ? $local[0] . str_repeat('*', strlen($local) - 1) : $local) . '@' . $domain;
     echo json_encode(['success' => true, 'masked_email' => $masked]);
+    exit;
+}
+
+// Handle OTP verification + password reset
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_otp'])) {
+    header('Content-Type: application/json');
+    $username  = trim($_POST['username'] ?? '');
+    $otp       = trim($_POST['otp_code'] ?? '');
+    $newPass   = $_POST['new_password'] ?? '';
+    $confirm   = $_POST['confirm_password'] ?? '';
+
+    $reset = $_SESSION['password_reset'] ?? null;
+    if (!$reset || $reset['username'] !== $username || time() > $reset['expires']) {
+        echo json_encode(['success' => false, 'message' => 'OTP expired or invalid. Request a new one.']); exit;
+    }
+    if ($otp !== $reset['otp']) { echo json_encode(['success' => false, 'message' => 'Invalid OTP code.']); exit; }
+    if ($newPass === '' || $newPass !== $confirm) { echo json_encode(['success' => false, 'message' => 'Passwords do not match.']); exit; }
+
+    $affected = db_update('users', ['password' => password_hash($newPass, PASSWORD_DEFAULT)], 'username = ?', [$username]);
+    unset($_SESSION['password_reset']);
+    if ($affected < 1) { echo json_encode(['success' => false, 'message' => 'Failed to update password.']); exit; }
+    echo json_encode(['success' => true, 'message' => 'Password updated. You can now log in.']);
     exit;
 }
 
@@ -101,12 +163,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
                 <h2>Forgot Password</h2>
                 <button class="icon-btn" onclick="closeModal('forgotPasswordModal')" aria-label="Close">×</button>
             </div>
-            <p class="mini mb">Enter your username and we'll send a code to the email on your account.</p>
+            <p class="mini mb">We'll send a code to the email on the username you entered.</p>
             <form onsubmit="event.preventDefault(); requestOtp()">
-                <div class="field mb">
-                    <label>Username</label>
-                    <input type="text" id="forgotUsername" placeholder="Enter your username" required>
-                </div>
                 <button type="submit" class="btn btn-primary">Send OTP</button>
             </form>
         </div>
@@ -120,12 +178,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
                 <button class="icon-btn" onclick="closeModal('otpModal')" aria-label="Close">×</button>
             </div>
             <p class="mini mb">We sent a 6-digit code to <b id="otpEmailDisplay"></b>.</p>
-            <form onsubmit="event.preventDefault(); alert('OTP verified. You can now reset your password.'); closeModal('otpModal');">
+            <form onsubmit="event.preventDefault(); verifyOtp()">
                 <div class="field mb">
                     <label>OTP Code</label>
-                    <input type="text" name="otp_code" maxlength="6" pattern="[0-9]{6}" placeholder="Enter 6-digit code" required>
+                    <input type="text" id="otpCode" name="otp_code" maxlength="6" pattern="[0-9]{6}" placeholder="Enter 6-digit code" required>
                 </div>
-                <button class="btn btn-primary">Verify OTP</button>
+                <div class="field mb">
+                    <label>New Password</label>
+                    <input type="password" id="otpNewPass" placeholder="Enter new password" required>
+                </div>
+                <div class="field mb">
+                    <label>Confirm Password</label>
+                    <input type="password" id="otpConfirmPass" placeholder="Confirm new password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Reset Password</button>
             </form>
             <p class="mini mt" style="text-align:center">
                 <a href="#" onclick="event.preventDefault(); requestOtp()">Didn't get a code? Resend</a>
@@ -134,5 +200,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
     </div>
 </div>
 <script src="assets/app.js"></script>
+<script>
+function verifyOtp() {
+    const forgotField = document.getElementById('forgotUsername');
+    const loginField = document.querySelector('form [name="username"]');
+    const username = (forgotField && forgotField.value.trim()) ? forgotField.value.trim() : (loginField ? loginField.value.trim() : '');
+    const otp = document.getElementById('otpCode').value.trim();
+    const newPass = document.getElementById('otpNewPass').value;
+    const confirm = document.getElementById('otpConfirmPass').value;
+    const body = 'verify_otp=1&username=' + encodeURIComponent(username) + '&otp_code=' + encodeURIComponent(otp) +
+                '&new_password=' + encodeURIComponent(newPass) + '&confirm_password=' + encodeURIComponent(confirm);
+    fetch('login.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                closeModal('otpModal'); closeModal('forgotPasswordModal');
+            } else {
+                alert(data.message || 'Reset failed.');
+            }
+        })
+        .catch(() => alert('Something went wrong.'));
+}
+</script>
 </body>
 </html>

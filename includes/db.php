@@ -68,11 +68,11 @@
 // For local XAMPP development, you can set these in your system's
 // environment variables, or temporarily replace getenv() with the
 // actual values (but don't commit that to GitHub).
-define('DB_HOST', getenv('DB_HOST') ?: 'aws-0-ap-northeast-1.pooler.supabase.com');
+define('DB_HOST', getenv('DB_HOST'));
 define('DB_PORT', getenv('DB_PORT') ?: '5432');
-define('DB_NAME', getenv('DB_NAME') ?: 'postgres');
-define('DB_USER', getenv('DB_USER') ?: 'postgres.viscaridmbunxdkzayau');
-define('DB_PASS', getenv('DB_PASS') ?: 'hipusoncapstone');
+define('DB_NAME', getenv('DB_NAME'));
+define('DB_USER', getenv('DB_USER'));
+define('DB_PASS', getenv('DB_PASS') ?: '');
 // ------------------------------------------------------------------------
 
 /**

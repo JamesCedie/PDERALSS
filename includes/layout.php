@@ -11,6 +11,7 @@ $nav = [
     ['disasters.php',           'Disaster Events'],
     ['vehicle-requests.php',    'Vehicle Requests'],
     ['reports.php',             'Reports'],
+    ['users.php',              'User Management'],
 ];
 
 function page_start($title = 'LGU Disaster Management System', $subtitle = null, $back = null)

@@ -401,21 +401,25 @@ textarea {
 .alert-warning {
     background: #fffbeb;
     border-color: #eab308;
+    color: #713f12;
 }
 
 .alert-info {
     background: #eff6ff;
     border-color: #3b82f6;
+    color: #1e3a8a;
 }
 
 .alert-danger {
     background: #fef2f2;
     border-color: #ef4444;
+    color: #7f1d1d;
 }
 
 .alert-success {
     background: #f0fdf4;
     border-color: #22c55e;
+    color: #14532d;
 }
 
 /* ==========================================================
@@ -1610,10 +1614,10 @@ textarea {
 .sw-ui .alert .alert-message,
 .sw-ui .alert { color: #dbe6f0; }
 .sw-ui .alert .mini { color: #8195ad; }
-.sw-ui .alert-success { border-left-color: #22c55e; }
-.sw-ui .alert-danger { border-left-color: #ef4444; }
-.sw-ui .alert-warning { border-left-color: #eab308; }
-.sw-ui .alert-info { border-left-color: #3b82f6; }
+.sw-ui .alert-success { border-left-color: #22c55e; background: #0f1f16; color: #bbf7d0; }
+.sw-ui .alert-danger { border-left-color: #ef4444; background: #2a1112; color: #fecaca; }
+.sw-ui .alert-warning { border-left-color: #eab308; background: #25200a; color: #fef08a; }
+.sw-ui .alert-info { border-left-color: #3b82f6; background: #0d1828; color: #bfdbfe; }
 
 .sw-ui .sw-section-head {
     align-items: center;
