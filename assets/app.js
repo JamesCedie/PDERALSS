@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(function () {
                 if (el.parentNode) el.parentNode.removeChild(el);
             }, 500);
-        }, 15000);
+        }, 10000);
     });
 });
 function showToast(message, type = 'info') {
