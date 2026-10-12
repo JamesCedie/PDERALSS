@@ -77,6 +77,18 @@ document.addEventListener('click', function (e) {
         e.target.classList.remove('show');
     }
 });
+document.addEventListener('DOMContentLoaded', function () {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(function (el) {
+        setTimeout(function () {
+            el.style.transition = 'opacity 0.5s ease';
+            el.style.opacity = '0';
+            setTimeout(function () {
+                if (el.parentNode) el.parentNode.removeChild(el);
+            }, 500);
+        }, 15000);
+    });
+});
 function showToast(message, type = 'info') {
     const container = document.getElementById('swToastContainer');
     if (!container) {
