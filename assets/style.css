@@ -2013,3 +2013,100 @@ textarea {
 .nav .nav-tree-item::before { content: ""; position: absolute; left: -14px; top: 50%; width: 12px; height: 1px; background: #1f3d5a; }
 .sw-ui .nav a.nav-tree-item { padding: 8px 12px; font-size: 13px; }
 .sw-ui .nav a.nav-tree-item.active { font-weight: 600; }
+
+
+/* ==========================================================
+   Relief Goods & Resource Allocation (inventory UI)
+   Scoped to .rg-page / .rg-modal so no other page is affected.
+   ========================================================== */
+.live-status { text-align:right; line-height:1.35; }
+.live-status-line { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:#dbe6f0; }
+.live-status small { display:block; font-size:10px; color:var(--sw-soft); }
+.live-dot { width:6px; height:6px; border-radius:50%; background:#4ec27f; box-shadow:0 0 0 3px rgba(78,194,127,.18); }
+@media (max-width:700px) { .live-status { display:none; } }
+
+.md-ui .rg-page .rg-head { display:flex; margin:0 0 16px; }
+.rg-title { margin:0; font-size:15px; font-weight:700; color:var(--sw-text); }
+.rg-add { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; }
+
+.rg-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:16px; }
+.rg-stat {
+    display:flex; align-items:center; gap:14px; padding:18px;
+    background:#16253b; border:1px solid #1f3350; border-radius:10px;
+}
+.rg-stat-icon {
+    flex:0 0 38px; width:38px; height:38px; display:grid; place-items:center;
+    border-radius:8px; background:#1d3a5c; color:#7db4ee;
+}
+.rg-stat-icon svg { width:19px; height:19px; }
+.rg-stat-value { font-size:24px; font-weight:700; line-height:1.1; color:#fff; }
+.rg-stat-label { margin-top:3px; font-size:11px; color:#c3d0e0; }
+.rg-stat-unit  { font-size:10px; color:var(--sw-soft); }
+
+.rg-panel {
+    background:#16253b; border:1px solid #1f3350; border-radius:10px;
+    padding:18px 20px 20px; margin-bottom:16px;
+}
+.rg-panel-title { margin:0 0 14px; font-size:13px; font-weight:700; color:#fff; }
+
+.rg-table-wrap { overflow-x:auto; }
+.rg-table { width:100%; border-collapse:collapse; font-size:11px; min-width:760px; }
+.rg-table thead th {
+    background:#0f1c2e; color:#8fa3bb; font-size:10px; font-weight:500;
+    text-align:left; text-transform:none; letter-spacing:0; padding:11px 12px; border:0;
+}
+.rg-table thead th:first-child { border-radius:8px 0 0 8px; padding-left:14px; }
+.rg-table thead th:last-child  { border-radius:0 8px 8px 0; }
+.rg-table tbody td {
+    background:transparent; color:#c3d0e0; padding:15px 12px; border-bottom:1px solid #1f3350;
+    white-space:nowrap;
+}
+.rg-table tbody tr:last-child td { border-bottom:0; }
+.rg-table tbody td:first-child { padding-left:14px; }
+.rg-table tbody tr:hover td { background:rgba(255,255,255,.02); }
+.rg-id { font-weight:700; color:#fff !important; }
+.rg-table .badge { font-size:9px; padding:2px 9px; border-radius:999px; font-weight:600; }
+
+.rg-brgy-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.rg-brgy {
+    display:flex; flex-direction:column; gap:2px; padding:12px 14px 14px;
+    background:#0f1c2e; border:1px solid #1f3350; border-radius:8px;
+}
+.rg-brgy strong { font-size:11px; color:#fff; }
+.rg-brgy span { font-size:9px; color:var(--sw-soft); }
+.rg-brgy-value { margin-top:4px; font-size:20px; font-weight:600; color:#fff; }
+
+/* Distribute modal */
+.sw-ui .modal.rg-modal-overlay { background:rgba(4,10,18,.72); }
+.sw-ui .modal-box.rg-modal {
+    width:min(440px, calc(100vw - 32px)); padding:18px 20px 20px;
+    background:#16253b; border:1px solid #243a58; border-radius:10px;
+}
+.rg-modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.rg-modal-head h3 { margin:0; font-size:14px; font-weight:700; color:#fff; }
+.rg-close { background:none; border:0; color:#8fa3bb; font-size:13px; cursor:pointer; padding:4px; line-height:1; }
+.rg-close:hover { color:#fff; }
+.rg-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 14px; }
+.rg-field label { display:block; margin-bottom:5px; font-size:10px; color:#c3d0e0; }
+.rg-field input, .rg-field select {
+    width:100%; height:34px; padding:0 10px; font-size:11px; font-family:inherit;
+    background:#0f1c2e; color:#dce6f0; border:1px solid #243a58; border-radius:5px; color-scheme:dark;
+}
+.rg-field input:focus, .rg-field select:focus { outline:0; border-color:#2f7bc0; box-shadow:0 0 0 2px rgba(47,123,192,.2); }
+.rg-submit { margin-top:16px; padding:8px 14px !important; font-size:11px !important; min-width:0 !important; }
+
+@media (max-width:1100px) { .rg-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:760px)  { .rg-brgy-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:520px)  { .rg-stats, .rg-brgy-grid, .rg-form { grid-template-columns:1fr; } }
+
+/* Relief Goods: flash messages + empty state */
+.rg-alert { margin:0 0 14px; font-size:12px; }
+.rg-table .rg-empty { text-align:center; color:var(--sw-soft); padding:26px 12px; white-space:normal; }
+
+/* Relief Goods: header actions, availability hint */
+.rg-head-actions { display:flex; gap:10px; flex-wrap:wrap; }
+.rg-hint { display:block; margin-top:4px; font-size:10px; color:#7db4ee; }
+.rg-hint-warn { color:#f0b94d; }
+.rg-unit { color:var(--sw-soft); font-weight:400; }
+.rg-field label .rg-unit { font-size:10px; }
+@media (max-width:520px) { .rg-head-actions { width:100%; } .rg-head-actions .btn { flex:1; justify-content:center; } }

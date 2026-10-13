@@ -65,23 +65,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lookup_username'])) {
     exit;
 }
 
-// Handle OTP verification + password reset
+// Handle OTP verification only (no password change yet)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_otp'])) {
     header('Content-Type: application/json');
-    $username  = trim($_POST['username'] ?? '');
-    $otp       = trim($_POST['otp_code'] ?? '');
-    $newPass   = $_POST['new_password'] ?? '';
-    $confirm   = $_POST['confirm_password'] ?? '';
+    $username = trim($_POST['username'] ?? '');
+    $otp      = trim($_POST['otp_code'] ?? '');
 
     $reset = $_SESSION['password_reset'] ?? null;
     if (!$reset || $reset['username'] !== $username || time() > $reset['expires']) {
         echo json_encode(['success' => false, 'message' => 'OTP expired or invalid. Request a new one.']); exit;
     }
     if ($otp !== $reset['otp']) { echo json_encode(['success' => false, 'message' => 'Invalid OTP code.']); exit; }
+
+    $_SESSION['otp_verified_for'] = $username;
+    echo json_encode(['success' => true, 'message' => 'OTP verified. Now enter a new password.']);
+    exit;
+}
+
+// Handle password reset after OTP verification
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
+    header('Content-Type: application/json');
+    $username = trim($_POST['username'] ?? '');
+    $newPass  = $_POST['new_password'] ?? '';
+    $confirm  = $_POST['confirm_password'] ?? '';
+
+    if (($_SESSION['otp_verified_for'] ?? '') !== $username) {
+        echo json_encode(['success' => false, 'message' => 'Verify OTP first.']); exit;
+    }
     if ($newPass === '' || $newPass !== $confirm) { echo json_encode(['success' => false, 'message' => 'Passwords do not match.']); exit; }
 
     $affected = db_update('users', ['password' => password_hash($newPass, PASSWORD_DEFAULT)], 'username = ?', [$username]);
-    unset($_SESSION['password_reset']);
+    unset($_SESSION['password_reset'], $_SESSION['otp_verified_for']);
     if ($affected < 1) { echo json_encode(['success' => false, 'message' => 'Failed to update password.']); exit; }
     echo json_encode(['success' => true, 'message' => 'Password updated. You can now log in.']);
     exit;
@@ -168,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
             </div>
             <p class="mini mb">We'll send a code to the email on the username you entered.</p>
             <form onsubmit="event.preventDefault(); requestOtp()">
-                <button type="submit" class="btn btn-primary">Send OTP</button>
+<button type="submit" id="sendOtpBtn" class="btn btn-primary">Send OTP</button>
             </form>
         </div>
     </div>
@@ -181,11 +195,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
                 <button class="icon-btn" onclick="closeModal('otpModal')" aria-label="Close">×</button>
             </div>
             <p class="mini mb">We sent a 6-digit code to <b id="otpEmailDisplay"></b>.</p>
-            <form onsubmit="event.preventDefault(); verifyOtp()">
+            <form id="verifyOtpForm" onsubmit="event.preventDefault(); verifyOtp()">
                 <div class="field mb">
                     <label>OTP Code</label>
                     <input type="text" id="otpCode" name="otp_code" maxlength="6" pattern="[0-9]{6}" placeholder="Enter 6-digit code" required>
                 </div>
+                <button type="submit" class="btn btn-primary">Verify OTP</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset password modal -->
+    <div id="resetPasswordModal" class="modal">
+        <div class="modal-box">
+            <div class="modal-head">
+                <h2>Reset Password</h2>
+                <button class="icon-btn" onclick="closeModal('resetPasswordModal')" aria-label="Close">×</button>
+            </div>
+            <p class="mini mb">OTP verified. Enter your new password.</p>
+            <form onsubmit="event.preventDefault(); resetPassword()">
                 <div class="field mb">
                     <label>New Password</label>
                     <input type="password" id="otpNewPass" placeholder="Enter new password" required>
@@ -196,9 +224,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
                 </div>
                 <button type="submit" class="btn btn-primary">Reset Password</button>
             </form>
-            <p class="mini mt" style="text-align:center">
-                <a href="#" onclick="event.preventDefault(); requestOtp()">Didn't get a code? Resend</a>
-            </p>
         </div>
     </div>
 </div>
@@ -209,9 +234,27 @@ function verifyOtp() {
     const loginField = document.querySelector('form [name="username"]');
     const username = (forgotField && forgotField.value.trim()) ? forgotField.value.trim() : (loginField ? loginField.value.trim() : '');
     const otp = document.getElementById('otpCode').value.trim();
+    const body = 'verify_otp=1&username=' + encodeURIComponent(username) + '&otp_code=' + encodeURIComponent(otp);
+    fetch('login.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                closeModal('otpModal');
+                openModal('resetPasswordModal');
+            } else {
+                alert(data.message || 'Invalid OTP.');
+            }
+        })
+        .catch(() => alert('Something went wrong.'));
+}
+
+function resetPassword() {
+    const forgotField = document.getElementById('forgotUsername');
+    const loginField = document.querySelector('form [name="username"]');
+    const username = (forgotField && forgotField.value.trim()) ? forgotField.value.trim() : (loginField ? loginField.value.trim() : '');
     const newPass = document.getElementById('otpNewPass').value;
     const confirm = document.getElementById('otpConfirmPass').value;
-    const body = 'verify_otp=1&username=' + encodeURIComponent(username) + '&otp_code=' + encodeURIComponent(otp) +
+    const body = 'reset_password=1&username=' + encodeURIComponent(username) +
                 '&new_password=' + encodeURIComponent(newPass) + '&confirm_password=' + encodeURIComponent(confirm);
     fetch('login.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })
         .then(r => r.json())

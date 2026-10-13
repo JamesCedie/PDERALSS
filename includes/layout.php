@@ -9,7 +9,9 @@ $nav = [
     ['dashboard.php',           'Dashboard'],
     ['households.php',          'Household'],
     ['disasters.php',           'Disaster Events'],
+    ['damage-assessment.php',   'Damage Assessment'],
     ['vehicle-requests.php',    'Vehicle Requests'],
+    ['relief-goods.php',        'Relief Goods'],
     ['reports.php',             'Reports'],
     ['users.php',              'User Management'],
 ];
@@ -125,6 +127,12 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
                 </div>
 
                 <div class="top-right">
+                    <?php if (!empty($GLOBALS['page_live_status'])): ?>
+                        <div class="live-status">
+                            <span class="live-status-line"><i class="live-dot" aria-hidden="true"></i>Municipality monitoring active</span>
+                            <small>Updated <?= date('d M Y · h:i A') ?></small>
+                        </div>
+                    <?php endif; ?>
                     <?php if ($back): ?>
                         <a class="sw-top-back" href="<?= htmlspecialchars($back[0]) ?>"><?= htmlspecialchars($back[1]) ?></a>
                     <?php elseif (!$modern): ?>

@@ -53,6 +53,13 @@ function requestOtp() {
         return;
     }
 
+    const otpDisplay = document.getElementById('otpEmailDisplay');
+    if (otpDisplay && otpDisplay.textContent.trim()) {
+        alert('An OTP was already sent to ' + otpDisplay.textContent.trim());
+        openModal('otpModal');
+        return;
+    }
+
     fetch('login.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -62,9 +69,9 @@ function requestOtp() {
         .then(data => {
             if (data.success) {
                 document.getElementById('otpEmailDisplay').textContent = data.masked_email;
-                closeModal('otpModal'); // in case it was already open, resets it
-                openModal('otpModal');
-                alert('An OTP has been sent to ' + data.masked_email);
+                const btn = document.getElementById('sendOtpBtn');
+                if (btn) { btn.textContent = 'OTP sent'; btn.disabled = true; }
+                setTimeout(function () { closeModal('otpModal'); openModal('otpModal'); }, 2000);
             } else {
                 alert(data.message || 'Something went wrong. Please try again.');
             }

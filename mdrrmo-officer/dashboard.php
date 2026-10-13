@@ -1,4 +1,9 @@
-<?php require_once '../includes/access.php'; require_page_access(); require '../includes/layout.php'; page_start('Dashboard'); ?>
+<?php require_once '../includes/access.php'; require_page_access(); require '../includes/layout.php';
+require_once '../includes/relief.php';
+// Relief goods distributed = everything the MD Officer has submitted on the Relief Goods page
+try { rg_ensure_tables(); $reliefAvailable = array_sum(array_column(rg_totals(), 'quantity')); }
+catch (Throwable $e) { $reliefAvailable = 0; }
+page_start('Dashboard'); ?>
 
 <div class="grid g5">
     <?php foreach([
@@ -6,7 +11,7 @@
         ['89',    'Total Casualties',                '⚠', 'red'],
         ['12',    'Available Evacuation Centers',    '⌂', 'green'],
         ['23',    'Pending Vehicle Requests',        '🚚', 'yellow'],
-        ['5,420', 'Relief Goods Available',          '▣', 'purple'],
+        [number_format($reliefAvailable), 'Relief Goods Distributed',          '▣', 'purple'],
     ] as $s): ?>
         <div class="card">
             <div class="stat">
