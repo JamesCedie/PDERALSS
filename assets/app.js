@@ -135,3 +135,33 @@ function mdBindSearch(inputId, tableId, noMatchId) {
         if (none) none.hidden = shown > 0 || rows.length === 0;
     });
 }
+
+
+/**
+ * Theme toggle (next to Logout). Light is the default; "dark" is stored only
+ * when the user picks it. The initial theme is applied by an inline script in
+ * <head> before first paint, so this only wires the button and persistence.
+ */
+function currentTheme() {
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+}
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem('theme', theme); } catch (e) {}
+    var btn = document.getElementById('themeToggle');
+    if (btn) {
+        btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+        btn.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    }
+    document.dispatchEvent(new CustomEvent('themechange', { detail: { theme: theme } }));
+}
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    var t = currentTheme();
+    btn.setAttribute('aria-label', t === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+    btn.setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false');
+    btn.addEventListener('click', function () {
+        applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+    });
+});

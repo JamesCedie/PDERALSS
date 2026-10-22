@@ -9,7 +9,8 @@ $nav = [
     ['dashboard.php',           'Dashboard'],
     ['households.php',          'Household'],
     ['disasters.php',           'Disaster Events'],
-    ['damage-assessment.php',   'Damage Assessment'],
+    // Damage Assessment is intentionally not a top-level MDRRMO item: it is reached
+    // from Disaster Events (the event tree below, "View Damage Assessment").
     ['vehicle-requests.php',    'Vehicle Requests'],
     ['relief-goods.php',        'Relief Goods'],
     ['reports.php',             'Reports'],
@@ -62,6 +63,15 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($title) ?></title>
+    <script>
+        // Apply the saved theme before first paint (no flash). Light is the default;
+        // the OS colour-scheme preference is intentionally ignored.
+        (function () {
+            var t = 'light';
+            try { if (localStorage.getItem('theme') === 'dark') t = 'dark'; } catch (e) {}
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
     <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body class="sw-ui <?= $isMd ? 'md-ui' : '' ?>">
@@ -106,7 +116,13 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
                         <strong><?= htmlspecialchars($_SESSION['user']['name']) ?></strong>
                         <small><?= htmlspecialchars($roleLabel) ?></small>
                     </div>
-                    <a title="Logout" href="../logout.php" aria-label="Logout">↪</a>
+                    <span class="sw-user-actions">
+                        <button type="button" class="theme-toggle" id="themeToggle" title="Switch theme" aria-label="Switch to dark mode">
+                            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+                            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+                        </button>
+                        <a title="Logout" href="../logout.php" aria-label="Logout">↪</a>
+                    </span>
                 </div>
             <?php endif; ?>
         </aside>

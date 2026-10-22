@@ -162,15 +162,20 @@ if ($selected !== null) {
         }).addTo(map);
 
         // Dim everything outside Iloilo City: a world-sized mask with the city boundary cut out as a hole.
-        var cityLayers = null;
+        var cityLayers = null, lastRings = null;
+        function themeVar(name, fallback) {
+            var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+            return v || fallback;
+        }
         function drawBoundary(outerRings) {
+            lastRings = outerRings;
             if (cityLayers) { cityLayers.remove(); }
             var world = [[-85, -180], [-85, 180], [85, 180], [85, -180]];
             var mask = L.polygon([world].concat(outerRings), {
-                stroke: false, fillColor: '#071522', fillOpacity: 0.62, interactive: false
+                stroke: false, fillColor: themeVar('--map-mask', '#F4F6FA'), fillOpacity: 0.62, interactive: false
             });
             var outline = L.polygon(outerRings, {
-                color: '#3d8fe0', weight: 2, dashArray: '6 4', fill: false, interactive: false
+                color: themeVar('--sig-blue', '#1D5FA8'), weight: 2, dashArray: '6 4', fill: false, interactive: false
             });
             cityLayers = L.layerGroup([mask, outline]).addTo(map);
             map.setMaxBounds(outline.getBounds().pad(0.5));
@@ -186,6 +191,7 @@ if ($selected !== null) {
             });
         }
         drawBoundary([fallbackRing]);
+        document.addEventListener('themechange', function () { if (lastRings) drawBoundary(lastRings); });
         (function loadBoundary() {
             var KEY = 'mdIloiloBoundary';
             try {

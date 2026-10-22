@@ -364,7 +364,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                     </div>
                     <div class="field"><label>Occupation</label><input name="member_<?= $i ?>_occupation" placeholder="e.g. Student"></div>
                 </div>
-                <?php if ($i < $membersToAdd - 1): ?><hr style="border:none;border-top:1px solid #18334d;margin:17px 0;"><?php endif; ?>
+                <?php if ($i < $membersToAdd - 1): ?><hr class="sw-member-divider"><?php endif; ?>
             <?php endfor; ?>
 
             <div class="actions">

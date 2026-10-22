@@ -135,6 +135,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Login - PDERALSS Portal</title>
+    <script>
+        // Apply the saved theme before first paint (no flash). Light is the default;
+        // the OS colour-scheme preference is intentionally ignored.
+        (function () {
+            var t = 'light';
+            try { if (localStorage.getItem('theme') === 'dark') t = 'dark'; } catch (e) {}
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
