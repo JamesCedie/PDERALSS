@@ -7,7 +7,11 @@ require_once '../includes/dashboard.php';
 $currentUser = db_select_one('users', 'user_id = ?', [$_SESSION['user']['id'] ?? null]);
 $myBarangay  = trim((string) ($currentUser['address'] ?? ''));
 
+<<<<<<< HEAD
 page_start('Dashboard');
+=======
+page_start('Dashboard', 'LGU Disaster Management System · ' . ($myBarangay !== '' ? $myBarangay : 'Barangay Portal'));
+>>>>>>> 7d79d26dda4d8e1972557b0e4cd2eca0e8566c60
 
 if ($myBarangay === '') {
     echo '<div class="card dash-card"><div class="dash-empty">No barangay is assigned to your account yet, so there is nothing to show. '

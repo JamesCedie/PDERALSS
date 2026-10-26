@@ -3,7 +3,11 @@ require_once '../includes/access.php'; require_page_access(); require '../includ
 page_start('Notifications');
 
 require_once '../includes/dashboard.php';
+<<<<<<< HEAD
 $ctx   = dash_build(null, 0, true);
+=======
+$ctx   = dash_build(null, 0);
+>>>>>>> 7d79d26dda4d8e1972557b0e4cd2eca0e8566c60
 $tones = ['danger' => 'danger', 'warning' => 'warning', 'info' => 'info', 'success' => 'success'];
 $notes = [];
 foreach ($ctx['alerts'] as $a) $notes[] = [$a[1], $a[2], 'Live', $tones[$a[0]] ?? 'info', true];
