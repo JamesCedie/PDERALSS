@@ -1,0 +1,315 @@
+<?php
+/**
+ * includes/db.php
+ * -----------------------------------------------------------------------
+ * Database connector for Supabase, connecting directly to its underlying
+ * Postgres database via PDO (not the REST API).
+ *
+ * SETUP:
+ *   1. Supabase dashboard -> Project Settings -> Database -> Connection
+ *      string -> "URI" tab under Direct connection. Copy the host and
+ *      your database password into the constants below.
+ *   2. Make sure pdo_pgsql is enabled in php.ini (see setup notes) and
+ *      Apache has been restarted.
+ *   3. require this file wherever you need database access:
+ *         require_once 'includes/db.php';
+ *
+ * USAGE EXAMPLES:
+ *
+ *   // SELECT all rows
+ *   $rows = db_select('users');
+ *
+ *   // SELECT with a WHERE condition
+ *   $rows = db_select('users', 'email = ?', ['juan@mdrrmo.gov.ph']);
+ *
+ *   // SELECT with extra SQL (order, limit, columns)
+ *   $rows = db_select('casualties', '1=1', [], 'id, name, severity', 'created_at DESC', 10);
+ *
+ *   // Run any raw query yourself for full control
+ *   $rows = db_query('SELECT * FROM users WHERE user_id > ?', [4])->fetchAll();
+ *
+ *   // INSERT a row -> returns the full inserted row (incl. generated id)
+ *   $row = db_insert('users', [
+ *       'firstname' => 'Pedro',
+ *       'lastname'  => 'Santos',
+ *       'email'     => 'pedro@mdrrmo.gov.ph',
+ *       'password'  => password_hash('secret123', PASSWORD_DEFAULT),
+ *       'role'      => 'Social Worker',
+ *   ]);
+ *   echo $row['user_id'];
+ *
+ *   // UPDATE rows matching a condition -> returns affected row count
+ *   $count = db_update('vehicle_requests', ['status' => 'Approved'], 'id = ?', ['VR-002']);
+ *
+ *   // DELETE rows matching a condition -> returns affected row count
+ *   $count = db_delete('users', 'user_id = ?', [5]);
+ * -----------------------------------------------------------------------
+ */
+
+// ---- LOCAL DEVELOPMENT: .env ------------------------------------------
+// If a file named ".env" exists in the project root, its KEY=VALUE lines are loaded as
+// environment variables (real environment variables, e.g. Render's, always win).
+// ".env" is listed in .gitignore and .dockerignore, so it never reaches GitHub or the server.
+(function () {
+    $file = dirname(__DIR__) . '/.env';
+    if (!is_readable($file)) return;
+    foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
+        [$k, $v] = array_map('trim', explode('=', $line, 2));
+        $v = trim($v, "\"'");
+        if ($k !== '' && getenv($k) === false) putenv($k . '=' . $v);
+    }
+})();
+
+// ---- CONFIGURE THESE -------------------------------------------------
+// Values are read from environment variables set in Render's dashboard,
+// so credentials are never hardcoded in the source code.
+// For local XAMPP development, you can set these in your system's
+// environment variables, or temporarily replace getenv() with the
+// actual values (but don't commit that to GitHub).
+define('DB_HOST', getenv('DB_HOST'));
+define('DB_PORT', getenv('DB_PORT') ?: '5432');
+define('DB_NAME', getenv('DB_NAME'));
+define('DB_USER', getenv('DB_USER'));
+define('DB_PASS', getenv('DB_PASS') ?: '');
+// ------------------------------------------------------------------------
+
+/**
+ * Returns a shared PDO connection, creating it on first use.
+ */
+function db(): PDO
+{
+    static $pdo = null;
+
+    if ($pdo === null) {
+        // Fail with a clear message when connection settings are missing
+        // (an empty DB_HOST otherwise produces a confusing 'could not translate host name "port=5432"').
+        $missing = [];
+        foreach (['DB_HOST' => DB_HOST, 'DB_NAME' => DB_NAME, 'DB_USER' => DB_USER] as $k => $v) {
+            if ($v === false || $v === null || trim((string) $v) === '') $missing[] = $k;
+        }
+        if ($missing) {
+            die('Database is not configured. Missing environment variable(s): ' . implode(', ', $missing)
+                . '. Set them in Render (Environment tab) or in a local .env file - see .env.example.');
+        }
+        $dsn = 'pgsql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME;
+        try {
+            $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+        } catch (PDOException $e) {
+            die('Database connection failed: ' . htmlspecialchars($e->getMessage()));
+        }
+    }
+
+    return $pdo;
+}
+
+/**
+ * Ensures the disaster lifecycle field exists. Older deployments of this
+ * project did not have a status column, while the current UI needs Active/Passed
+ * to be persisted and shared by both MDRRMO and Social Worker pages.
+ */
+function db_ensure_casualties_table(): void
+{
+    static $done = false;
+    if ($done) return;
+
+    db()->exec("CREATE TABLE IF NOT EXISTS public.casualties (
+        casualty_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+        event_id INTEGER NOT NULL,
+        barangay VARCHAR(100) NOT NULL,
+        name VARCHAR(150) NOT NULL,
+        type VARCHAR(20) NOT NULL CHECK (type IN ('Fatality','Missing','Injured')),
+        severity VARCHAR(20) NOT NULL CHECK (severity IN ('Minor','Moderate','Critical')),
+        date DATE NOT NULL,
+        notes TEXT,
+        added_by VARCHAR(50),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT casualties_event_fk
+            FOREIGN KEY (event_id) REFERENCES public.disaster_events(event_id)
+            ON UPDATE CASCADE ON DELETE RESTRICT
+    )");
+
+    db()->exec("CREATE INDEX IF NOT EXISTS idx_casualties_event_barangay
+                ON public.casualties (event_id, barangay)");
+    db()->exec("CREATE INDEX IF NOT EXISTS idx_casualties_event_date
+                ON public.casualties (event_id, date DESC)");
+
+    $done = true;
+}
+
+/**
+ * Damage assessments submitted by Social Workers, with georeferenced + watermarked photo evidence.
+ * Row level security is enabled so Supabase's public REST API cannot read it; the PHP connection
+ * uses the postgres role, which bypasses RLS.
+ */
+const EVAC_CENTER_STATUSES = ['Available', 'Occupied', 'Near Capacity', 'Full'];
+// Options a Social Worker can pick from the Occupancy Status dropdown.
+const EVAC_CENTER_SW_OPTIONS = ['Available', 'Full'];
+
+/** Per-event availability of each barangay's evacuation center (set by the Social Worker, read by the MD Officer). */
+function db_ensure_evac_center_status_table(): void
+{
+    static $done = false;
+    if ($done) return;
+
+    db()->exec("CREATE TABLE IF NOT EXISTS public.evacuation_center_status (
+        event_id INTEGER NOT NULL,
+        barangay VARCHAR(100) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'Available'
+            CHECK (status IN ('Available','Occupied','Near Capacity','Full')),
+        updated_by VARCHAR(50),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (event_id, barangay)
+    )");
+    db()->exec("ALTER TABLE public.evacuation_center_status ENABLE ROW LEVEL SECURITY");
+
+    $done = true;
+}
+
+function db_ensure_damage_assessments_table(): void
+{
+    static $done = false;
+    if ($done) return;
+
+    db()->exec("CREATE TABLE IF NOT EXISTS public.damage_assessments (
+        assessment_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+        reference_code VARCHAR(30) NOT NULL UNIQUE,
+        household_id INTEGER,
+        barangay VARCHAR(100) NOT NULL,
+        reporter VARCHAR(150) NOT NULL,
+        asset_type VARCHAR(30) NOT NULL,
+        damage_status VARCHAR(30) NOT NULL,
+        description TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'Under Review',
+        latitude DOUBLE PRECISION,
+        longitude DOUBLE PRECISION,
+        gps_accuracy_m REAL,
+        location_source VARCHAR(20),
+        location_flags VARCHAR(100),
+        address TEXT,
+        exif_lat DOUBLE PRECISION,
+        exif_lng DOUBLE PRECISION,
+        exif_taken_at TIMESTAMPTZ,
+        photo_path TEXT,
+        original_path TEXT,
+        original_sha256 CHAR(64),
+        photo_sha256 CHAR(64),
+        signature CHAR(64),
+        captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        submitted_by VARCHAR(50),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )");
+    db()->exec("CREATE INDEX IF NOT EXISTS idx_damage_assessments_barangay
+                ON public.damage_assessments (barangay, created_at DESC)");
+    db()->exec("ALTER TABLE public.damage_assessments ADD COLUMN IF NOT EXISTS address TEXT");
+    db()->exec("ALTER TABLE public.damage_assessments ENABLE ROW LEVEL SECURITY");
+
+    $done = true;
+}
+
+function db_ensure_disaster_event_status(): void
+{
+    static $done = false;
+    if ($done) return;
+
+    $exists = db_query(
+        "SELECT 1
+         FROM information_schema.columns
+         WHERE table_schema = current_schema()
+           AND table_name = 'disaster_events'
+           AND column_name = 'status'
+         LIMIT 1"
+    )->fetchColumn();
+
+    if (!$exists) {
+        db()->exec("ALTER TABLE disaster_events ADD COLUMN status VARCHAR(10) NOT NULL DEFAULT 'Active'");
+    }
+
+    $done = true;
+}
+
+/**
+ * Runs a raw prepared query and returns the PDOStatement.
+ * Use this directly for anything the helpers below don't cover (JOINs, etc.).
+ */
+function db_query(string $sql, array $params = []): PDOStatement
+{
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+    return $stmt;
+}
+
+/**
+ * SELECT helper.
+ *
+ * @param string $table    Table name
+ * @param string $where    WHERE clause without the word WHERE, e.g. 'email = ?'. '1=1' = no filter.
+ * @param array  $params   Bound params for $where, in order
+ * @param string $columns  Columns to select, default '*'
+ * @param string|null $orderBy  e.g. 'created_at DESC'
+ * @param int|null $limit
+ * @return array  Array of associative rows
+ */
+function db_select(
+    string $table,
+    string $where = '1=1',
+    array $params = [],
+    string $columns = '*',
+    ?string $orderBy = null,
+    ?int $limit = null
+): array {
+    $sql = "SELECT {$columns} FROM {$table} WHERE {$where}";
+    if ($orderBy) $sql .= " ORDER BY {$orderBy}";
+    if ($limit)   $sql .= " LIMIT " . (int) $limit;
+
+    return db_query($sql, $params)->fetchAll();
+}
+
+/** SELECT a single row, or null if none found. */
+function db_select_one(string $table, string $where = '1=1', array $params = [], string $columns = '*'): ?array
+{
+    $rows = db_select($table, $where, $params, $columns, null, 1);
+    return $rows[0] ?? null;
+}
+
+/**
+ * INSERT a row. $data is an associative array of column => value.
+ * Returns the full inserted row (Postgres RETURNING *), or null on failure.
+ */
+function db_insert(string $table, array $data): ?array
+{
+    $columns = array_keys($data);
+    $placeholders = array_fill(0, count($columns), '?');
+
+    $sql = "INSERT INTO {$table} (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $placeholders) . ") RETURNING *";
+    $stmt = db_query($sql, array_values($data));
+
+    return $stmt->fetch() ?: null;
+}
+
+/**
+ * UPDATE rows matching $where with $data (column => value).
+ * Returns the number of affected rows.
+ */
+function db_update(string $table, array $data, string $where, array $whereParams = []): int
+{
+    $set = implode(', ', array_map(fn($col) => "{$col} = ?", array_keys($data)));
+    $sql = "UPDATE {$table} SET {$set} WHERE {$where}";
+
+    $stmt = db_query($sql, array_merge(array_values($data), $whereParams));
+    return $stmt->rowCount();
+}
+
+/**
+ * DELETE rows matching $where.
+ * Returns the number of affected rows.
+ */
+function db_delete(string $table, string $where, array $params = []): int
+{
+    $stmt = db_query("DELETE FROM {$table} WHERE {$where}", $params);
+    return $stmt->rowCount();
+}
