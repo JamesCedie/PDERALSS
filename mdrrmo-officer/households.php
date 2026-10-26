@@ -197,7 +197,7 @@ function hh_totals(array $list): array
 require '../includes/layout.php';
 $subtitle = 'LGU Disaster Management System · Municipality-wide Control';
 if ($selected !== null) {
-    page_start('Household Management', $subtitle, ['households.php', '← Household Management']);
+    page_start('Household Management', $subtitle, ['households.php', 'Household Management']);
 } else {
     page_start('Household Management', $subtitle);
 }
@@ -266,7 +266,7 @@ if ($selected !== null) {
 
     <div class="sw-records-title">Household Records</div>
     <label class="sw-search vr-search" style="margin:0 0 14px">
-        <span aria-hidden="true">⌕</span>
+        <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
         <input type="search" id="hhSearch" placeholder="Search..." autocomplete="off">
     </label>
 
@@ -310,7 +310,7 @@ if ($selected !== null) {
                 <h2>Household Details</h2>
                 <div class="mini"><?= h($row['barangay']) ?> · System Record #<?= $hid ?></div>
             </div>
-            <button class="icon-btn" onclick="closeModal('viewModal-<?= $hid ?>')" aria-label="Close">×</button>
+            <button class="icon-btn" onclick="closeModal('viewModal-<?= $hid ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
 
         <div class="sw-modal-section-title">Family Head Information</div>
@@ -368,7 +368,7 @@ if ($selected !== null) {
                 <h2>Edit Household Record</h2>
                 <div class="mini">System Control ID: #<?= $hid ?> &nbsp;·&nbsp; <?= h($row['barangay']) ?></div>
             </div>
-            <button class="icon-btn" onclick="closeModal('editModal-<?= $hid ?>')" aria-label="Close">×</button>
+            <button class="icon-btn" onclick="closeModal('editModal-<?= $hid ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
 
         <form method="post" class="sw-edit-form">

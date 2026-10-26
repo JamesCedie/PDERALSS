@@ -2,17 +2,15 @@
 require_once '../includes/access.php'; require_page_access(); require '../includes/layout.php';
 page_start('Notifications');
 
-$notes = [
-    ['Evacuation Center Alpha at 95% capacity', 'Center Alpha has reached near-full occupancy. Consider redistribution.', '10 mins ago', 'warning', false],
-    ['New damage assessment verified',          'The assessment for Brgy. Jaro was verified by MDRRMO.',                 '25 mins ago', 'info',    false],
-    ['Low stock: Water supplies',               'Water inventory is below the configured threshold.',                    '1 hour ago',  'danger',  true],
-    ['Vehicle request approved',                'Request VR-001 for Brgy. Molo was approved.',                            '2 hours ago', 'success', true],
-];
+require_once '../includes/dashboard.php';
+$ctx   = dash_build(null, 0, true);
+$tones = ['danger' => 'danger', 'warning' => 'warning', 'info' => 'info', 'success' => 'success'];
+$notes = [];
+foreach ($ctx['alerts'] as $a) $notes[] = [$a[1], $a[2], 'Live', $tones[$a[0]] ?? 'info', true];
 ?>
 
 <div class="page-head">
     <h1 class="page-title">Notifications & Alerts</h1>
-    <button class="btn btn-light" onclick="alert('All notifications marked as read.')">Mark All as Read</button>
 </div>
 
 <div class="grid g2">

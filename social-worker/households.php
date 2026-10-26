@@ -211,7 +211,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
 <div class="sw-household-list">
     <div class="page-head sw-section-head">
         <div class="assigned-label">Assigned Barangay:<strong><?= htmlspecialchars($socialWorkerAddress ?: '—') ?></strong></div>
-        <button class="btn btn-primary" onclick="openModal('householdModal')">＋ &nbsp;Add Household</button>
+        <button class="btn btn-primary" onclick="openModal('householdModal')">Add Household</button>
     </div>
 
     <?php if ($successMsg): ?>
@@ -238,7 +238,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
 
     <div class="sw-records-title">Household Records</div>
     <label class="sw-search">
-        <span aria-hidden="true">⌕</span>
+        <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
         <input type="search" id="swSearch" placeholder="Search..." autocomplete="off">
     </label>
     <div class="sw-records">
@@ -287,7 +287,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                 <h2>Add Household</h2>
                 <div class="mini">Step 1 of 2: Household Head Information</div>
             </div>
-            <button class="icon-btn" onclick="closeModal('householdModal')" aria-label="Close">×</button>
+            <button class="icon-btn" onclick="closeModal('householdModal')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
 
         <form method="post">
@@ -339,7 +339,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                 <h2>Add Household</h2>
                 <div class="mini">Step 2 of 2: Family Composition Information</div>
             </div>
-            <button class="icon-btn" onclick="window.location='households.php?stage=back'" aria-label="Close">×</button>
+            <button class="icon-btn" onclick="window.location='households.php?stage=back'" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
 
         <form method="post">
@@ -391,7 +391,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                 <h2>Household Details</h2>
                 <div class="mini">Barangay <?= htmlspecialchars($h['barangay']) ?> · System Record #<?= htmlspecialchars($h['household_id']) ?></div>
             </div>
-            <button class="icon-btn" onclick="closeModal('viewModal-<?= $h['household_id'] ?>')" aria-label="Close">×</button>
+            <button class="icon-btn" onclick="closeModal('viewModal-<?= $h['household_id'] ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
 
         <div class="sw-modal-section-title">Family Head Information</div>
@@ -445,7 +445,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                 <h2>Edit Household Record</h2>
                 <div class="mini">System Control ID: #<?= htmlspecialchars($h['household_id']) ?> &nbsp;·&nbsp; Assigned Barangay: <?= htmlspecialchars($h['barangay']) ?></div>
             </div>
-            <button class="icon-btn" onclick="closeModal('editModal-<?= $h['household_id'] ?>')" aria-label="Close">×</button>
+            <button class="icon-btn" onclick="closeModal('editModal-<?= $h['household_id'] ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
 
         <form method="post" class="sw-edit-form">
@@ -512,7 +512,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                 </table>
             </div>
 
-            <button type="button" class="btn btn-primary add-member-btn" onclick="showToast('New members can be added through the Family Composition step during household registration.', 'info')">＋ Add Member</button>
+            <button type="button" class="btn btn-primary add-member-btn" onclick="showToast('New members can be added through the Family Composition step during household registration.', 'info')">Add Member</button>
 
             <div class="actions">
                 <button type="button" class="btn btn-light" onclick="closeModal('editModal-<?= $h['household_id'] ?>')">Cancel</button>

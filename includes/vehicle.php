@@ -78,17 +78,17 @@ function vr_date(?string $date, string $format = 'M j, Y'): string
 
 function vr_badge(string $label, ?string $class = null): string
 {
-    return '<span class="vr-badge ' . vr_h($class ?? strtolower($label)) . '">' . vr_h($label) . '</span>';
+    return status_badge($label);
 }
 
 function vr_status_badge(string $status): string
 {
-    return vr_badge($status);
+    return status_badge($status);
 }
 
 function vr_urgency_badge(string $urgency): string
 {
-    return vr_badge($urgency, 'urgency-' . strtolower($urgency));
+    return status_badge($urgency);
 }
 
 // ---- CSRF (simple per-session token for the POST forms) -------------------

@@ -153,26 +153,25 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
     <?php if ($errorMsg): ?><div class="alert alert-danger mb"><?= vr_h($errorMsg) ?></div><?php endif; ?>
 
     <div class="vr-section-title">Request Summary</div>
-    <div class="vr-cards">
+    <div class="grid g4 md-stats">
         <?php foreach (['Approved', 'Pending', 'Scheduled', 'Completed'] as $s): ?>
-            <div class="vr-card">
-                <div class="vr-card-top"><span><?= $s ?></span><i class="vr-dot <?= strtolower($s) ?>"></i></div>
-                <div class="vr-card-value"><?= $counts[$s] ?></div>
+            <div class="card sw-summary-card">
+                <div class="stat-label"><?= $s ?></div>
+                <div class="stat-value"><?= $counts[$s] ?></div>
             </div>
         <?php endforeach; ?>
     </div>
 
     <div class="vr-table-head">
         <div>
-            <div class="vr-section-title" style="margin-bottom:2px">Social Worker Vehicle Requests</div>
-            <div class="mini">Review, approve, schedule, and track municipal transport support</div>
+            <div class="vr-section-title" style="margin-bottom:0">Social Worker Vehicle Requests</div>
         </div>
         <div class="mini">Showing <?= count($requests) ?> of <?= $total ?><?= $filtering ? ' matching' : '' ?> requests</div>
     </div>
 
     <form method="get" class="vr-filters" id="vrFilters">
         <label class="sw-search vr-search">
-            <span aria-hidden="true">⌕</span>
+            <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
             <input type="search" name="q" value="<?= vr_h($f['q']) ?>" placeholder="Search request ID, barangay, or purpose" maxlength="100">
         </label>
         <select name="status" onchange="this.form.submit()" aria-label="Filter by status">
@@ -230,9 +229,9 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
 
     <?php if ($totalPages > 1): ?>
         <div class="vr-pager">
-            <?php if ($page > 1): ?><a class="btn btn-light" href="<?= vr_h(vr_url($f, ['page' => $page - 1])) ?>">← Previous</a><?php endif; ?>
+            <?php if ($page > 1): ?><a class="btn btn-light" href="<?= vr_h(vr_url($f, ['page' => $page - 1])) ?>">Previous</a><?php endif; ?>
             <span class="mini">Page <?= $page ?> of <?= $totalPages ?></span>
-            <?php if ($page < $totalPages): ?><a class="btn btn-light" href="<?= vr_h(vr_url($f, ['page' => $page + 1])) ?>">Next →</a><?php endif; ?>
+            <?php if ($page < $totalPages): ?><a class="btn btn-light" href="<?= vr_h(vr_url($f, ['page' => $page + 1])) ?>">Next</a><?php endif; ?>
         </div>
     <?php endif; ?>
 </div>
@@ -251,7 +250,7 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
                     <h2>Manage Vehicle Request</h2>
                     <div class="mini"><?= vr_h($r['requester_name'] ?: 'Unknown user') ?> · <?= vr_h($r['barangay']) ?> · <?= vr_h($r['request_code']) ?></div>
                 </div>
-                <button type="button" class="icon-btn" onclick="closeModal('<?= $mid ?>')" aria-label="Close">×</button>
+                <button type="button" class="icon-btn" onclick="closeModal('<?= $mid ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
 
             <form method="post" class="vr-form">

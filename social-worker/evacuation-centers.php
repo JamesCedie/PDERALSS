@@ -124,9 +124,9 @@ $eventIsActive = $currentEvent && ($currentEvent['status'] ?? 'Active') === 'Act
     <?php endif; ?>
     <?php if ($eventIsActive): ?>
         <?php if ($centerStatus === 'Full'): ?>
-            <button class="btn btn-primary" disabled style="opacity:.5;cursor:not-allowed;" title="This evacuation center is Full. Set it to Available to add evacuees.">＋ &nbsp;Add Evacuee</button>
+            <button class="btn btn-primary" disabled style="opacity:.5;cursor:not-allowed;" title="This evacuation center is Full. Set it to Available to add evacuees.">Add Evacuee</button>
         <?php else: ?>
-            <button class="btn btn-primary" onclick="openModal('addEvacueeModal')">＋ &nbsp;Add Evacuee</button>
+            <button class="btn btn-primary" onclick="openModal('addEvacueeModal')">Add Evacuee</button>
         <?php endif; ?>
     <?php endif; ?>
 </div>
@@ -162,7 +162,7 @@ $eventIsActive = $currentEvent && ($currentEvent['status'] ?? 'Active') === 'Act
 
     <div class="sw-casualty-title mt">Evacuation Records</div>
     <label class="sw-search">
-        <span aria-hidden="true">⌕</span>
+        <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
         <input type="search" id="swSearch" placeholder="Search..." autocomplete="off">
     </label>
 
@@ -195,18 +195,18 @@ $eventIsActive = $currentEvent && ($currentEvent['status'] ?? 'Active') === 'Act
     <div class="modal-box sw-search-modal">
         <div class="modal-head">
             <h2>Search Resident Name</h2>
-            <button class="icon-btn" onclick="closeEvacModal()" aria-label="Close">×</button>
+            <button class="icon-btn" onclick="closeEvacModal()" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
 
         <div id="searchPhase">
             <div class="sw-search-modal-input">
                 <input type="text" id="residentSearch" placeholder="Search resident..." oninput="searchResident(this.value)" autocomplete="off">
-                <span>⌕</span>
+                <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
             </div>
             <div id="searchResults" class="sw-resident-results"></div>
             <div id="noResultsRow" class="sw-no-results" style="display:none;">
                 <div>No results found.</div>
-                <button type="button" onclick="showManualForm()" class="btn btn-primary">＋ &nbsp;Add New Evacuee Record</button>
+                <button type="button" onclick="showManualForm()" class="btn btn-primary">Add New Evacuee Record</button>
             </div>
         </div>
 
@@ -216,7 +216,7 @@ $eventIsActive = $currentEvent && ($currentEvent['status'] ?? 'Active') === 'Act
                 <input type="hidden" name="household_id" id="selectedHouseholdId" value="">
                 <div class="field mb"><label>Full Name</label><input name="name" id="evacueeNameInput" required placeholder="Enter full name"></div>
                 <div class="field mb"><label>Household No. (no. of members)</label><input type="number" name="household_no" id="evacueeHHNo" min="1" value="1"></div>
-                <div class="actions"><button type="button" class="btn btn-light" onclick="backToSearch()">← Back</button><button class="btn btn-primary">Save Evacuee</button></div>
+                <div class="actions"><button type="button" class="btn btn-light" onclick="backToSearch()">Back</button><button class="btn btn-primary">Save Evacuee</button></div>
             </form>
         </div>
     </div>

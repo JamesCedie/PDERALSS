@@ -24,15 +24,6 @@ $errorMsg   = $_SESSION['flash_error'] ?? null;
 $old        = $_SESSION['rg_old'] ?? [];
 unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['rg_old']);
 
-// Inline icons (stroke = currentColor) so they pick up the tile colour.
-$icons = [
-    'box'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3.3 7.5L12 12.4l8.7-4.9M12 12.4V21"/></svg>',
-    'water' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.2 6 10.5A6 6 0 0 1 6 13.5C6 9.2 12 3 12 3z"/></svg>',
-    'heart' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>',
-    'kit'   => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M12 11v5M9.5 13.5h5"/></svg>',
-];
-
-$iconFor = ['Food Packs' => $icons['box'], 'Water (Liters)' => $icons['water'], 'Medicine' => $icons['heart'], 'Hygiene Kits' => $icons['kit']];
 $stock   = rg_totals();
 $rows    = rg_distributions();
 $today   = (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))->format('Y-m-d');
@@ -47,20 +38,16 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
     <div class="page-head rg-head">
         <h2 class="rg-title">Relief Goods &amp; Resource Allocation</h2>
         <button type="button" class="btn btn-primary rg-add" onclick="openModal('reliefModal')">
-            <span aria-hidden="true">＋</span> Distribute Goods
+            Distribute Goods
         </button>
     </div>
     </div>
 
-    <div class="rg-stats">
+    <div class="grid g4 md-stats">
         <?php foreach ($stock as $item => $st): ?>
-            <div class="rg-stat">
-                <span class="rg-stat-icon"><?= $iconFor[$item] ?? $icons['box'] ?></span>
-                <div>
-                    <div class="rg-stat-value"><?= number_format($st['quantity']) ?></div>
-                    <div class="rg-stat-label"><?= md_h($item) ?></div>
-                    <div class="rg-stat-unit"><?= md_h($st['unit']) ?></div>
-                </div>
+            <div class="card sw-summary-card">
+                <div class="stat-label"><?= md_h($item) ?> &middot; <?= md_h($st['unit']) ?></div>
+                <div class="stat-value"><?= number_format($st['quantity']) ?></div>
             </div>
         <?php endforeach; ?>
     </div>
@@ -104,7 +91,7 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
         <div class="modal-box rg-modal" role="dialog" aria-modal="true" aria-labelledby="reliefModalTitle">
             <div class="rg-modal-head">
                 <h3 id="reliefModalTitle">Distribute Relief Goods</h3>
-                <button type="button" class="rg-close" onclick="closeModal('reliefModal')" aria-label="Close">✕</button>
+                <button type="button" class="rg-close" onclick="closeModal('reliefModal')" aria-label="Close">Close</button>
             </div>
             <form method="post" action="relief-goods.php">
                 <?= md_csrf_field() ?>

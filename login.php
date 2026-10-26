@@ -172,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
             </div>
             <div class="field mb">
                 <label>Password</label>
-                <input type="password" name="password" placeholder="••••••••" required>
+                <input type="password" name="password" placeholder="Enter your password" required>
             </div>
             <button class="btn btn-primary btn-block">Login</button>
         </form>
@@ -187,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
         <div class="modal-box">
             <div class="modal-head">
                 <h2>Forgot Password</h2>
-                <button class="icon-btn" onclick="closeModal('forgotPasswordModal')" aria-label="Close">×</button>
+                <button class="icon-btn" onclick="closeModal('forgotPasswordModal')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
             <p class="mini mb">We'll send a code to the email on the username you entered.</p>
             <form onsubmit="event.preventDefault(); requestOtp()">
@@ -201,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
         <div class="modal-box">
             <div class="modal-head">
                 <h2>Enter OTP</h2>
-                <button class="icon-btn" onclick="closeModal('otpModal')" aria-label="Close">×</button>
+                <button class="icon-btn" onclick="closeModal('otpModal')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
             <p class="mini mb">We sent a 6-digit code to <b id="otpEmailDisplay"></b>.</p>
             <form id="verifyOtpForm" onsubmit="event.preventDefault(); verifyOtp()">
@@ -219,7 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
         <div class="modal-box">
             <div class="modal-head">
                 <h2>Reset Password</h2>
-                <button class="icon-btn" onclick="closeModal('resetPasswordModal')" aria-label="Close">×</button>
+                <button class="icon-btn" onclick="closeModal('resetPasswordModal')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
             <p class="mini mb">OTP verified. Enter your new password.</p>
             <form onsubmit="event.preventDefault(); resetPassword()">

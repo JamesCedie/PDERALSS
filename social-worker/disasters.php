@@ -49,9 +49,9 @@ if (!empty($events)) {
 ?>
 <div class="sw-impact-title">Current Cumulative Evacuation Impact</div>
 <div class="grid g3 sw-impact-cards">
-    <div class="card"><div class="stat-label">Total Evacuees</div><div class="stat-value"><?= htmlspecialchars($stats[0]) ?></div></div>
-    <div class="card"><div class="stat-label">Evacuated Households</div><div class="stat-value"><?= htmlspecialchars($stats[1]) ?></div></div>
-    <div class="card"><div class="stat-label">Reported Casualties</div><div class="stat-value"><?= htmlspecialchars($stats[2]) ?></div></div>
+    <div class="card sw-summary-card"><div class="stat-label">Total Evacuees</div><div class="stat-value"><?= htmlspecialchars($stats[0]) ?></div></div>
+    <div class="card sw-summary-card"><div class="stat-label">Evacuated Households</div><div class="stat-value"><?= htmlspecialchars($stats[1]) ?></div></div>
+    <div class="card sw-summary-card"><div class="stat-label">Reported Casualties</div><div class="stat-value"><?= htmlspecialchars($stats[2]) ?></div></div>
 </div>
 
 <div class="sw-incidents-title" style="margin-top:32px;">Monitored Incidents</div>
@@ -71,7 +71,7 @@ if (!empty($events)) {
             </div>
 
             <div class="sw-event-description">
-                <span class="event-date">▣ &nbsp;Reported: <?= htmlspecialchars($e['date']) ?></span>
+                <span class="event-date">Reported: <?= htmlspecialchars($e['date']) ?></span>
                 <?= htmlspecialchars($e['description']) ?>
             </div>
 
@@ -96,7 +96,7 @@ if (!empty($events)) {
     <div class="modal-box">
         <div class="modal-head">
             <div><h2><?= htmlspecialchars($e['event_name']) ?></h2><div class="mini"><?= htmlspecialchars($e['type']) ?> · <?= htmlspecialchars($e['date']) ?></div></div>
-            <button class="icon-btn" onclick="closeModal('viewModal-<?= $e['event_id'] ?>')">×</button>
+            <button class="icon-btn" onclick="closeModal('viewModal-<?= $e['event_id'] ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <p class="mini"><?= htmlspecialchars($e['description']) ?></p>
         <div class="sw-modal-section-title">Event Summary — All Reports</div>

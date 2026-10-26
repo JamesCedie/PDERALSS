@@ -72,9 +72,9 @@ $selected = in_array($selected, $names, true) ? $selected : null;
 
 require '../includes/layout.php';
 if ($selected !== null) {
-    page_start('Damage Assessment', null, ['damage-assessment.php' . ($evQuery ? '?' . $evQuery : ''), '← Damage Assessment']);
+    page_start('Damage Assessment', null, ['damage-assessment.php' . ($evQuery ? '?' . $evQuery : ''), 'Damage Assessment']);
 } else {
-    page_start('Damage Assessment', null, ['disasters.php', '← Disaster Events']);
+    page_start('Damage Assessment', null, ['disasters.php', 'Disaster Events']);
 }
 ?>
 
@@ -89,7 +89,7 @@ if ($selected !== null) {
     <?php if ($event): ?><div class="sw-event-label">Event:<strong><?= md_h($event['event_name']) ?></strong></div><?php endif; ?>
     <div class="sw-casualty-title">Damage Assessment Monitoring</div>
     <div class="md-split">
-        <div class="card sw-total-card">
+        <div class="card sw-summary-card">
             <div class="stat-label">Assessments Count</div>
             <div class="stat-value"><?= number_format($all[0]) ?></div>
         </div>
@@ -133,7 +133,7 @@ if ($selected !== null) {
 
     <div class="sw-casualty-title">Total Assessments</div>
     <div class="md-split">
-        <div class="card sw-total-card">
+        <div class="card sw-summary-card">
             <div class="stat-label">Assessments Count</div>
             <div class="stat-value"><?= number_format($total) ?></div>
         </div>
@@ -148,7 +148,7 @@ if ($selected !== null) {
 
     <div class="sw-casualty-title mt">Assessment Records</div>
     <label class="sw-search">
-        <span aria-hidden="true">⌕</span>
+        <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
         <input type="search" id="mdSearch" placeholder="Search..." autocomplete="off">
     </label>
 
@@ -182,7 +182,7 @@ if ($selected !== null) {
                         <h2>Damage Assessment Details</h2>
                         <div class="mini"><?= md_h($selected) ?> · Record #<?= (int) $r['id'] ?></div>
                     </div>
-                    <button type="button" class="icon-btn" onclick="closeModal('<?= $mid ?>')" aria-label="Close">×</button>
+                    <button type="button" class="icon-btn" onclick="closeModal('<?= $mid ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
                 </div>
                 <div class="sw-view-grid">
                     <div class="sw-view-item"><label>Family Head</label><div><?= md_h($r['family_head_name']) ?></div></div>
@@ -208,7 +208,7 @@ if ($selected !== null) {
                                 <?= $r['accuracy'] !== null ? '(±' . (int) $r['accuracy'] . ' m)' : '' ?>
                                 · device GPS read at photo capture
                                 · <a class="md-dmg-link" target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=<?= urlencode((string) $r['lat']) ?>&amp;mlon=<?= urlencode((string) $r['lng']) ?>#map=18/<?= urlencode((string) $r['lat']) ?>/<?= urlencode((string) $r['lng']) ?>">Open in OpenStreetMap</a>
-                                <?php if (!empty($r['address'])): ?><div class="mini">📍 <?= md_h($r['address']) ?></div><?php endif; ?>
+                                <?php if (!empty($r['address'])): ?><div class="mini"><?= md_h($r['address']) ?></div><?php endif; ?>
                                 <div class="md-dmg-map" data-lat="<?= md_h($r['lat']) ?>" data-lng="<?= md_h($r['lng']) ?>" data-acc="<?= md_h($r['accuracy'] ?? '') ?>"></div>
                             <?php else: ?>No location recorded.<?php endif; ?>
                         </div>

@@ -93,7 +93,7 @@ $visible  = 5;
 <div class="vr-page">
     <div class="vr-head">
         <div class="assigned-label">Assigned Barangay:<strong><?= vr_h($barangay ?: '—') ?></strong></div>
-        <button class="btn btn-primary" onclick="openModal('createVehicleModal')" <?= $barangay === '' ? 'disabled' : '' ?>>＋ &nbsp;Create Vehicle Request</button>
+        <button class="btn btn-primary" onclick="openModal('createVehicleModal')" <?= $barangay === '' ? 'disabled' : '' ?>>Create Vehicle Request</button>
     </div>
 
     <?php if ($successMsg): ?><div class="alert alert-success mb"><?= vr_h($successMsg) ?></div><?php endif; ?>
@@ -103,11 +103,11 @@ $visible  = 5;
     <?php endif; ?>
 
     <div class="vr-section-title">Request Summary</div>
-    <div class="vr-cards">
+    <div class="grid g4 md-stats">
         <?php foreach (['Approved', 'Pending', 'Scheduled', 'Completed'] as $s): ?>
-            <div class="vr-card">
-                <div class="vr-card-top"><span><?= $s ?></span><i class="vr-dot <?= strtolower($s) ?>"></i></div>
-                <div class="vr-card-value"><?= $counts[$s] ?></div>
+            <div class="card sw-summary-card">
+                <div class="stat-label"><?= $s ?></div>
+                <div class="stat-value"><?= $counts[$s] ?></div>
             </div>
         <?php endforeach; ?>
     </div>
@@ -157,7 +157,7 @@ $visible  = 5;
     <div class="modal-box vr-modal">
         <div class="modal-head">
             <h2>Create Vehicle Request</h2>
-            <button type="button" class="icon-btn" onclick="closeModal('createVehicleModal')" aria-label="Close">×</button>
+            <button type="button" class="icon-btn" onclick="closeModal('createVehicleModal')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <form method="post" class="vr-form">
             <input type="hidden" name="action" value="create">
@@ -206,7 +206,7 @@ $visible  = 5;
                     <h2><?= vr_h($r['request_code']) ?></h2>
                     <div class="mini">Submitted <?= vr_h(vr_date(substr($r['created_at'], 0, 10))) ?> by <?= vr_h($r['requester_name'] ?: 'Unknown user') ?></div>
                 </div>
-                <button type="button" class="icon-btn" onclick="closeModal('viewVehicle-<?= (int) $r['request_id'] ?>')" aria-label="Close">×</button>
+                <button type="button" class="icon-btn" onclick="closeModal('viewVehicle-<?= (int) $r['request_id'] ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
             <div class="vr-form">
                 <div class="field"><label>Status</label><div class="vr-readonly"><?= vr_status_badge($r['status']) ?></div></div>

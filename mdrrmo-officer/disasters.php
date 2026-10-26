@@ -79,7 +79,7 @@ $events = db_query('SELECT * FROM disaster_events ORDER BY event_id DESC')->fetc
     <div class="card md-panel">
         <div class="md-panel-head">
             <h2>Disaster Events</h2>
-            <button class="btn btn-primary" onclick="openModal('eventModal')">＋ &nbsp;Add Disaster Event</button>
+            <button class="btn btn-primary" onclick="openModal('eventModal')">Add Disaster Event</button>
         </div>
 
         <?php if (empty($events)): ?>
@@ -109,15 +109,12 @@ $events = db_query('SELECT * FROM disaster_events ORDER BY event_id DESC')->fetc
 
                         <div class="md-event-actions md-event-actions--stack">
                             <a href="evacuation-centers.php?event_id=<?= (int) $e['event_id'] ?>" class="btn btn-primary">
-                                <svg class="md-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
                                 View Evacuation Centers
                             </a>
                             <a href="casualties.php?event_id=<?= (int) $e['event_id'] ?>" class="btn btn-primary">
-                                <svg class="md-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14.2c2.9 0 5 2.2 5 5.8"/></svg>
                                 View Casualties
                             </a>
                             <a href="damage-assessment.php?event_id=<?= (int) $e['event_id'] ?>" class="btn btn-primary">
-                                <svg class="md-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l9 16H3L12 3z"/><path d="M12 10v4"/><path d="M12 17v.01"/></svg>
                                 View Damage Assessment
                             </a>
                         </div>
@@ -154,7 +151,7 @@ $events = db_query('SELECT * FROM disaster_events ORDER BY event_id DESC')->fetc
     <div class="modal-box md-event-modal">
         <div class="modal-head">
             <h2>Add New Disaster Event</h2>
-            <button type="button" class="icon-btn" onclick="closeModal('eventModal')" aria-label="Close">✕</button>
+            <button type="button" class="icon-btn" onclick="closeModal('eventModal')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <form method="post">
             <?= md_csrf_field() ?>

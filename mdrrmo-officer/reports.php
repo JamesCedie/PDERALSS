@@ -1,6 +1,8 @@
 <?php
 require_once '../includes/access.php'; require_page_access(); require '../includes/layout.php';
 page_start('Reports');
+require_once '../includes/reports.php';
+$totals = report_totals();
 
 $types = [
     ['Casualty Report',           'Comprehensive report of all casualties by barangay and severity'],
@@ -23,11 +25,15 @@ $recent = [
 </div>
 
 <div class="grid g4">
-    <?php foreach([['1,247', 'Total Households', '+45'], ['89', 'Total Casualties', '+12'], ['156', 'Relief Distributions', '+23'], ['78', 'Vehicle Requests', '+8']] as $s): ?>
-        <div class="card">
-            <div class="mini"><?=$s[0]?></div>
-            <div class="report-stat-value"><?=$s[1]?></div>
-            <span class="badge b-green"><?=$s[2]?> today</span>
+    <?php foreach([
+        ['Total Households',     $totals['households']],
+        ['Total Casualties',     $totals['casualties']],
+        ['Relief Distributions', $totals['relief']],
+        ['Vehicle Requests',     $totals['vehicles']],
+    ] as $s): ?>
+        <div class="card sw-summary-card">
+            <div class="stat-label"><?=$s[0]?></div>
+            <div class="stat-value"><?=number_format($s[1])?></div>
         </div>
     <?php endforeach; ?>
 </div>
@@ -37,7 +43,6 @@ $recent = [
     <div class="grid g3">
         <?php foreach($types as $t): ?>
             <div class="card report-type-card">
-                <div class="report-type-icon">▤</div>
                 <h3><?=$t[0]?></h3>
                 <p class="mini"><?=$t[1]?></p>
                 <button class="btn btn-primary btn-block" onclick="alert('Generating <?=$t[0]?>...')">Generate</button>

@@ -9,7 +9,14 @@ $event   = md_find_event($eventId);
 
 // Counts per barangay and type for this event (MDRRMO is municipality-wide).
 $perBarangay = [];
+$lastUpdate  = [];
 if ($event) {
+    foreach (db_query(
+        'SELECT barangay, MAX(created_at) AS last FROM public.casualties WHERE event_id = ? GROUP BY barangay',
+        [$eventId]
+    )->fetchAll() as $r) {
+        $lastUpdate[$r['barangay']] = $r['last'];
+    }
     $rows = db_query(
         'SELECT barangay, type, COUNT(*) AS c FROM public.casualties WHERE event_id = ? GROUP BY barangay, type',
         [$eventId]
@@ -33,9 +40,9 @@ function md_cas_counts(array $perType): array
 
 require '../includes/layout.php';
 if ($selected !== null) {
-    page_start('Casualty Monitoring', null, ['casualties.php?event_id=' . $eventId, '← Casualty Monitoring']);
+    page_start('Casualty Monitoring', null, ['casualties.php?event_id=' . $eventId, 'Casualty Monitoring']);
 } else {
-    page_start('Casualty Monitoring', null, ['disasters.php', '← Disaster Events']);
+    page_start('Casualty Monitoring', null, ['disasters.php', 'Disaster Events']);
 }
 ?>
 
@@ -51,53 +58,40 @@ if ($selected !== null) {
             $totals[$n] = md_cas_counts($perBarangay[$n] ?? []);
             foreach ($totals[$n] as $i => $v) $all[$i] += $v;
         }
-        $max = max(1, ...array_column($totals, 0));
     ?>
     <div class="sw-event-label">Event:<strong><?= md_h($event['event_name']) ?></strong></div>
 
-    <div class="sw-casualty-title">Casualty Count Breakdown</div>
-    <div class="grid g4 md-stats">
-        <?php foreach ([[$all[0], 'Total Casualties'], [$all[1], 'Injured'], [$all[2], 'Missing'], [$all[3], 'Fatalities']] as $s): ?>
-            <div class="card sw-summary-card">
-                <div class="stat-label"><?= md_h($s[1]) ?></div>
-                <div class="stat-value"><?= number_format($s[0]) ?></div>
-            </div>
-        <?php endforeach; ?>
-    </div>
-
-    <div class="card mt">
-        <h2>Casualty Count per Barangay</h2>
-        <?php foreach ($names as $n): $t = $totals[$n][0]; ?>
-            <div class="barangay-row">
-                <div class="barangay-row-head">
-                    <span><?= md_h($n) ?></span>
-                    <b><?= $t ?></b>
-                </div>
-                <div class="progress-track progress-track--lg">
-                    <div class="progress-fill progress-fill--red" style="--fill:<?= round($t / $max * 100, 1) ?>%"></div>
-                </div>
-            </div>
-        <?php endforeach; ?>
-    </div>
-
-    <div class="card mt">
-        <h2>Casualty Records</h2>
-        <div class="sw-data-table">
-            <table class="table">
-                <thead>
-                    <tr><th>Barangay</th><th>Casualty Count</th><th>Actions</th></tr>
-                </thead>
-                <tbody>
-                <?php foreach ($names as $n): ?>
-                    <tr>
-                        <td><?= md_h($n) ?></td>
-                        <td><?= $totals[$n][0] ?></td>
-                        <td><a class="btn btn-dark-sm" href="casualties.php?event_id=<?= $eventId ?>&amp;barangay=<?= urlencode($n) ?>">View</a></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+    <div class="sw-casualty-title">Casualty Monitoring</div>
+    <div class="md-split cm-top">
+        <div class="card sw-summary-card cm-total">
+            <div class="stat-label">Total Casualties</div>
+            <div class="stat-value"><?= number_format($all[0]) ?></div>
         </div>
+        <div class="card sw-breakdown-card">
+            <h3>Casualty Count Breakdown</h3>
+            <div class="sw-breakdown">
+                <div class="sw-breakdown-item"><label>Injured</label><strong><?= number_format($all[1]) ?></strong></div>
+                <div class="sw-breakdown-item"><label>Missing</label><strong><?= number_format($all[2]) ?></strong></div>
+                <div class="sw-breakdown-item"><label>Fatalities</label><strong><?= number_format($all[3]) ?></strong></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="cm-folders-head">
+        <div class="sw-casualty-title">Barangay Casualty Records</div>
+        <span class="cm-folders-count"><?= count($names) ?> Barangay Folders</span>
+    </div>
+    <div class="cm-folders">
+        <?php foreach ($names as $n): $t = $totals[$n][0]; ?>
+            <div class="card cm-folder">
+                <div>
+                    <div class="cm-folder-name"><?= md_h($n) ?></div>
+                    <div class="cm-folder-updated">Updated <?= md_h(md_date($lastUpdate[$n] ?? ($event['date'] ?? null), 'j M Y')) ?></div>
+                    <div class="cm-folder-count"><strong><?= number_format($t) ?></strong> <span>casualties</span></div>
+                </div>
+                <a class="btn btn-dark-sm" href="casualties.php?event_id=<?= $eventId ?>&amp;barangay=<?= urlencode($n) ?>">Open records</a>
+            </div>
+        <?php endforeach; ?>
     </div>
 
 <?php else: ?>
@@ -112,7 +106,7 @@ if ($selected !== null) {
 
     <div class="sw-casualty-title">Total Casualties Recorded</div>
     <div class="md-split">
-        <div class="card sw-total-card">
+        <div class="card sw-summary-card">
             <div class="stat-label">Casualty Count</div>
             <div class="stat-value"><?= $total ?></div>
         </div>
@@ -128,7 +122,7 @@ if ($selected !== null) {
 
     <div class="sw-casualty-title mt">Casualty Records</div>
     <label class="sw-search">
-        <span aria-hidden="true">⌕</span>
+        <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
         <input type="search" id="mdSearch" placeholder="Search..." autocomplete="off">
     </label>
 
@@ -144,7 +138,7 @@ if ($selected !== null) {
             <?php foreach ($records as $r): ?>
                 <tr data-search="<?= md_h(strtolower($r['name'] . ' ' . $r['type'])) ?>">
                     <td><?= md_h($r['name']) ?></td>
-                    <td><?= md_h($r['type']) ?></td>
+                    <td><?= status_badge($r['type']) ?></td>
                     <td><?= md_h(md_date($r['date'])) ?></td>
                 </tr>
             <?php endforeach; ?>

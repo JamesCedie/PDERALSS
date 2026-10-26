@@ -90,12 +90,12 @@ $households = $swBarangay !== ''
 <div class="md-page">
 <div class="sw-section-head">
     <div class="sw-event-label">Event:<strong><?= md_h($activeEvent ? $activeEvent['event_name'] . ' · ' . md_short_barangay((string) $swBarangay) : 'No active event') ?></strong></div>
-    <button class="btn btn-primary" onclick="openModal('damageModal')">＋ &nbsp;Submit Assessment</button>
+    <button class="btn btn-primary" onclick="openModal('damageModal')">Submit Assessment</button>
 </div>
 
 <div class="sw-casualty-title">Total Assessments Submitted</div>
 <div class="md-split">
-    <div class="card sw-total-card">
+    <div class="card sw-summary-card">
         <div class="stat-label">Assessments Count</div>
         <div class="stat-value"><?= number_format($totalAssessments) ?></div>
     </div>
@@ -110,7 +110,7 @@ $households = $swBarangay !== ''
 
 <div class="sw-casualty-title mt">Assessment Records</div>
 <label class="sw-search">
-    <span aria-hidden="true">⌕</span>
+    <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
     <input type="search" id="swSearch" placeholder="Search..." autocomplete="off">
 </label>
 
@@ -145,7 +145,7 @@ $households = $swBarangay !== ''
                     <h2>Damage Assessment Details</h2>
                     <div class="mini"><?= md_h($swBarangay) ?> · <?= md_h($r['ref']) ?></div>
                 </div>
-                <button type="button" class="icon-btn" onclick="closeModal('<?= $mid ?>')" aria-label="Close">×</button>
+                <button type="button" class="icon-btn" onclick="closeModal('<?= $mid ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
             <div class="sw-view-grid">
                 <div class="sw-view-item"><label>Household Head</label><div><?= md_h($r['head']) ?></div></div>
@@ -160,7 +160,7 @@ $households = $swBarangay !== ''
                         <?php if ($r['lat'] !== null): ?>
                             <?= md_h(number_format($r['lat'], 6)) ?>, <?= md_h(number_format($r['lng'], 6)) ?>
                             <?= $r['accuracy'] !== null ? '(±' . (int) $r['accuracy'] . ' m)' : '' ?>
-                            <?php if (!empty($r['address'])): ?><div class="mini">📍 <?= md_h($r['address']) ?></div><?php endif; ?>
+                            <?php if (!empty($r['address'])): ?><div class="mini"><?= md_h($r['address']) ?></div><?php endif; ?>
                             <?php foreach ($r['flags'] as $fl): ?><span class="badge b-yellow"><?= md_h($fl) ?></span> <?php endforeach; ?>
                         <?php else: ?>No location recorded.<?php endif; ?>
                     </div>
@@ -177,7 +177,7 @@ $households = $swBarangay !== ''
     <div class="modal-box">
         <div class="modal-head">
             <h2>Submit Damage Assessment</h2>
-            <button class="icon-btn" onclick="closeModal('damageModal')">✕</button>
+            <button class="icon-btn" onclick="closeModal('damageModal')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
 
         <form id="damageForm" method="post" enctype="multipart/form-data">
@@ -245,7 +245,7 @@ $households = $swBarangay !== ''
                         <div id="daStamp" class="da-stamp" hidden></div>
                     </div>
                     <div class="da-cam-actions">
-                        <button type="button" class="btn btn-dark-sm" id="daCapture" disabled>📷 Capture Photo</button>
+                        <button type="button" class="btn btn-dark-sm" id="daCapture" disabled>Capture Photo</button>
                         <button type="button" class="btn btn-dark-sm" id="daRetake" hidden>Retake</button>
                     </div>
                     <div class="mini">Photos can only be taken inside this system; picking a file from your gallery is not allowed. A watermark with the location, date/time and a reference code is added automatically.</div>
@@ -330,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function () {
         latEl.value = lat.toFixed(6); lngEl.value = lng.toFixed(6);
         accEl.value = acc == null ? '' : Math.round(acc);
         srcEl.value = 'device';
-        statusEl.textContent = '📍 Photo georeferenced: ' + lat.toFixed(6) + ', ' + lng.toFixed(6) +
+        statusEl.textContent = 'Photo georeferenced: ' + lat.toFixed(6) + ', ' + lng.toFixed(6) +
             (acc != null ? ' (±' + Math.round(acc) + ' m)' : '');
         relocateBtn.hidden = true;
         mapEl.hidden = false;

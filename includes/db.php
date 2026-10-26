@@ -83,6 +83,16 @@ function db(): PDO
     static $pdo = null;
 
     if ($pdo === null) {
+        // Fail with a clear message when connection settings are missing
+        // (an empty DB_HOST otherwise produces a confusing 'could not translate host name "port=5432"').
+        $missing = [];
+        foreach (['DB_HOST' => DB_HOST, 'DB_NAME' => DB_NAME, 'DB_USER' => DB_USER] as $k => $v) {
+            if ($v === false || $v === null || trim((string) $v) === '') $missing[] = $k;
+        }
+        if ($missing) {
+            die('Database is not configured. Missing environment variable(s): ' . implode(', ', $missing)
+                . '. Set them in Render (Environment tab) or in a local .env file - see .env.example.');
+        }
         $dsn = 'pgsql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME;
         try {
             $pdo = new PDO($dsn, DB_USER, DB_PASS, [

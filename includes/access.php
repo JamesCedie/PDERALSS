@@ -90,7 +90,7 @@ function require_page_access(): void
     <body>
         <div class="login-page">
             <div class="login-card">
-                <div class="shield">🚫</div>
+                <div class="shield"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></div>
                 <h1>Access Denied</h1>
                 <p>Your role (<b><?= htmlspecialchars($role) ?></b>) does not have permission
                    to view <b><?= htmlspecialchars($page) ?></b>.</p>

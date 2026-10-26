@@ -135,7 +135,7 @@ foreach ($users as $u) {
 
 <div class="page-head">
     <h1 class="page-title">User Management</h1>
-    <button class="btn btn-primary" onclick="openModal('userModal')">＋ Add User</button>
+    <button class="btn btn-primary" onclick="openModal('userModal')">Add User</button>
 </div>
 
 <?php if ($successMsg): ?>
@@ -151,14 +151,9 @@ foreach ($users as $u) {
         [$roleCounts['MDRRMO Officer'], 'MDRRMO Officers', 'green'],
         [$roleCounts['Social Worker'], 'Social Workers', 'gray'],
     ] as $s): ?>
-        <div class="card">
-            <div class="stat">
-                <div class="stat-icon <?=$s[2]?>">👤</div>
-                <div>
-                    <div class="stat-value"><?=$s[0]?></div>
-                    <div class="stat-label"><?=$s[1]?></div>
-                </div>
-            </div>
+        <div class="card sw-summary-card">
+            <div class="stat-label"><?=$s[1]?></div>
+            <div class="stat-value"><?=$s[0]?></div>
         </div>
     <?php endforeach; ?>
 </div>
@@ -209,7 +204,7 @@ foreach ($users as $u) {
     <div class="modal-box">
         <div class="modal-head">
             <h2>Add New User</h2>
-            <button class="icon-btn" onclick="closeModal('userModal')">✕</button>
+            <button class="icon-btn" onclick="closeModal('userModal')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <form method="post">
             <input type="hidden" name="create_user" value="1">
@@ -263,7 +258,7 @@ foreach ($users as $u) {
         <div class="modal-box">
             <div class="modal-head">
                 <h2>Edit User</h2>
-                <button class="icon-btn" onclick="closeModal('editModal-<?= $u['user_id'] ?>')">✕</button>
+                <button class="icon-btn" onclick="closeModal('editModal-<?= $u['user_id'] ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
             <form method="post">
                 <input type="hidden" name="edit_user" value="1">

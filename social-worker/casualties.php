@@ -83,7 +83,7 @@ page_start('Casualty Recording');
         Event:<strong><?= md_h(($currentEvent['event_name'] ?? 'No event selected') . ($currentEvent ? ' · ' . ($socialWorkerAddress ? md_short_barangay($socialWorkerAddress) : 'No barangay assigned') : '')) ?></strong>
     </div>
     <?php if ($currentEvent && ($currentEvent['status'] ?? 'Active') === 'Active'): ?>
-        <button class="btn btn-primary" onclick="openModal('casualtyModal')">＋ &nbsp;Add Casualty</button>
+        <button class="btn btn-primary" onclick="openModal('casualtyModal')">Add Casualty</button>
     <?php endif; ?>
 </div>
 
@@ -96,7 +96,7 @@ page_start('Casualty Recording');
 
 <div class="sw-casualty-title">Total Casualties Recorded</div>
 <div class="md-split">
-    <div class="card sw-total-card">
+    <div class="card sw-summary-card">
         <div class="stat-label">Casualty Count</div>
         <div class="stat-value"><?= $total ?></div>
     </div>
@@ -112,7 +112,7 @@ page_start('Casualty Recording');
 
 <div class="sw-casualty-title mt">Casualty Records</div>
 <label class="sw-search">
-    <span aria-hidden="true">⌕</span>
+    <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
     <input type="search" id="swSearch" placeholder="Search..." autocomplete="off">
 </label>
 
@@ -125,8 +125,8 @@ page_start('Casualty Recording');
         <?php else: foreach ($rows as $row): ?>
             <tr data-search="<?= md_h(strtolower($row['name'] . ' ' . $row['type'] . ' ' . $row['severity'] . ' ' . $row['date'])) ?>">
                 <td><?= htmlspecialchars($row['name']) ?></td>
-                <td><?= htmlspecialchars($row['type']) ?></td>
-                <td><?= htmlspecialchars($row['severity']) ?></td>
+                <td><?= status_badge($row['type']) ?></td>
+                <td><?= status_badge($row['severity']) ?></td>
                 <td><?= htmlspecialchars($row['date']) ?></td>
             </tr>
         <?php endforeach; endif; ?>
@@ -141,7 +141,7 @@ page_start('Casualty Recording');
     <div class="modal-box sw-casualty-modal">
         <div class="modal-head">
             <h2>Add Casualty</h2>
-            <button class="icon-btn" onclick="closeModal('casualtyModal')" aria-label="Close">×</button>
+            <button class="icon-btn" onclick="closeModal('casualtyModal')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <form method="post" action="casualties.php?event_id=<?= urlencode((string)$eventId) ?>">
             <input type="hidden" name="action" value="add_casualty">
