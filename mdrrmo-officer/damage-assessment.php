@@ -7,10 +7,17 @@ db_ensure_damage_assessments_table();
 
 // Assessments submitted by Social Workers (view-only here). Family head comes from the linked household.
 $assessments = [];
+$eventId = (int) ($_GET['event_id'] ?? 0);
+$event   = md_find_event($eventId);
+// Scoped to the selected disaster event; with no event selected, every assessment is listed.
 $daRows = db_query(
-    'SELECT d.*, h.firstname, h.middlename, h.lastname, h.nameextension
-     FROM damage_assessments d LEFT JOIN household h ON h.household_id = d.household_id
-     ORDER BY d.created_at DESC'
+    'SELECT d.*, b.name AS barangay, h.firstname, h.middlename, h.lastname, h.nameextension
+     FROM damage_assessments d
+     JOIN household h ON h.household_id = d.household_id
+     JOIN barangays b ON b.barangay_id = h.barangay_id
+     ' . ($event ? 'WHERE d.event_id = ?' : '') . '
+     ORDER BY d.created_at DESC',
+    $event ? [$eventId] : []
 )->fetchAll();
 foreach ($daRows as $r) {
     $head = trim((string) ($r['lastname'] ?? ''));
@@ -33,7 +40,6 @@ foreach ($daRows as $r) {
         'assessed_date'    => $date,
         'notes'            => $r['description'],
         'ref'              => $r['reference_code'],
-        'asset_type'       => $r['asset_type'],
         'reporter'         => $r['reporter'],
         'lat'              => $r['latitude'] !== null ? (float) $r['latitude'] : null,
         'lng'              => $r['longitude'] !== null ? (float) $r['longitude'] : null,
@@ -64,8 +70,6 @@ function md_dmg_counts(array $perLevel): array
     return [$totally + $partially, $totally, $partially];
 }
 
-$eventId  = (int) ($_GET['event_id'] ?? 0);
-$event    = md_find_event($eventId);
 $evQuery  = $event ? 'event_id=' . $eventId : '';
 $selected = $_GET['barangay'] ?? '';
 $selected = in_array($selected, $names, true) ? $selected : null;
@@ -190,7 +194,7 @@ if ($selected !== null) {
                     <div class="sw-view-item"><label>Date Assessed</label><div><?= md_h(md_date($r['assessed_date'])) ?></div></div>
                     <div class="sw-view-item md-view-wide"><label>Notes</label><div><?= $r['notes'] ? md_h($r['notes']) : 'No notes.' ?></div></div>
                     <div class="sw-view-item"><label>Reference</label><div><?= md_h($r['ref']) ?></div></div>
-                    <div class="sw-view-item"><label>Asset Type · Reported Damage</label><div><?= md_h($r['asset_type']) ?> · <?= md_h($r['reported_level']) ?></div></div>
+                    <div class="sw-view-item"><label>Reported Damage</label><div><?= md_h($r['reported_level']) ?></div></div>
                     <div class="sw-view-item md-view-wide"><label>Photo Evidence (watermarked)</label>
                         <div>
                             <?php if ($r['has_photo']): ?>

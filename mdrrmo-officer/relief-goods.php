@@ -100,7 +100,7 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
                     <div class="rg-field">
                         <label for="rgBrgy">Barangay</label>
                         <input id="rgBrgy" name="barangay" list="rgBrgyList" maxlength="100" required autocomplete="off" value="<?= md_h($oldDist['barangay'] ?? '') ?>">
-                        <datalist id="rgBrgyList"><?php foreach (MD_BARANGAYS as $b): ?><option value="<?= md_h($b) ?>"><?php endforeach; ?></datalist>
+                        <datalist id="rgBrgyList"><?php foreach (brgy_names() as $b): ?><option value="<?= md_h($b) ?>"><?php endforeach; ?></datalist>
                     </div>
                     <div class="rg-field">
                         <label for="rgItem">Item</label>

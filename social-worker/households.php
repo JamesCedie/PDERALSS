@@ -2,7 +2,7 @@
 require_once '../includes/access.php'; require_page_access();
 require_once '../includes/db.php';
 
-$currentUser         = db_select_one('users', 'user_id = ?', [$_SESSION['user']['id'] ?? null]);
+$currentUser         = db_user_with_barangay($_SESSION['user']['id'] ?? null);
 $socialWorkerAddress = $currentUser['address'] ?? '';
 
 $successMsg = null;
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['stage']) && $_POST['s
             'is_4ps_member'         => $is4ps,
             'pwd_count'             => $pwdCount,
             'senior_citizens'       => $seniorCount,
-            'barangay'              => $socialWorkerAddress,
+            'barangay_id'           => (int) $currentUser['barangay_id'],
             'created_by'            => $_SESSION['user']['id'] ?? null,
         ]);
 
@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_household'])) {
 
     if (!$target) {
         $errorMsg = 'Household not found.';
-    } elseif ($target['barangay'] !== $socialWorkerAddress) {
+    } elseif ((int) $target['barangay_id'] !== (int) ($currentUser['barangay_id'] ?? 0)) {
         $errorMsg = 'You can only edit households in your own barangay.';
     } else {
         db_update('household', [
@@ -201,7 +201,7 @@ $stage2 = isset($_GET['stage']) && $_GET['stage'] === '2' && isset($_SESSION['pe
 $stage2TotalMembers = $stage2 ? (int) ($_SESSION['pending_total_members'] ?? 1) : 1;
 
 // ── Household list data ───────────────────────────────────────────────────────
-$households = db_select('household', 'barangay = ?', [$socialWorkerAddress], '*', 'household_id DESC');
+$households = db_query('SELECT h.*, b.name AS barangay FROM household h JOIN barangays b ON b.barangay_id = h.barangay_id WHERE h.barangay_id = ? ORDER BY h.household_id DESC', [(int) ($currentUser['barangay_id'] ?? 0)])->fetchAll();
 $totalHouseholds = count($households);
 $fourPsCount     = count(array_filter($households, fn($h) => $h['is_4ps_member'] === 'Yes'));
 $totalPwd        = array_sum(array_column($households, 'pwd_count'));

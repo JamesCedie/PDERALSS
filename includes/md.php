@@ -8,8 +8,6 @@
 
 require_once __DIR__ . '/db.php';
 
-// Same barangay list used by User Management / Households.
-const MD_BARANGAYS     = ['Brgy. Jaro', 'Brgy. Molo', 'Brgy. Mandurriao', 'Brgy. Arevalo', 'Brgy. La Paz'];
 const MD_DISASTER_TYPES = ['Typhoon', 'Flood', 'Earthquake', 'Landslide', 'Fire'];
 const MD_DAMAGE_LEVELS = ['Totally Damaged', 'Partially Damaged'];
 
@@ -25,12 +23,13 @@ function md_short_barangay(string $barangay): string
     return $short !== '' ? $short : $barangay;
 }
 
-/** Fixed barangay list, plus any extra barangay names found in the data. */
+/** All barangay names from the barangays table, plus any extra names passed in. */
 function md_barangay_names(array $extra = []): array
 {
-    $extra = array_values(array_diff(array_unique(array_filter(array_map('strval', $extra))), MD_BARANGAYS));
+    $base  = brgy_names();
+    $extra = array_values(array_diff(array_unique(array_filter(array_map('strval', $extra))), $base));
     sort($extra);
-    return array_merge(MD_BARANGAYS, $extra);
+    return array_merge($base, $extra);
 }
 
 /** Formats a date / timestamp in Philippine time. */

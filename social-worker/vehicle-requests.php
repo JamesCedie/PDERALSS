@@ -4,7 +4,7 @@ require_once '../includes/vehicle.php';
 vr_ensure_table();
 
 $userId      = (string) ($_SESSION['user']['id'] ?? '');
-$currentUser = db_select_one('users', 'user_id = ?', [$userId]);
+$currentUser = db_user_with_barangay($userId);
 $barangay    = trim((string) ($currentUser['address'] ?? ''));
 
 // ── Create a vehicle request ────────────────────────────────────────────────
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
             $pdo = db();
             $pdo->beginTransaction();
             $row = db_insert('vehicle_requests', [
-                'barangay'       => $barangay,
+                'barangay_id'    => (int) $currentUser['barangay_id'],
                 'purpose'        => $purpose,
                 'passengers'     => $passengers,
                 'urgency'        => $urgency,
@@ -75,15 +75,15 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 
 // History is scoped to the worker's assigned barangay, so every barangay sees
 // only its own requests. With no barangay assigned, nothing is shown.
-$scope    = $barangay !== '' ? 'barangay = ?' : '1=0';
-$scopeArg = $barangay !== '' ? [$barangay] : [];
+$scope    = $barangay !== '' ? 'barangay_id = ?' : '1=0';
+$scopeArg = $barangay !== '' ? [(int) $currentUser['barangay_id']] : [];
 
 $counts   = vr_status_counts($scope, $scopeArg);
 $requests = db_query(
     "SELECT v.*, TRIM(CONCAT(u.first_name, ' ', u.last_name)) AS requester_name
      FROM vehicle_requests v
      LEFT JOIN users u ON u.user_id::text = v.requested_by
-     WHERE v." . ($barangay !== '' ? 'barangay = ?' : '1=0') . "
+     WHERE v." . ($barangay !== '' ? 'barangay_id = ?' : '1=0') . "
      ORDER BY v.created_at DESC, v.request_id DESC",
     $scopeArg
 )->fetchAll();

@@ -5,8 +5,13 @@ require_once '../includes/md.php';
 db_ensure_disaster_event_status();
 db_ensure_evac_center_status_table();
 
-$currentUser         = db_select_one('users', 'user_id = ?', [$_SESSION['user']['id'] ?? null]);
+$currentUser         = db_user_with_barangay($_SESSION['user']['id'] ?? null);
 $socialWorkerAddress = $currentUser['address'] ?? '';
+$myBarangayId        = (int) ($currentUser['barangay_id'] ?? 0);
+// The Social Worker's evacuation center (one center per barangay).
+$myCenterId = $myBarangayId
+    ? (int) db_query('SELECT center_id FROM evacuation_centers WHERE barangay_id = ?', [$myBarangayId])->fetchColumn()
+    : 0;
 
 // Which event are we managing? Default to most recent Active event
 $eventId = (int) ($_GET['event_id'] ?? 0);
@@ -21,8 +26,8 @@ $errorMsg   = null;
 
 // A center marked Full cannot take new evacuees.
 $centerIsFull = false;
-if ($eventId && $socialWorkerAddress) {
-    $fullRow = db_select_one('evacuation_center_status', 'event_id = ? AND barangay = ?', [$eventId, $socialWorkerAddress], 'status');
+if ($eventId && $myCenterId) {
+    $fullRow = db_select_one('evacuation_center_status', 'event_id = ? AND center_id = ?', [$eventId, $myCenterId], 'status');
     $centerIsFull = ($fullRow['status'] ?? '') === 'Full';
 }
 
@@ -32,22 +37,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evacuee']) && $ev
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evacuee']) && $eventId) {
     $name        = trim($_POST['name'] ?? '');
     $householdId = (int) ($_POST['household_id'] ?? 0) ?: null;
-    $householdNo = (int) ($_POST['household_no'] ?? 0) ?: null;
+    $peopleCount = max(1, (int) ($_POST['household_no'] ?? 0));   // form field "household_no" = number of people
 
-    if ($name && $socialWorkerAddress) {
-        db_insert('evacuation_evacuees', [
-            'event_id'     => $eventId,
-            'barangay'     => $socialWorkerAddress,
-            'household_id' => $householdId,
-            'name'         => $name,
-            'household_no' => $householdNo,
-            'added_by'     => $_SESSION['user']['id'] ?? null,
-        ]);
-        $_SESSION['flash_success'] = 'Evacuee added.';
-        header('Location: evacuation-centers.php?event_id=' . $eventId);
-        exit;
+    if ($name && $myCenterId) {
+        try {
+            db_insert('evacuation_evacuees', [
+                'event_id'     => $eventId,
+                'center_id'    => $myCenterId,
+                'household_id' => $householdId,
+                'name'         => $name,
+                'people_count' => $peopleCount,
+                'added_by'     => $_SESSION['user']['id'] ?? null,
+            ]);
+            $_SESSION['flash_success'] = 'Evacuee added.';
+            header('Location: evacuation-centers.php?event_id=' . $eventId);
+            exit;
+        } catch (PDOException $e) {
+            // Unique index: a registered household can be checked in only once per event.
+            $errorMsg = ($e->getCode() === '23505')
+                ? 'This household is already registered as evacuated for this event.'
+                : 'Could not save the evacuee. Please try again.';
+        }
+    } elseif ($name) {
+        $errorMsg = 'Your account has no barangay assigned. Please contact an MDRRMO Officer.';
+    } else {
+        $errorMsg = 'Please enter a name.';
     }
-    $errorMsg = 'Please enter a name.';
 }
 
 // Handle the Occupancy Status dropdown (saved per event + barangay)
@@ -57,17 +72,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['set_center_status']) 
         $errorMsg = 'Your session expired. Please reload the page and try again.';
     } elseif (!$currentEvent || ($currentEvent['status'] ?? 'Active') !== 'Active') {
         $errorMsg = 'This disaster event is no longer active, so the status can no longer be changed.';
-    } elseif (!$socialWorkerAddress) {
+    } elseif (!$myCenterId) {
         $errorMsg = 'Your account has no barangay assigned. Please contact an MDRRMO Officer.';
     } elseif (!in_array($newStatus, EVAC_CENTER_SW_OPTIONS, true)) {
         $errorMsg = 'Please choose a valid occupancy status.';
     } else {
         db_query(
-            'INSERT INTO public.evacuation_center_status (event_id, barangay, status, updated_by, updated_at)
+            'INSERT INTO public.evacuation_center_status (event_id, center_id, status, updated_by, updated_at)
              VALUES (?, ?, ?, ?, NOW())
-             ON CONFLICT (event_id, barangay)
+             ON CONFLICT (event_id, center_id)
              DO UPDATE SET status = EXCLUDED.status, updated_by = EXCLUDED.updated_by, updated_at = NOW()',
-            [$eventId, $socialWorkerAddress, $newStatus, $_SESSION['user']['id'] ?? null]
+            [$eventId, $myCenterId, $newStatus, $_SESSION['user']['id'] ?? null]
         );
         $_SESSION['flash_success'] = 'Occupancy status set to ' . $newStatus . '.';
         header('Location: evacuation-centers.php?event_id=' . $eventId);
@@ -82,8 +97,8 @@ if (isset($_GET['search_household'])) {
     if (strlen($q) < 2) { echo json_encode([]); exit; }
     $like = '%' . $q . '%';
     $results = db_select('household',
-        "(firstname ILIKE ? OR lastname ILIKE ?) AND barangay = ?",
-        [$like, $like, $socialWorkerAddress],
+        "(firstname ILIKE ? OR lastname ILIKE ?) AND barangay_id = ?",
+        [$like, $like, $myBarangayId],
         'household_id, firstname, middlename, lastname, nameextension, total_family_members',
         'lastname ASC', 10
     );
@@ -104,12 +119,12 @@ page_start('Assigned Evacuation Center');
 
 if (isset($_SESSION['flash_success'])) { $successMsg = $_SESSION['flash_success']; unset($_SESSION['flash_success']); }
 
-$evacuees    = $eventId ? db_select('evacuation_evacuees', 'event_id = ? AND barangay = ?', [$eventId, $socialWorkerAddress], '*', 'created_at DESC') : [];
-$totalPeople = array_sum(array_column($evacuees, 'household_no'));
+$evacuees    = ($eventId && $myCenterId) ? db_select('evacuation_evacuees', 'event_id = ? AND center_id = ?', [$eventId, $myCenterId], '*', 'created_at DESC') : [];
+$totalPeople = array_sum(array_column($evacuees, 'people_count'));
 $totalHH     = count($evacuees);
 
-$storedStatus  = ($eventId && $socialWorkerAddress)
-    ? db_select_one('evacuation_center_status', 'event_id = ? AND barangay = ?', [$eventId, $socialWorkerAddress], 'status')
+$storedStatus  = ($eventId && $myCenterId)
+    ? db_select_one('evacuation_center_status', 'event_id = ? AND center_id = ?', [$eventId, $myCenterId], 'status')
     : null;
 $centerStatus  = $storedStatus['status'] ?? 'Available';
 // Legacy values (Occupied / Near Capacity) are no longer selectable; show them as Available in the dropdown.
@@ -178,7 +193,7 @@ $eventIsActive = $currentEvent && ($currentEvent['status'] ?? 'Active') === 'Act
                     <?php else: foreach ($evacuees as $e): ?>
                         <tr data-search="<?= md_h(strtolower($e['name'])) ?>">
                             <td><?= htmlspecialchars($e['name']) ?></td>
-                            <td><?= htmlspecialchars($e['household_no'] ?? '—') ?></td>
+                            <td><?= htmlspecialchars($e['people_count'] ?? '—') ?></td>
                             <td><?= htmlspecialchars(date('M d, Y H:i', strtotime($e['created_at']))) ?></td>
                         </tr>
                     <?php endforeach; endif; ?>

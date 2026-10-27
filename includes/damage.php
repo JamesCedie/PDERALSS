@@ -12,10 +12,9 @@ require_once __DIR__ . '/supabase.php';
 
 const DA_MAX_BYTES    = 12 * 1024 * 1024;
 const DA_MAX_EDGE     = 1600;
-const DA_ASSET_TYPES  = ['House', 'Infrastructure', 'Road', 'Facility'];
 const DA_DAMAGE_TYPES = ['Fully Damaged', 'Partially Damaged', 'Minor Damage'];
-// Rough bounding box of Iloilo City: lat min, lat max, lng min, lng max.
-const DA_CITY_BBOX    = [10.64, 10.78, 122.47, 122.62];
+// Rough bounding box of Oton, Iloilo: lat min, lat max, lng min, lng max.
+const DA_CITY_BBOX    = [10.67, 10.78, 122.41, 122.53];
 // GPS accuracy (metres) worse than this is flagged 'low_accuracy' and refused by the form.
 // Laptops have no GPS (Wi-Fi/IP location is typically 100-5000 m), so for localhost testing set
 // DA_MAX_ACCURACY_M=100000 in .env. Keep the default (50) in production.
@@ -107,7 +106,7 @@ function da_exif_read(string $file, string $mime): array
 function da_flag_labels(?string $flags): array
 {
     $map = [
-        'outside_city'  => 'Location is outside Iloilo City',
+        'outside_city'  => 'Location is outside Oton',
         'exif_mismatch' => 'Photo GPS metadata differs from the submitted location',
         'old_photo'     => 'Photo was taken more than 24 hours before submission',
         'low_accuracy'  => 'GPS accuracy was worse than ' . DA_MAX_ACC_M . ' m',
@@ -359,8 +358,11 @@ function da_submit(string $userId, string $userName, string $barangay, array $in
     $reporter = mb_substr(trim((string) ($in['reporter'] ?? '')), 0, 150);
     if ($reporter === '') $reporter = $userName;
 
-    $asset = (string) ($in['asset_type'] ?? '');
-    if (!in_array($asset, DA_ASSET_TYPES, true)) throw new DaException('Please choose a valid asset type.');
+    // Assessments belong to a disaster event, and only an Active event accepts new ones.
+    $eventId = (int) ($in['event_id'] ?? 0);
+    $event   = $eventId > 0 ? db_select_one('disaster_events', 'event_id = ?', [$eventId], 'event_id, status') : null;
+    if (!$event) throw new DaException('Please choose the disaster event this assessment belongs to.');
+    if (($event['status'] ?? 'Active') !== 'Active') throw new DaException('That disaster event is no longer active.');
 
     $damage = (string) ($in['damage_status'] ?? '');
     if (!in_array($damage, DA_DAMAGE_TYPES, true)) throw new DaException('Please choose a valid damage status.');
@@ -368,7 +370,7 @@ function da_submit(string $userId, string $userName, string $barangay, array $in
     $desc = mb_substr(trim((string) ($in['description'] ?? '')), 0, 2000);
 
     $hid = (int) ($in['household_id'] ?? 0);
-    $hh  = $hid > 0 ? db_select_one('household', 'household_id = ? AND barangay = ?', [$hid, $barangay], 'household_id') : null;
+    $hh  = $hid > 0 ? db_select_one('household', 'household_id = ? AND barangay_id = ?', [$hid, brgy_id($barangay)], 'household_id') : null;
     if (!$hh) throw new DaException('Please select a household from your barangay.');
 
     if (!isset($in['latitude'], $in['longitude']) || !is_numeric($in['latitude']) || !is_numeric($in['longitude'])) {
@@ -458,10 +460,9 @@ function da_submit(string $userId, string $userName, string $barangay, array $in
     try {
         $row = db_insert('damage_assessments', [
             'reference_code'  => $ref,
+            'event_id'        => $eventId,
             'household_id'    => $hid,
-            'barangay'        => $barangay,
             'reporter'        => $reporter,
-            'asset_type'      => $asset,
             'damage_status'   => $damage,
             'description'     => $desc !== '' ? $desc : null,
             'latitude'        => $lat,

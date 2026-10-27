@@ -2,7 +2,7 @@
 require_once '../includes/access.php'; require_page_access(); require '../includes/layout.php';
 page_start('Reports');
 require_once '../includes/reports.php';
-$swUser = db_select_one('users', 'user_id = ?', [$_SESSION['user']['id'] ?? null]);
+$swUser = db_user_with_barangay($_SESSION['user']['id'] ?? null);
 $totals = report_totals(trim((string) ($swUser['address'] ?? '')) ?: null);
 
 $types = [

@@ -7,9 +7,7 @@ const PROTECTED_ADMIN_EMAIL = 'ADMIN@gmail.com';
 
 const ROLES = ['MDRRMO Officer', 'Social Worker'];
 
-// Same barangay list used in the household form.
-const BARANGAYS = ['Brgy. Jaro', 'Brgy. Molo', 'Brgy. Mandurriao', 'Brgy. Arevalo', 'Brgy. La Paz'];
-
+// Barangay list comes from the barangays table (brgy_names()).
 function is_protected_admin(array $user): bool
 {
     return strcasecmp($user['email'], PROTECTED_ADMIN_EMAIL) === 0;
@@ -46,9 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
     $email     = trim($_POST['email'] ?? '');
     $role      = in_array($_POST['role'] ?? '', ROLES, true) ? $_POST['role'] : 'Social Worker';
     $password  = $_POST['password'] ?? '';
-    $address   = ($role === 'Social Worker' && in_array($_POST['address'] ?? '', BARANGAYS, true))
-        ? $_POST['address']
-        : null;
+    $barangayId = ($role === 'Social Worker') ? (brgy_id($_POST['address'] ?? '') ?: null) : null;
 
     if ($firstname && $lastname && $username && $email && $password) {
         $existing = db_select_one('users', 'email = ? OR username = ?', [$email, $username]);
@@ -63,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
                 'email'     => $email,
                 'password'  => password_hash($password, PASSWORD_DEFAULT),
                 'role'      => $role,
-                'address'   => $address,
+                'barangay_id' => $barangayId,
             ]);
             $successMsg = 'User account created.';
         }
@@ -88,9 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user'])) {
         $email     = trim($_POST['email'] ?? '');
         $role      = in_array($_POST['role'] ?? '', ROLES, true) ? $_POST['role'] : 'Social Worker';
         $password  = $_POST['password'] ?? '';
-        $address   = ($role === 'Social Worker' && in_array($_POST['address'] ?? '', BARANGAYS, true))
-            ? $_POST['address']
-            : null;
+        $barangayId = ($role === 'Social Worker') ? (brgy_id($_POST['address'] ?? '') ?: null) : null;
 
         $data = [
             'first_name' => $firstname,
@@ -98,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user'])) {
             'username'  => $username,
             'email'     => $email,
             'role'      => $role,
-            'address'   => $address,
+            'barangay_id' => $barangayId,
         ];
         if ($password !== '') {
             $data['password'] = password_hash($password, PASSWORD_DEFAULT);
@@ -113,16 +107,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user'])) {
 if (isset($_GET['delete'])) {
     $target = db_select_one('users', 'user_id = ?', [$_GET['delete']]);
     if ($target && !is_protected_admin($target)) {
-        db_delete('users', 'user_id = ?', [$_GET['delete']]);
+        try {
+            db_delete('users', 'user_id = ?', [$_GET['delete']]);
+        } catch (PDOException $e) {
+            // vehicle_requests.requested_by is RESTRICT: a user with requests on record cannot be removed.
+            $errorMsg = 'This user has vehicle requests on record and cannot be deleted.';
+        }
     }
-    header('Location: users.php');
-    exit;
+    if (empty($errorMsg)) {
+        header('Location: users.php');
+        exit;
+    }
 }
 
 require '../includes/layout.php';
 page_start('User Management');
 
-$users = db_select('users', '1=1', [], '*', 'user_id DESC');
+$users = db_query('SELECT u.*, b.name AS address FROM users u LEFT JOIN barangays b ON b.barangay_id = u.barangay_id ORDER BY u.user_id DESC')->fetchAll();
 
 $roleCounts = [
     'MDRRMO Officer' => 0,
@@ -236,7 +237,7 @@ foreach ($users as $u) {
                 <div class="field" id="addAddressField" style="display:none">
                     <label>Address (Barangay)</label>
                     <select name="address">
-                        <?php foreach (BARANGAYS as $b): ?>
+                        <?php foreach (brgy_names() as $b): ?>
                             <option><?= $b ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -291,7 +292,7 @@ foreach ($users as $u) {
                     <div class="field" id="editAddressField-<?= $u['user_id'] ?>" style="<?= $u['role'] === 'Social Worker' ? '' : 'display:none' ?>">
                         <label>Address (Barangay)</label>
                         <select name="address">
-                            <?php foreach (BARANGAYS as $b): ?>
+                            <?php foreach (brgy_names() as $b): ?>
                                 <option <?= $u['address'] === $b ? 'selected' : '' ?>><?= $b ?></option>
                             <?php endforeach; ?>
                         </select>

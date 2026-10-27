@@ -8,13 +8,16 @@ $eventId = (int) ($_GET['event_id'] ?? 0);
 $event   = md_find_event($eventId);
 
 // MDRRMO is not barangay-scoped: every barangay that reported evacuees for this event is combined.
-// Note: evacuation_evacuees.household_no stores the number of people in that household
+// Note: evacuation_evacuees.people_count stores the number of people in that household
 // (the Social Worker page sums it as "Total People"), so the same convention is used here.
 $perBarangay = [];
 if ($event) {
     $rows = db_query(
-        'SELECT barangay, COUNT(*) AS households, COALESCE(SUM(household_no), 0) AS people
-         FROM evacuation_evacuees WHERE event_id = ? GROUP BY barangay',
+        'SELECT b.name AS barangay, COUNT(*) AS households, COALESCE(SUM(x.people_count), 0) AS people
+         FROM evacuation_evacuees x
+         JOIN evacuation_centers c ON c.center_id = x.center_id
+         JOIN barangays b ON b.barangay_id = c.barangay_id
+         WHERE x.event_id = ? GROUP BY b.name',
         [$eventId]
     )->fetchAll();
     foreach ($rows as $r) {
@@ -24,9 +27,26 @@ if ($event) {
 // Availability chosen by each Social Worker (Occupancy Status dropdown); falls back to Occupied/Available by headcount.
 $storedStatus = [];
 if ($event) {
-    foreach (db_select('evacuation_center_status', 'event_id = ?', [$eventId], 'barangay, status') as $r) {
+    foreach (db_query(
+        'SELECT b.name AS barangay, s.status
+         FROM evacuation_center_status s
+         JOIN evacuation_centers c ON c.center_id = s.center_id
+         JOIN barangays b ON b.barangay_id = c.barangay_id
+         WHERE s.event_id = ?',
+        [$eventId]
+    )->fetchAll() as $r) {
         $storedStatus[$r['barangay']] = $r['status'];
     }
+}
+// Center name + map position per barangay. A center with no coordinates of its own uses its barangay's.
+$centerInfo = [];
+foreach (db_query(
+    'SELECT b.name AS barangay, c.center_name,
+            COALESCE(c.latitude,  b.latitude)  AS lat,
+            COALESCE(c.longitude, b.longitude) AS lng
+     FROM evacuation_centers c JOIN barangays b ON b.barangay_id = c.barangay_id'
+)->fetchAll() as $r) {
+    $centerInfo[$r['barangay']] = $r;
 }
 $names = md_barangay_names(array_keys($perBarangay));
 
@@ -52,21 +72,26 @@ if ($selected !== null) {
         $reporting   = count($perBarangay);
         $max         = max(1, $perBarangay ? max(array_column($perBarangay, 'people')) : 1);
 
-        // Map pin positions (real lat/lng, Iloilo City). Barangays without a preset coordinate are listed but not pinned.
-        $pinSpots = [
-            'Brgy. Jaro'       => [10.7202, 122.5621],
-            'Brgy. Molo'       => [10.6969, 122.5436],
-            'Brgy. Mandurriao' => [10.7116, 122.5395],
-            'Brgy. La Paz'     => [10.7160, 122.5490],
-            'Brgy. Arevalo'    => [10.6830, 122.5240],
-        ];
+        // Oton boundary for the map mask (run oton_map_setup.sql to create/fill the table).
+        $boundaryRings = [];
+        try {
+            $bRow = db_query('SELECT geojson FROM public.municipality_boundary WHERE id = 1')->fetch();
+            $bGeo = $bRow ? json_decode(is_string($bRow['geojson']) ? $bRow['geojson'] : json_encode($bRow['geojson']), true) : null;
+            if ($bGeo && ($bGeo['type'] ?? '') === 'Polygon') {
+                $boundaryRings[] = array_map(fn($c) => [(float) $c[1], (float) $c[0]], $bGeo['coordinates'][0]);
+            }
+        } catch (Throwable $e) { /* table not created yet: map shows without a boundary */ }
+
+        // Map pin positions come from the database (center's own coordinates, else its barangay's).
+        // Barangays without coordinates yet are listed but not pinned.
         $centers  = [];
         foreach ($names as $n) {
-            $spot   = $pinSpots[$n] ?? [null, null];
+            $ci     = $centerInfo[$n] ?? null;
+            $spot   = [isset($ci['lat']) ? (float) $ci['lat'] : null, isset($ci['lng']) ? (float) $ci['lng'] : null];
             $people = $perBarangay[$n]['people'] ?? 0;
             $centers[] = [
                 'barangay'   => $n,
-                'name'       => md_short_barangay($n) . ' Evacuation Center',
+                'name'       => $ci['center_name'] ?? (md_short_barangay($n) . ' Evacuation Center'),
                 'people'     => $people,
                 'households' => $perBarangay[$n]['households'] ?? 0,
                 'status'     => $storedStatus[$n] ?? 'Available',
@@ -101,7 +126,7 @@ if ($selected !== null) {
 
         <div class="md-map-body">
             <div class="md-map" id="mdMap">
-                <div id="mdLeaflet" class="md-leaflet" aria-label="Map of Iloilo City"></div>
+                <div id="mdLeaflet" class="md-leaflet" aria-label="Map of Oton, Iloilo"></div>
                 <div class="md-map-label">MUNICIPAL COVERAGE</div>
                 <div class="md-map-zoom">
                     <button type="button" id="mdZoomIn" aria-label="Zoom in">+</button>
@@ -154,14 +179,14 @@ if ($selected !== null) {
         var badgeClass = { Available: 'b-green', Occupied: 'b-yellow', 'Near Capacity': 'b-yellow', Full: 'b-red' };
         var pinEls = {}, markers = {};
 
-        // Live OpenStreetMap (Leaflet) centred on Iloilo City
-        var map = L.map('mdLeaflet', { zoomControl: false, scrollWheelZoom: true }).setView([10.705, 122.545], 13);
+        // Live OpenStreetMap (Leaflet) centred on Oton
+        var map = L.map('mdLeaflet', { zoomControl: false, scrollWheelZoom: true }).setView([10.726, 122.472], 12);
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Dim everything outside Iloilo City: a world-sized mask with the city boundary cut out as a hole.
+        // Dim everything outside Oton: a world-sized mask with the municipal boundary cut out as a hole.
         var cityLayers = null, lastRings = null;
         function themeVar(name, fallback) {
             var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -180,39 +205,10 @@ if ($selected !== null) {
             cityLayers = L.layerGroup([mask, outline]).addTo(map);
             map.setMaxBounds(outline.getBounds().pad(0.5));
         }
-        // Approximate outline, used only if the live boundary cannot be fetched.
-        var fallbackRing = [[10.760,122.545],[10.755,122.575],[10.735,122.592],[10.715,122.590],[10.700,122.580],
-            [10.685,122.565],[10.670,122.540],[10.660,122.510],[10.670,122.490],[10.690,122.495],[10.705,122.515],
-            [10.725,122.520],[10.745,122.525]];
-        function ringsFromGeoJSON(g) {
-            var polys = g.type === 'Polygon' ? [g.coordinates] : (g.type === 'MultiPolygon' ? g.coordinates : []);
-            return polys.map(function (poly) {
-                return poly[0].map(function (c) { return [c[1], c[0]]; });
-            });
-        }
-        drawBoundary([fallbackRing]);
+        // Oton boundary from public.municipality_boundary (GeoJSON Polygon, [lng,lat] -> Leaflet [lat,lng]).
+        var otonRings = <?= json_encode($boundaryRings, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        if (otonRings && otonRings.length) drawBoundary(otonRings);
         document.addEventListener('themechange', function () { if (lastRings) drawBoundary(lastRings); });
-        (function loadBoundary() {
-            var KEY = 'mdIloiloBoundary';
-            try {
-                var cached = JSON.parse(localStorage.getItem(KEY) || 'null');
-                if (cached && cached.length) { drawBoundary(cached); return; }
-            } catch (e) {}
-            fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent('Iloilo City, Philippines') +
-                  '&format=jsonv2&polygon_geojson=1&polygon_threshold=0.0005&limit=5&countrycodes=ph')
-                .then(function (r) { return r.json(); })
-                .then(function (list) {
-                    var hit = (list || []).filter(function (x) {
-                        return x.geojson && (x.geojson.type === 'Polygon' || x.geojson.type === 'MultiPolygon') && x.osm_type === 'relation';
-                    })[0];
-                    if (!hit) return;
-                    var rings = ringsFromGeoJSON(hit.geojson);
-                    if (!rings.length) return;
-                    drawBoundary(rings);
-                    try { localStorage.setItem(KEY, JSON.stringify(rings)); } catch (e) {}
-                })
-                .catch(function () { /* keep the approximate outline */ });
-        })();
 
         function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
@@ -271,8 +267,11 @@ if ($selected !== null) {
 <?php else: ?>
     <?php
         $records = db_query(
-            'SELECT name, household_no, created_at FROM evacuation_evacuees WHERE event_id = ? AND barangay = ? ORDER BY created_at DESC',
-            [$eventId, $selected]
+            'SELECT x.name, x.people_count, x.created_at
+             FROM evacuation_evacuees x
+             JOIN evacuation_centers c ON c.center_id = x.center_id
+             WHERE x.event_id = ? AND c.barangay_id = ? ORDER BY x.created_at DESC',
+            [$eventId, brgy_id($selected)]
         )->fetchAll();
         $people = $perBarangay[$selected]['people'] ?? 0;
         $hh     = $perBarangay[$selected]['households'] ?? 0;
@@ -303,7 +302,7 @@ if ($selected !== null) {
             <?php foreach ($records as $r): ?>
                 <tr data-search="<?= md_h(strtolower($r['name'])) ?>">
                     <td><?= md_h($r['name']) ?></td>
-                    <td><?= md_h($r['household_no'] ?? '—') ?></td>
+                    <td><?= md_h($r['people_count'] ?? '—') ?></td>
                     <td><?= md_h(md_date($r['created_at'], 'M j, Y g:i A')) ?></td>
                 </tr>
             <?php endforeach; ?>

@@ -12,13 +12,17 @@ $perBarangay = [];
 $lastUpdate  = [];
 if ($event) {
     foreach (db_query(
-        'SELECT barangay, MAX(created_at) AS last FROM public.casualties WHERE event_id = ? GROUP BY barangay',
+        'SELECT b.name AS barangay, MAX(x.created_at) AS last
+         FROM public.casualties x JOIN public.barangays b ON b.barangay_id = x.barangay_id
+         WHERE x.event_id = ? GROUP BY b.name',
         [$eventId]
     )->fetchAll() as $r) {
         $lastUpdate[$r['barangay']] = $r['last'];
     }
     $rows = db_query(
-        'SELECT barangay, type, COUNT(*) AS c FROM public.casualties WHERE event_id = ? GROUP BY barangay, type',
+        'SELECT b.name AS barangay, x.type, COUNT(*) AS c
+         FROM public.casualties x JOIN public.barangays b ON b.barangay_id = x.barangay_id
+         WHERE x.event_id = ? GROUP BY b.name, x.type',
         [$eventId]
     )->fetchAll();
     foreach ($rows as $r) {
@@ -98,8 +102,8 @@ if ($selected !== null) {
     <?php
         [$total, $injured, $missing, $fatality] = md_cas_counts($perBarangay[$selected] ?? []);
         $records = db_query(
-            'SELECT name, type, date FROM public.casualties WHERE event_id = ? AND barangay = ? ORDER BY date DESC, casualty_id DESC',
-            [$eventId, $selected]
+            'SELECT name, type, date FROM public.casualties WHERE event_id = ? AND barangay_id = ? ORDER BY date DESC, casualty_id DESC',
+            [$eventId, brgy_id($selected)]
         )->fetchAll();
     ?>
     <div class="sw-event-label">Event:<strong><?= md_h($event['event_name']) ?> · <?= md_h(md_short_barangay($selected)) ?></strong></div>

@@ -5,7 +5,7 @@ require_once '../includes/md.php';
 db_ensure_damage_assessments_table();
 db_ensure_disaster_event_status();
 
-$currentUser = db_select_one('users', 'user_id = ?', [$_SESSION['user']['id'] ?? null]);
+$currentUser = db_user_with_barangay($_SESSION['user']['id'] ?? null);
 $swBarangay  = $currentUser['address'] ?? '';
 
 // Handle "Submit Assessment" (photo + georeference + watermark), then redirect back (PRG).
@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assessment']))
             $_POST,
             $_FILES['photo'] ?? null
         );
-        $_SESSION['da_flash'] = ['success', 'Assessment ' . $saved['reference_code'] . ' submitted for verification.'];
+        $_SESSION['da_flash'] = ['success', 'Assessment ' . $saved['reference_code'] . ' submitted.'];
     } catch (DaException $e) {
         $_SESSION['da_flash'] = ['danger', $e->getMessage()];
     } catch (Throwable $e) {
@@ -48,9 +48,9 @@ $partially = 0;
 $daRows = db_query(
     'SELECT d.*, h.firstname, h.middlename, h.lastname, h.nameextension
      FROM damage_assessments d LEFT JOIN household h ON h.household_id = d.household_id
-     WHERE d.barangay = ?
+     WHERE h.barangay_id = ? AND d.event_id = ?
      ORDER BY d.created_at DESC',
-    [$swBarangay]
+    [(int) ($currentUser['barangay_id'] ?? 0), $activeEvent ? (int) $activeEvent['event_id'] : 0]
 )->fetchAll();
 foreach ($daRows as $r) {
     $head = trim((string) ($r['lastname'] ?? ''));
@@ -69,10 +69,8 @@ foreach ($daRows as $r) {
         'reported' => $r['damage_status'],
         'date'     => md_date($r['created_at']),
         'ref'      => $r['reference_code'],
-        'asset'    => $r['asset_type'],
         'reporter' => $r['reporter'],
         'notes'    => $r['description'],
-        'status'   => $r['status'],
         'lat'      => $r['latitude'] !== null ? (float) $r['latitude'] : null,
         'lng'      => $r['longitude'] !== null ? (float) $r['longitude'] : null,
         'accuracy' => $r['gps_accuracy_m'] !== null ? (int) round((float) $r['gps_accuracy_m']) : null,
@@ -83,7 +81,7 @@ foreach ($daRows as $r) {
 $totalAssessments = count($records);
 
 $households = $swBarangay !== ''
-    ? db_select('household', 'barangay = ?', [$swBarangay], 'household_id, firstname, middlename, lastname, nameextension', 'lastname ASC, firstname ASC')
+    ? db_select('household', 'barangay_id = ?', [(int) ($currentUser['barangay_id'] ?? 0)], 'household_id, firstname, middlename, lastname, nameextension', 'lastname ASC, firstname ASC')
     : [];
 ?>
 
@@ -151,8 +149,7 @@ $households = $swBarangay !== ''
                 <div class="sw-view-item"><label>Household Head</label><div><?= md_h($r['head']) ?></div></div>
                 <div class="sw-view-item"><label>Damage Level</label><div><?= md_h($r['level']) ?></div></div>
                 <div class="sw-view-item"><label>Date Assessed</label><div><?= md_h($r['date']) ?></div></div>
-                <div class="sw-view-item"><label>Status</label><div><?= status_badge($r['status']) ?></div></div>
-                <div class="sw-view-item"><label>Asset Type · Reported Damage</label><div><?= md_h($r['asset']) ?> · <?= md_h($r['reported']) ?></div></div>
+                <div class="sw-view-item"><label>Reported Damage</label><div><?= md_h($r['reported']) ?></div></div>
                 <div class="sw-view-item"><label>Reporter</label><div><?= md_h($r['reporter']) ?></div></div>
                 <div class="sw-view-item" style="grid-column:1 / -1"><label>Description</label><div><?= $r['notes'] ? md_h($r['notes']) : 'No description.' ?></div></div>
                 <div class="sw-view-item" style="grid-column:1 / -1"><label>Georeference</label>
@@ -183,6 +180,7 @@ $households = $swBarangay !== ''
         <form id="damageForm" method="post" enctype="multipart/form-data">
             <?= da_csrf_field() ?>
             <input type="hidden" name="submit_assessment" value="1">
+            <input type="hidden" name="event_id" value="<?= $activeEvent ? (int) $activeEvent['event_id'] : 0 ?>">
             <input type="hidden" name="latitude" id="daLat">
             <input type="hidden" name="longitude" id="daLng">
             <input type="hidden" name="gps_accuracy" id="daAcc">
@@ -208,16 +206,6 @@ $households = $swBarangay !== ''
                         ?>
                             <option value="<?= (int) $h['household_id'] ?>"><?= htmlspecialchars($nm) ?></option>
                         <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="field">
-                    <label>Asset Type</label>
-                    <select name="asset_type">
-                        <option>House</option>
-                        <option>Infrastructure</option>
-                        <option>Road</option>
-                        <option>Facility</option>
                     </select>
                 </div>
 
@@ -281,9 +269,10 @@ document.addEventListener('DOMContentLoaded', function () {
     var statusEl = document.getElementById('daLocStatus'), mapEl = document.getElementById('daMap'), relocateBtn = document.getElementById('daRelocate');
     var IDLE_MSG = 'Take a photo and its location is recorded automatically.';
     var map = null, marker = null, circle = null, locating = false;
-    var watchId = null, best = null;
-    var TARGET_ACC = 20;                          // stop early once we are within 20 m
-    var MAX_WAIT   = 25000;                       // otherwise use the best reading after 25 s
+    var watchId = null, samples = [], waitTimer = null;
+    var TARGET_ACC = 15;                          // stop early once we are within 15 m
+    var WINDOW_MS  = 20000;                       // only readings from the last 20 s are used (older ones are stale)
+    var MAX_WAIT   = 40000;                       // otherwise use the best estimate after 40 s
     var MAX_OK_ACC = <?= (int) DA_MAX_ACC_M ?>;   // worse than this = low accuracy (set DA_MAX_ACCURACY_M in .env to relax it on a laptop)
 
     var stampEl = document.getElementById('daStamp'), tsEl = document.getElementById('daTs');
@@ -320,7 +309,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function clearFix(msg) {
-        fixId++;
+        fixId++; locating = false; clearTimeout(waitTimer);
         latEl.value = ''; lngEl.value = ''; accEl.value = ''; srcEl.value = 'device';
         statusEl.textContent = msg; mapEl.hidden = true; relocateBtn.hidden = true; stampEl.hidden = true;
     }
@@ -355,51 +344,86 @@ document.addEventListener('DOMContentLoaded', function () {
         lookupAddress(lat, lng, acc, id);
     }
 
-    function stopWatch() {
-        if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+    // ---- GPS ----------------------------------------------------------------------------------
+    // The GPS is switched on as soon as the modal opens (a cold GPS chip needs 10-30 s to settle) and keeps
+    // running, so the fix is already good when the photo is taken. Several recent readings are combined:
+    // coarse ones (Wi-Fi/cell guesses) are ignored and the accurate ones are averaged, weighted by accuracy.
+    function estimate() {
+        var cut = Date.now() - WINDOW_MS;
+        samples = samples.filter(function (s) { return s.t >= cut; });
+        if (!samples.length) return null;
+        var minAcc = Math.min.apply(null, samples.map(function (s) { return s.acc; }));
+        var sw = 0, la = 0, lo = 0;
+        samples.forEach(function (s) {
+            if (s.acc > minAcc * 1.5 + 5) return;
+            var w = 1 / Math.max(s.acc * s.acc, 1);
+            sw += w; la += s.lat * w; lo += s.lng * w;
+        });
+        return { lat: la / sw, lng: lo / sw, acc: minAcc };
     }
 
-    // Reads the device GPS. Called automatically when the photo is captured. Keeps listening and
-    // uses the most accurate reading (the first one the browser returns is often a coarse Wi-Fi/cell guess).
+    function onPos(pos) {
+        var c = pos.coords;
+        if (!isFinite(c.accuracy) || c.accuracy <= 0) return;
+        if (pos.timestamp && pos.timestamp < Date.now() - 15000) return;   // cached position from the browser, not a live reading
+        samples.push({ lat: c.latitude, lng: c.longitude, acc: c.accuracy, t: Date.now() });
+        var e = estimate();
+        if (!e) return;
+        if (locating) {
+            statusEl.textContent = 'Improving GPS fix… ±' + Math.round(e.acc) + ' m';
+            if (e.acc <= TARGET_ACC) finish();
+        } else if (!photoBlob) {
+            statusEl.textContent = 'GPS ready: ±' + Math.round(e.acc) + ' m' + (e.acc > MAX_OK_ACC ? ' — weak signal, move to an open area' : '');
+        }
+    }
+    function onPosError(err) {
+        if (err.code === 1) {   // permission denied
+            stopWatch();
+            clearTimeout(waitTimer); locating = false;
+            statusEl.textContent = 'Location permission denied. Allow location access in your browser, then tap Retry GPS.';
+            relocateBtn.hidden = false;
+        }
+        // timeout / position unavailable: keep listening; finish() reports it if nothing arrives in time
+    }
+    function startWatch() {
+        if (watchId !== null || !navigator.geolocation) return;
+        watchId = navigator.geolocation.watchPosition(onPos, onPosError, { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 });
+    }
+    function stopWatch() {
+        if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+        samples = [];
+    }
+
+    function finish() {
+        if (!locating) return;
+        clearTimeout(waitTimer); locating = false;
+        var e = estimate();
+        if (!e) {
+            statusEl.textContent = 'Could not get a GPS fix. Move to an open area and tap Retry GPS.';
+            relocateBtn.hidden = false;
+            return;
+        }
+        setFix(e.lat, e.lng, e.acc);
+        if (e.acc > MAX_OK_ACC) {
+            statusEl.textContent += ' — LOW ACCURACY. Step outside and tap Retry GPS.';
+            relocateBtn.hidden = false;
+        }
+    }
+
+    // Called when the photo is captured: uses the GPS estimate right away if it is already good,
+    // otherwise keeps improving it for up to MAX_WAIT.
     function locate() {
         if (locating) return;
         if (!navigator.geolocation) { statusEl.textContent = 'This browser does not support GPS location.'; relocateBtn.hidden = false; return; }
-        locating = true; best = null;
+        locating = true;
+        startWatch();
         statusEl.textContent = 'Getting an accurate GPS fix…';
-
-        var timer = setTimeout(finish, MAX_WAIT);
-
-        function finish() {
-            if (!locating) return;
-            clearTimeout(timer); stopWatch(); locating = false;
-            if (!best) {
-                statusEl.textContent = 'Could not get a GPS fix. Move to an open area and tap Retry GPS.';
-                relocateBtn.hidden = false;
-                return;
-            }
-            setFix(best.lat, best.lng, best.acc);
-            if (best.acc > MAX_OK_ACC) {
-                statusEl.textContent += ' — LOW ACCURACY. Step outside and tap Retry GPS.';
-                relocateBtn.hidden = false;
-            }
-        }
-
-        watchId = navigator.geolocation.watchPosition(function (pos) {
-            var c = pos.coords;
-            if (!best || c.accuracy < best.acc) best = { lat: c.latitude, lng: c.longitude, acc: c.accuracy };
-            statusEl.textContent = 'Improving GPS fix… ±' + Math.round(best.acc) + ' m';
-            if (best.acc <= TARGET_ACC) finish();
-        }, function (err) {
-            if (best) { finish(); return; }
-            clearTimeout(timer); stopWatch(); locating = false;
-            statusEl.textContent = err.code === 1
-                ? 'Location permission denied. Allow location access in your browser, then tap Retry GPS.'
-                : 'Could not get a GPS fix. Move to an open area and tap Retry GPS.';
-            relocateBtn.hidden = false;
-        }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+        waitTimer = setTimeout(finish, MAX_WAIT);
+        var e = estimate();
+        if (e && e.acc <= TARGET_ACC) finish();
     }
 
-    relocateBtn.addEventListener('click', function () { locate(); });
+    relocateBtn.addEventListener('click', function () { stopWatch(); locate(); });   // restart the GPS from scratch
 
     // ---- In-app camera (no file picker) ----
     var video = document.getElementById('daVideo'), shot = document.getElementById('daShot');
@@ -455,9 +479,8 @@ document.addEventListener('DOMContentLoaded', function () {
     new MutationObserver(function () {
         if (modal.classList.contains('show')) {
             if (!stream && !photoBlob) startCamera();
-            // ask for location permission early so the capture-time fix is fast
-            if (navigator.geolocation && !latEl.value) navigator.geolocation.getCurrentPosition(function () {}, function () {}, { maximumAge: 60000 });
-        } else { stopCamera(); }
+            startWatch();   // warm up the GPS while the camera is open so the capture-time fix is accurate
+        } else { stopCamera(); stopWatch(); }
     }).observe(modal, { attributes: true, attributeFilter: ['class'] });
 
     form.addEventListener('submit', function (e) {

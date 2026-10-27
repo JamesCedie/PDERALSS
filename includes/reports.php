@@ -19,8 +19,8 @@ function report_count(string $table, ?string $barangay): int
         $sql    = "SELECT COUNT(*) FROM {$table}";
         $params = [];
         if ($barangay !== null && $barangay !== '') {
-            $sql    .= ' WHERE barangay = ?';
-            $params[] = $barangay;
+            $sql    .= ' WHERE barangay_id = ?';
+            $params[] = brgy_id($barangay);
         }
         return (int) db_query($sql, $params)->fetchColumn();
     } catch (Throwable $e) {
@@ -31,11 +31,6 @@ function report_count(string $table, ?string $barangay): int
 /** @return array{households:int,casualties:int,relief:int,vehicles:int} */
 function report_totals(?string $barangay = null): array
 {
-    // Make sure the tables exist before counting (no-ops once created).
-    try { db_ensure_casualties_table(); } catch (Throwable $e) {}
-    try { rg_ensure_tables(); }          catch (Throwable $e) {}
-    try { vr_ensure_table(); }           catch (Throwable $e) {}
-
     return [
         'households' => report_count('household', $barangay),
         'casualties' => report_count('casualties', $barangay),

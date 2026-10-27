@@ -4,7 +4,7 @@ require '../includes/layout.php';
 require_once '../includes/dashboard.php';
 
 // A Social Worker only ever sees their own barangay (users.address), same as the other SW pages.
-$currentUser = db_select_one('users', 'user_id = ?', [$_SESSION['user']['id'] ?? null]);
+$currentUser = db_user_with_barangay($_SESSION['user']['id'] ?? null);
 $myBarangay  = trim((string) ($currentUser['address'] ?? ''));
 
 page_start('Dashboard');

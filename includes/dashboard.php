@@ -10,9 +10,9 @@
  * $barangay = null  -> municipality-wide totals (MDRRMO Officer)
  * $barangay = '...' -> only that barangay      (Social Worker)
  *
- * Event-scoped numbers (evacuees, casualties, evacuation-center status) follow the
- * selected disaster event. Households, damage assessments and vehicle requests are
- * not linked to an event in the database, so they are cumulative.
+ * Event-scoped numbers (evacuees, casualties, damage assessments, evacuation-center status)
+ * follow the selected disaster event. Households and vehicle requests are not linked to an
+ * event in the database, so they are cumulative.
  *
  * Every query is wrapped so that one missing table/column never breaks the page.
  * All charts are inline SVG (no JavaScript library, works offline).
@@ -22,16 +22,6 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/md.php';
 require_once __DIR__ . '/vehicle.php';
-
-// Default evacuation center per barangay + its capacity (people). Seeded once into
-// public.evacuation_center_info, after which the names / capacities can be edited there.
-const DASH_CENTER_DEFAULTS = [
-    'Brgy. Jaro'       => ['Jaro National High School', 600],
-    'Brgy. Molo'       => ['Molo Elementary School', 600],
-    'Brgy. Mandurriao' => ['Mandurriao Elementary School', 600],
-    'Brgy. Arevalo'    => ['Arevalo Elementary School', 600],
-    'Brgy. La Paz'     => ['Iloilo City National High School · La Paz', 600],
-];
 
 // ── Small helpers ───────────────────────────────────────────────────────────
 function dash_rows(string $sql, array $params = []): array
@@ -63,46 +53,22 @@ function dash_cols(string $table): array
     return $cache[$table];
 }
 
-function dash_ensure_centers(): void
-{
-    static $done = false;
-    if ($done) return;
-    $done = true;
-
-    db()->exec("CREATE TABLE IF NOT EXISTS public.evacuation_center_info (
-        barangay    VARCHAR(100) PRIMARY KEY,
-        center_name VARCHAR(150) NOT NULL,
-        capacity    INTEGER NOT NULL DEFAULT 600 CHECK (capacity >= 0)
-    )");
-    db()->exec('ALTER TABLE public.evacuation_center_info ENABLE ROW LEVEL SECURITY');
-
-    if ((int) db_query('SELECT COUNT(*) FROM public.evacuation_center_info')->fetchColumn() === 0) {
-        foreach (DASH_CENTER_DEFAULTS as $brgy => $c) {
-            db_query('INSERT INTO public.evacuation_center_info (barangay, center_name, capacity) VALUES (?, ?, ?) ON CONFLICT (barangay) DO NOTHING', [$brgy, $c[0], $c[1]]);
-        }
-    }
-}
-
+/**
+ * Tables are now created by the schema file (pderalss_schema_proposal.sql), not at runtime.
+ * Kept as a no-op so existing callers keep working.
+ */
 function dash_ensure(): void
 {
-    foreach ([
-        'db_ensure_disaster_event_status',
-        'db_ensure_casualties_table',
-        'db_ensure_damage_assessments_table',
-        'db_ensure_evac_center_status_table',
-        'vr_ensure_table',
-        'dash_ensure_centers',
-    ] as $fn) {
-        try { $fn(); } catch (Throwable $e) { error_log('dashboard ensure ' . $fn . ': ' . $e->getMessage()); }
-    }
 }
 
 /** Evacuation center name + capacity for every barangay: [barangay => [name, capacity]]. */
 function dash_centers(array $extraBarangays = []): array
 {
     $out = [];
-    foreach (DASH_CENTER_DEFAULTS as $brgy => $c) $out[$brgy] = [$c[0], (int) $c[1]];
-    foreach (dash_rows('SELECT barangay, center_name, capacity FROM public.evacuation_center_info') as $r) {
+    foreach (dash_rows('SELECT b.name AS barangay, c.center_name, c.capacity
+                        FROM public.evacuation_centers c
+                        JOIN public.barangays b ON b.barangay_id = c.barangay_id
+                        ORDER BY b.name') as $r) {
         $out[$r['barangay']] = [(string) $r['center_name'], (int) $r['capacity']];
     }
     foreach ($extraBarangays as $b) {
@@ -203,8 +169,13 @@ function dash_timeline(array $rows, ?array $event, int $maxDays = 14): array
 
 function dash_metrics(?string $b, ?array $event): array
 {
-    $bw  = $b ? ' AND barangay = ?' : '';
-    $bp  = $b ? [$b] : [];
+    // One barangay filter per table shape (all take the same single barangay_id parameter).
+    $bid   = $b ? brgy_id($b) : 0;
+    $bp    = $b ? [$bid] : [];
+    $fEvac = $b ? ' AND c.barangay_id = ?' : '';   // evacuees / center status, via evacuation_centers c
+    $fCas  = $b ? ' AND x.barangay_id = ?' : '';   // casualties x
+    $fDmg  = $b ? ' AND h.barangay_id = ?' : '';   // damage assessments, via household h
+    $fVeh  = $b ? ' AND barangay_id = ?' : '';     // vehicle_requests
     $eid = $event ? (int) $event['event_id'] : 0;
     $per = [];
     $touch = static function (array &$per, string $name): void {
@@ -232,7 +203,7 @@ function dash_metrics(?string $b, ?array $event): array
                     COALESCE(SUM(pwd_count),0) AS pwd,
                     COALESCE(SUM(senior_citizens),0) AS seniors,
                     COUNT(*) FILTER (WHERE is_4ps_member = 'Yes') AS fourps
-             FROM household WHERE barangay = ?", [$b]);
+             FROM household WHERE barangay_id = ?", [$bid]);
         $m['households'] = (int) ($r['n'] ?? 0);
         $m['members']    = (int) ($r['members'] ?? 0);
         $m['pwd']        = (int) ($r['pwd'] ?? 0);
@@ -242,7 +213,7 @@ function dash_metrics(?string $b, ?array $event): array
         $r = dash_row(
             'SELECT COUNT(*) AS n FROM family_composition fc
              JOIN household h ON h.household_id = fc.household_id
-             WHERE h.barangay = ? AND fc.age IS NOT NULL AND fc.age < 18', [$b]);
+             WHERE h.barangay_id = ? AND fc.age IS NOT NULL AND fc.age < 18', [$bid]);
         $m['children'] = (int) ($r['n'] ?? 0);
 
         // Pregnant / lactating is only counted when the household table has such a column.
@@ -250,16 +221,19 @@ function dash_metrics(?string $b, ?array $event): array
         $pc = array_values(array_intersect(['pregnant_lactating', 'pregnant_lactating_count', 'pregnant_count', 'lactating_count'], $hc));
         if ($pc) {
             $sum = implode(' + ', array_map(static fn($c) => 'COALESCE(SUM(' . $c . '),0)', $pc));
-            $r = dash_row("SELECT ({$sum}) AS n FROM household WHERE barangay = ?", [$b]);
+            $r = dash_row("SELECT ({$sum}) AS n FROM household WHERE barangay_id = ?", [$bid]);
             if (isset($r['n'])) $m['pregnant'] = (int) $r['n'];
         }
     }
 
     if ($eid) {
-        // Evacuees (people = household_no, matching the Evacuation Center pages)
+        // Evacuees (people = people_count, matching the Evacuation Center pages)
         foreach (dash_rows(
-            "SELECT barangay, COUNT(*) AS hh, COALESCE(SUM(household_no),0) AS people
-             FROM evacuation_evacuees WHERE event_id = ?{$bw} GROUP BY barangay", array_merge([$eid], $bp)) as $x) {
+            "SELECT b.name AS barangay, COUNT(*) AS hh, COALESCE(SUM(x.people_count),0) AS people
+             FROM evacuation_evacuees x
+             JOIN evacuation_centers c ON c.center_id = x.center_id
+             JOIN barangays b ON b.barangay_id = c.barangay_id
+             WHERE x.event_id = ?{$fEvac} GROUP BY b.name", array_merge([$eid], $bp)) as $x) {
             $touch($per, $x['barangay']);
             $per[$x['barangay']]['evac_hh']     = (int) $x['hh'];
             $per[$x['barangay']]['evac_people'] = (int) $x['people'];
@@ -271,21 +245,29 @@ function dash_metrics(?string $b, ?array $event): array
         // Evacuees over time (bucketed per day in PHP so the DB column type never matters)
         $tl = [];
         foreach (dash_rows(
-            "SELECT created_at, COALESCE(household_no,0) AS p FROM evacuation_evacuees WHERE event_id = ?{$bw}", array_merge([$eid], $bp)) as $x) {
+            "SELECT x.created_at, x.people_count AS p
+             FROM evacuation_evacuees x
+             JOIN evacuation_centers c ON c.center_id = x.center_id
+             WHERE x.event_id = ?{$fEvac}", array_merge([$eid], $bp)) as $x) {
             $tl[] = [dash_ts($x['created_at']), (int) $x['p']];
         }
         $m['timeline'] = dash_timeline($tl, $event);
 
         // Evacuation-center availability chosen by Social Workers
-        foreach (dash_rows("SELECT barangay, status FROM evacuation_center_status WHERE event_id = ?{$bw}", array_merge([$eid], $bp)) as $x) {
+        foreach (dash_rows("SELECT b.name AS barangay, s.status
+                            FROM evacuation_center_status s
+                            JOIN evacuation_centers c ON c.center_id = s.center_id
+                            JOIN barangays b ON b.barangay_id = c.barangay_id
+                            WHERE s.event_id = ?{$fEvac}", array_merge([$eid], $bp)) as $x) {
             $touch($per, $x['barangay']); $per[$x['barangay']]['status'] = $x['status'];
             $reported[$x['barangay']] = true;
         }
 
         // Casualties
         foreach (dash_rows(
-            "SELECT barangay, type, COUNT(*) AS n, MAX(created_at) AS last_at
-             FROM casualties WHERE event_id = ?{$bw} GROUP BY barangay, type", array_merge([$eid], $bp)) as $x) {
+            "SELECT b.name AS barangay, x.type, COUNT(*) AS n, MAX(x.created_at) AS last_at
+             FROM casualties x JOIN barangays b ON b.barangay_id = x.barangay_id
+             WHERE x.event_id = ?{$fCas} GROUP BY b.name, x.type", array_merge([$eid], $bp)) as $x) {
             $n = (int) $x['n'];
             $touch($per, $x['barangay']);
             $per[$x['barangay']]['casualties'] += $n;
@@ -306,9 +288,15 @@ function dash_metrics(?string $b, ?array $event): array
         }
     }
 
-    // Damage assessments (not event-linked). Fully Damaged = "totally"; everything else = "partially".
+    // Damage assessments of the selected event (none when no event exists). Fully Damaged = "totally"; everything else = "partially".
+    $dmgEvent  = $eid ? 'x.event_id = ?' : '1=0';
+    $dmgParams = $eid ? array_merge([$eid], $bp) : [];
     foreach (dash_rows(
-        "SELECT barangay, damage_status, COUNT(*) AS n FROM damage_assessments WHERE 1=1{$bw} GROUP BY barangay, damage_status", $bp) as $x) {
+        "SELECT b.name AS barangay, x.damage_status, COUNT(*) AS n
+         FROM damage_assessments x
+         JOIN household h ON h.household_id = x.household_id
+         JOIN barangays b ON b.barangay_id = h.barangay_id
+         WHERE {$dmgEvent}{$fDmg} GROUP BY b.name, x.damage_status", $dmgParams) as $x) {
         $n = (int) $x['n'];
         $touch($per, $x['barangay']);
         $totally = in_array($x['damage_status'], ['Fully Damaged', 'Totally Damaged'], true);
@@ -316,11 +304,13 @@ function dash_metrics(?string $b, ?array $event): array
         $m['dmg'][$totally ? 'totally' : 'partially'] += $n;
         $m['dmg']['total'] += $n;
     }
-    $r = dash_row("SELECT COUNT(DISTINCT household_id) AS n FROM damage_assessments WHERE household_id IS NOT NULL{$bw}", $bp);
+    $r = dash_row("SELECT COUNT(DISTINCT x.household_id) AS n
+                   FROM damage_assessments x JOIN household h ON h.household_id = x.household_id
+                   WHERE {$dmgEvent}{$fDmg}", $dmgParams);
     $m['dmg']['households'] = (int) ($r['n'] ?? 0);
 
     // Vehicle requests (not event-linked). Approved + Scheduled count as "in transit".
-    foreach (dash_rows("SELECT status, COUNT(*) AS n FROM vehicle_requests WHERE 1=1{$bw} GROUP BY status", $bp) as $x) {
+    foreach (dash_rows("SELECT status, COUNT(*) AS n FROM vehicle_requests WHERE 1=1{$fVeh} GROUP BY status", $bp) as $x) {
         $n = (int) $x['n'];
         switch ($x['status']) {
             case 'Pending':   $m['veh']['pending']   += $n; break;
@@ -362,34 +352,40 @@ function dash_activity(?int $eid): array
 
     if ($eid) {
         $push(dash_rows(
-            'SELECT x.barangay, x.created_at AS ts, COALESCE(x.household_no, 1) AS n, ' . dash_user_name('x', 'added_by', 'u1') . ' AS who
-             FROM evacuation_evacuees x ' . dash_user_join('x', 'added_by', 'u1') . '
+            'SELECT b.name AS barangay, x.created_at AS ts, x.people_count AS n, ' . dash_user_name('x', 'added_by', 'u1') . ' AS who
+             FROM evacuation_evacuees x
+             JOIN evacuation_centers c ON c.center_id = x.center_id
+             JOIN barangays b ON b.barangay_id = c.barangay_id ' . dash_user_join('x', 'added_by', 'u1') . '
              WHERE x.event_id = ? ORDER BY x.created_at DESC LIMIT 6', [$eid]),
             static fn($r) => [dash_n($r['n']) . ' evacuee' . ((int) $r['n'] === 1 ? '' : 's') . ' registered', 'Recorded']);
 
         $push(dash_rows(
-            'SELECT x.barangay, x.created_at AS ts, x.type, x.severity, ' . dash_user_name('x', 'added_by', 'u1') . ' AS who
-             FROM casualties x ' . dash_user_join('x', 'added_by', 'u1') . '
+            'SELECT b.name AS barangay, x.created_at AS ts, x.type, x.severity, ' . dash_user_name('x', 'added_by', 'u1') . ' AS who
+             FROM casualties x JOIN barangays b ON b.barangay_id = x.barangay_id ' . dash_user_join('x', 'added_by', 'u1') . '
              WHERE x.event_id = ? ORDER BY x.created_at DESC LIMIT 6', [$eid]),
             static fn($r) => ['Casualty recorded · ' . $r['type'] . ' (' . $r['severity'] . ')', 'Recorded']);
 
         $push(dash_rows(
-            'SELECT x.barangay, x.updated_at AS ts, ' . dash_user_name('x', 'updated_by', 'u1') . ' AS who
-             FROM evacuation_center_status x ' . dash_user_join('x', 'updated_by', 'u1') . '
+            'SELECT b.name AS barangay, x.updated_at AS ts, ' . dash_user_name('x', 'updated_by', 'u1') . ' AS who
+             FROM evacuation_center_status x
+             JOIN evacuation_centers c ON c.center_id = x.center_id
+             JOIN barangays b ON b.barangay_id = c.barangay_id ' . dash_user_join('x', 'updated_by', 'u1') . '
              WHERE x.event_id = ? ORDER BY x.updated_at DESC LIMIT 6', [$eid]),
             static fn($r) => ['Center occupancy updated', 'Updated']);
     }
 
     $push(dash_rows(
-        'SELECT x.barangay, x.created_at AS ts, COALESCE(NULLIF(x.reporter, \'\'), ' . dash_user_name('x', 'submitted_by', 'u1') . ') AS who
-         FROM damage_assessments x ' . dash_user_join('x', 'submitted_by', 'u1') . '
+        'SELECT b.name AS barangay, x.created_at AS ts, COALESCE(NULLIF(x.reporter, \'\'), ' . dash_user_name('x', 'submitted_by', 'u1') . ') AS who
+         FROM damage_assessments x
+         JOIN household h ON h.household_id = x.household_id
+         JOIN barangays b ON b.barangay_id = h.barangay_id ' . dash_user_join('x', 'submitted_by', 'u1') . '
          ORDER BY x.created_at DESC LIMIT 6'),
         static fn($r) => ['Damage assessment submitted', 'Submitted']);
 
     $push(dash_rows(
-        'SELECT x.barangay, x.status, COALESCE(x.reviewed_at, x.created_at) AS ts,
+        'SELECT b.name AS barangay, x.status, COALESCE(x.reviewed_at, x.created_at) AS ts,
                 CASE WHEN x.reviewed_by IS NOT NULL THEN ' . dash_user_name('x', 'reviewed_by', 'u2') . ' ELSE ' . dash_user_name('x', 'requested_by', 'u1') . ' END AS who
-         FROM vehicle_requests x ' . dash_user_join('x', 'requested_by', 'u1') . ' ' . dash_user_join('x', 'reviewed_by', 'u2') . '
+         FROM vehicle_requests x JOIN barangays b ON b.barangay_id = x.barangay_id ' . dash_user_join('x', 'requested_by', 'u1') . ' ' . dash_user_join('x', 'reviewed_by', 'u2') . '
          ORDER BY COALESCE(x.reviewed_at, x.created_at) DESC LIMIT 6'),
         static function ($r) {
             $verb = ['Pending' => 'submitted', 'Approved' => 'approved', 'Scheduled' => 'scheduled', 'Completed' => 'completed', 'Rejected' => 'rejected'][$r['status']] ?? strtolower((string) $r['status']);
@@ -399,8 +395,8 @@ function dash_activity(?int $eid): array
     $hc = dash_cols('household');
     if (in_array('created_at', $hc, true)) {
         $push(dash_rows(
-            'SELECT x.barangay, x.created_at AS ts, ' . dash_user_name('x', 'created_by', 'u1') . ' AS who
-             FROM household x ' . dash_user_join('x', 'created_by', 'u1') . '
+            'SELECT b.name AS barangay, x.created_at AS ts, ' . dash_user_name('x', 'created_by', 'u1') . ' AS who
+             FROM household x JOIN barangays b ON b.barangay_id = x.barangay_id ' . dash_user_join('x', 'created_by', 'u1') . '
              ORDER BY x.created_at DESC LIMIT 6'),
             static fn($r) => ['Household record added', 'Recorded']);
     }
@@ -417,6 +413,7 @@ function dash_records(string $b, ?int $eid): array
     foreach (['zone', 'purok', 'sitio'] as $c) if (in_array($c, $hc, true)) { $zone = 'h.' . $c . '::text'; break; }
     $head = "CONCAT_WS(', ', NULLIF(h.lastname, ''), NULLIF(TRIM(CONCAT_WS(' ', h.firstname, h.middlename)), ''))";
 
+    $bid = brgy_id($b);
     $out = [];
     $push = static function (array $rows, callable $fmt) use (&$out): void {
         foreach ($rows as $r) {
@@ -430,25 +427,26 @@ function dash_records(string $b, ?int $eid): array
     $hasCreated = in_array('created_at', $hc, true);
     $hasUpdated = in_array('updated_at', $hc, true);
     if ($hasCreated) {
-        $push(dash_rows("SELECT h.household_id, h.created_at AS ts, {$head} AS head, {$zone} AS zone FROM household h WHERE h.barangay = ? ORDER BY h.created_at DESC LIMIT 6", [$b]),
+        $push(dash_rows("SELECT h.household_id, h.created_at AS ts, {$head} AS head, {$zone} AS zone FROM household h WHERE h.barangay_id = ? ORDER BY h.created_at DESC LIMIT 6", [$bid]),
             static fn($r) => [(string) $r['head'], 'Household added', 'HH-' . $r['household_id']]);
     }
     if ($hasUpdated) {
         $cond = $hasCreated ? "AND h.updated_at > h.created_at + INTERVAL '1 minute'" : '';
-        $push(dash_rows("SELECT h.household_id, h.updated_at AS ts, {$head} AS head, {$zone} AS zone FROM household h WHERE h.barangay = ? {$cond} ORDER BY h.updated_at DESC LIMIT 6", [$b]),
+        $push(dash_rows("SELECT h.household_id, h.updated_at AS ts, {$head} AS head, {$zone} AS zone FROM household h WHERE h.barangay_id = ? {$cond} ORDER BY h.updated_at DESC LIMIT 6", [$bid]),
             static fn($r) => [(string) $r['head'], 'Household updated', 'HH-' . $r['household_id']]);
     }
     if ($eid) {
         $push(dash_rows(
             "SELECT x.name, x.created_at AS ts, {$head} AS head, {$zone} AS zone
              FROM evacuation_evacuees x LEFT JOIN household h ON h.household_id::text = x.household_id::text
-             WHERE x.event_id = ? AND x.barangay = ? ORDER BY x.created_at DESC LIMIT 6", [$eid, $b]),
+             WHERE x.event_id = ? AND x.center_id IN (SELECT center_id FROM evacuation_centers WHERE barangay_id = ?)
+             ORDER BY x.created_at DESC LIMIT 6", [$eid, $bid]),
             static fn($r) => [(string) ($r['head'] !== null && $r['head'] !== '' ? $r['head'] : $r['name']), 'Evacuees registered', '']);
     }
     $push(dash_rows(
         "SELECT x.reference_code, x.damage_status, x.reporter, x.created_at AS ts, {$head} AS head, {$zone} AS zone
          FROM damage_assessments x LEFT JOIN household h ON h.household_id::text = x.household_id::text
-         WHERE x.barangay = ? ORDER BY x.created_at DESC LIMIT 6", [$b]),
+         WHERE h.barangay_id = ? ORDER BY x.created_at DESC LIMIT 6", [$bid]),
         static function ($r) {
             $type = ['Fully Damaged' => 'Totally damaged', 'Totally Damaged' => 'Totally damaged', 'Partially Damaged' => 'Partially damaged', 'Minor Damage' => 'Minor damage'][$r['damage_status']] ?? (string) $r['damage_status'];
             $name = $r['head'] !== null && $r['head'] !== '' ? $r['head'] : $r['reporter'];
@@ -487,9 +485,6 @@ function dash_alerts(array $ctx): array
     if ((int) ($r['high'] ?? 0) > 0)  $out[] = ['danger',  dash_n($r['high']) . ' high-urgency vehicle request' . ((int) $r['high'] > 1 ? 's' : '') . ' pending', 'Waiting for approval.', 'vehicle-requests.php'];
     if ((int) ($r['stale'] ?? 0) > 0) $out[] = ['warning', dash_n($r['stale']) . ' vehicle request' . ((int) $r['stale'] > 1 ? 's' : '') . ' pending over 24 hours', 'These requests have not been reviewed yet.', 'vehicle-requests.php'];
 
-    $r = dash_row("SELECT COUNT(*) AS n FROM damage_assessments WHERE status = 'Under Review' AND created_at < NOW() - INTERVAL '3 days'");
-    if ((int) ($r['n'] ?? 0) > 0) $out[] = ['warning', dash_n($r['n']) . ' damage report' . ((int) $r['n'] > 1 ? 's' : '') . ' under review for over 3 days', 'Verify or reject them to keep damage figures accurate.', 'damage-assessment.php' . $q];
-
     $r = dash_row("SELECT COUNT(*) AS n FROM relief_distributions WHERE status <> 'Completed'");
     if ((int) ($r['n'] ?? 0) > 0) $out[] = ['info', dash_n($r['n']) . ' relief distribution' . ((int) $r['n'] > 1 ? 's' : '') . ' not yet completed', 'Pending or still in transit.', 'relief-goods.php'];
 
@@ -500,7 +495,6 @@ function dash_alerts(array $ctx): array
 /** Everything the dashboard needs, in one call. */
 function dash_build(?string $barangay, int $requestedEvent = 0, bool $withAlerts = false): array
 {
-    dash_ensure();
     $events = dash_rows('SELECT event_id, event_name, type, date, status FROM disaster_events ORDER BY event_id DESC LIMIT 30');
     $event  = dash_pick_event($events, $requestedEvent);
     $eid    = $event ? (int) $event['event_id'] : null;

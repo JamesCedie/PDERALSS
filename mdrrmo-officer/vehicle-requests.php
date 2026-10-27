@@ -121,14 +121,14 @@ $where  = ['1=1'];
 $params = [];
 if ($f['q'] !== '') {
     $like = '%' . addcslashes($f['q'], '%_\\') . '%';
-    $where[] = "(v.request_code ILIKE ? OR v.barangay ILIKE ? OR v.purpose ILIKE ? OR COALESCE(v.assigned_vehicle, '') ILIKE ? OR CONCAT(u.first_name, ' ', u.last_name) ILIKE ?)";
+    $where[] = "(v.request_code ILIKE ? OR b.name ILIKE ? OR v.purpose ILIKE ? OR COALESCE(v.assigned_vehicle, '') ILIKE ? OR CONCAT(u.first_name, ' ', u.last_name) ILIKE ?)";
     array_push($params, $like, $like, $like, $like, $like);
 }
 if ($f['status'] !== '')  { $where[] = 'v.status = ?';         $params[] = $f['status']; }
 if ($f['purpose'] !== '') { $where[] = 'v.purpose = ?';        $params[] = $f['purpose']; }
 if ($f['date'] !== '')    { $where[] = 'v.requested_date = ?'; $params[] = $f['date']; }
 $whereSql = implode(' AND ', $where);
-$join     = 'FROM vehicle_requests v LEFT JOIN users u ON u.user_id::text = v.requested_by';
+$join     = 'FROM vehicle_requests v JOIN barangays b ON b.barangay_id = v.barangay_id LEFT JOIN users u ON u.user_id::text = v.requested_by';
 
 $total      = (int) db_query("SELECT COUNT(*) {$join} WHERE {$whereSql}", $params)->fetchColumn();
 $totalPages = max(1, (int) ceil($total / VR_PER_PAGE));
@@ -136,7 +136,7 @@ $page       = min($f['page'], $totalPages);
 $offset     = ($page - 1) * VR_PER_PAGE;
 
 $requests = db_query(
-    "SELECT v.*, TRIM(CONCAT(u.first_name, ' ', u.last_name)) AS requester_name
+    "SELECT v.*, b.name AS barangay, TRIM(CONCAT(u.first_name, ' ', u.last_name)) AS requester_name
      {$join} WHERE {$whereSql}
      ORDER BY (v.status = 'Pending') DESC, v.created_at DESC, v.request_id DESC
      LIMIT " . VR_PER_PAGE . " OFFSET {$offset}",

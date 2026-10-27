@@ -4,7 +4,7 @@ require_once '../includes/db.php';
 db_ensure_disaster_event_status();
 db_ensure_casualties_table();
 
-$currentUser         = db_select_one('users', 'user_id = ?', [$_SESSION['user']['id'] ?? null]);
+$currentUser         = db_user_with_barangay($_SESSION['user']['id'] ?? null);
 $socialWorkerAddress = $currentUser['address'] ?? '';
 
 require '../includes/layout.php';
@@ -18,18 +18,20 @@ $events = db_query(
 )->fetchAll();
 
 // For finished events - get summary per event for this barangay
+$myBarangayId   = (int) ($currentUser['barangay_id'] ?? 0);
 $eventSummaries = [];
 foreach ($events as $e) {
     if (($e['status'] ?? 'Active') !== 'Active') {
         $evac = db_query(
-            'SELECT COUNT(*) as hh, COALESCE(SUM(household_no),0) as people
-             FROM evacuation_evacuees WHERE event_id = ? AND barangay = ?',
-            [$e['event_id'], $socialWorkerAddress]
+            'SELECT COUNT(*) as hh, COALESCE(SUM(x.people_count),0) as people
+             FROM evacuation_evacuees x JOIN evacuation_centers c ON c.center_id = x.center_id
+             WHERE x.event_id = ? AND c.barangay_id = ?',
+            [$e['event_id'], $myBarangayId]
         )->fetch();
         $eventSummaries[$e['event_id']] = [
             'evacuees'   => $evac['people'] ?? 0,
             'households' => $evac['hh'] ?? 0,
-            'casualties' => (int) db_query('SELECT COUNT(*) FROM public.casualties WHERE event_id = ? AND barangay = ?', [$e['event_id'], $socialWorkerAddress])->fetchColumn()
+            'casualties' => (int) db_query('SELECT COUNT(*) FROM public.casualties WHERE event_id = ? AND barangay_id = ?', [$e['event_id'], $myBarangayId])->fetchColumn()
         ];
     }
 }
@@ -41,8 +43,8 @@ if (!empty($events)) {
         if (($e['status'] ?? 'Active') === 'Active') { $latestActive = $e; break; }
     }
     if ($latestActive) {
-        $ev = db_query('SELECT COUNT(*) as hh, COALESCE(SUM(household_no),0) as people FROM evacuation_evacuees WHERE event_id = ? AND barangay = ?', [$latestActive['event_id'], $socialWorkerAddress])->fetch();
-        $cas = db_query('SELECT COUNT(*) FROM public.casualties WHERE event_id = ? AND barangay = ?', [$latestActive['event_id'], $socialWorkerAddress])->fetchColumn();
+        $ev = db_query('SELECT COUNT(*) as hh, COALESCE(SUM(x.people_count),0) as people FROM evacuation_evacuees x JOIN evacuation_centers c ON c.center_id = x.center_id WHERE x.event_id = ? AND c.barangay_id = ?', [$latestActive['event_id'], $myBarangayId])->fetch();
+        $cas = db_query('SELECT COUNT(*) FROM public.casualties WHERE event_id = ? AND barangay_id = ?', [$latestActive['event_id'], $myBarangayId])->fetchColumn();
         $stats = [$ev['people'] ?? 0, $ev['hh'] ?? 0, (int) $cas];
     }
 }

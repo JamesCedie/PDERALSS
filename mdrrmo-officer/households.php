@@ -9,8 +9,6 @@ if (($_SESSION['user']['role'] ?? '') !== 'MDRRMO Officer') {
 
 const EDU_OPTIONS   = ['Elementary', 'Highschool Undergraduate', 'Highschool Graduate', 'College Undergraduate', 'College Graduate'];
 const CIVIL_OPTIONS = ['Married', 'Single', 'Widowed', 'Separated'];
-// Same barangay list used by User Management; barangays found in the data are added on top.
-const HH_BARANGAYS  = ['Brgy. Jaro', 'Brgy. Molo', 'Brgy. Mandurriao', 'Brgy. Arevalo', 'Brgy. La Paz'];
 
 function h($v): string { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); }
 
@@ -60,10 +58,10 @@ function hh_timestamp_column(): ?string
     return null;
 }
 
-/** Barangay names that can be opened: the fixed list plus any found in the data. */
+/** Barangay names that can be opened: every barangay in the barangays table. */
 function hh_folder_names(array $households): array
 {
-    $names = HH_BARANGAYS;
+    $names = brgy_names();
     $extra = array_values(array_diff(array_unique(array_column($households, 'barangay')), $names));
     sort($extra);
     return array_values(array_filter(array_merge($names, $extra)));
@@ -72,7 +70,7 @@ function hh_folder_names(array $households): array
 // ── Edit household (MDRRMO can edit any barangay) ───────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_household'])) {
     $id     = (int) ($_POST['household_id'] ?? 0);
-    $target = $id > 0 ? db_select_one('household', 'household_id = ?', [$id]) : null;
+    $target = $id > 0 ? (db_query('SELECT h.*, b.name AS barangay FROM household h JOIN barangays b ON b.barangay_id = h.barangay_id WHERE h.household_id = ?', [$id])->fetch() ?: null) : null;
     $back   = 'households.php' . ($target ? '?barangay=' . urlencode($target['barangay']) : '');
     $error  = null;
 
@@ -171,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_household'])) {
 }
 
 // ── Page data ───────────────────────────────────────────────────────────────
-$households = db_select('household', '1=1', [], '*', 'barangay ASC, household_id DESC');
+$households = db_query('SELECT h.*, b.name AS barangay FROM household h JOIN barangays b ON b.barangay_id = h.barangay_id ORDER BY b.name ASC, h.household_id DESC')->fetchAll();
 $folders    = hh_folder_names($households);
 
 $byBarangay = array_fill_keys($folders, []);

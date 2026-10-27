@@ -6,7 +6,7 @@ db_ensure_disaster_event_status();
 db_ensure_casualties_table();
 
 $eventId = (int) ($_GET['event_id'] ?? $_POST['event_id'] ?? 0);
-$currentUser = db_select_one('users', 'user_id = ?', [$_SESSION['user']['id'] ?? null]);
+$currentUser = db_user_with_barangay($_SESSION['user']['id'] ?? null);
 $socialWorkerAddress = trim($currentUser['address'] ?? '');
 $currentEvent = $eventId ? db_select_one('disaster_events', 'event_id = ?', [$eventId]) : null;
 $successMsg = $_SESSION['casualty_success'] ?? null;
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_c
         try {
             db_insert('casualties', [
                 'event_id' => $eventId,
-                'barangay' => $socialWorkerAddress,
+                'barangay_id' => (int) $currentUser['barangay_id'],
                 'name' => $name,
                 'type' => $type,
                 'severity' => $severity,
@@ -58,8 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_c
 
 $rows = $eventId && $socialWorkerAddress
     ? db_query(
-        'SELECT casualty_id, name, type, severity, date, notes FROM public.casualties WHERE event_id = ? AND barangay = ? ORDER BY date DESC, casualty_id DESC',
-        [$eventId, $socialWorkerAddress]
+        'SELECT casualty_id, name, type, severity, date, notes FROM public.casualties WHERE event_id = ? AND barangay_id = ? ORDER BY date DESC, casualty_id DESC',
+        [$eventId, (int) $currentUser['barangay_id']]
       )->fetchAll()
     : [];
 
