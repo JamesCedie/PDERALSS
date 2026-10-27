@@ -565,7 +565,7 @@ function dash_bar_chart(array $items, string $empty = 'No records yet.'): void
     if ($max === 0) { echo '<div class="dash-empty">' . md_h($empty) . '</div>'; return; }
 
     [$top, $step] = dash_scale($max);
-HEAD
+
     $n = count($items);
     // Many categories (e.g. 37 barangays): give every bar its own slot and let the chart scroll sideways.
     $visible = 5;                       // bars visible at once; the rest scroll in from the right
