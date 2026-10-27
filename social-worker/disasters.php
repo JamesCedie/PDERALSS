@@ -23,7 +23,7 @@ $eventSummaries = [];
 foreach ($events as $e) {
     if (($e['status'] ?? 'Active') !== 'Active') {
         $evac = db_query(
-            'SELECT COUNT(*) as hh, COALESCE(SUM(x.people_count),0) as people
+            'SELECT COUNT(DISTINCT COALESCE(x.household_id, -x.evacuee_id)) as hh, COALESCE(SUM(x.people_count),0) as people
              FROM evacuation_evacuees x JOIN evacuation_centers c ON c.center_id = x.center_id
              WHERE x.event_id = ? AND c.barangay_id = ?',
             [$e['event_id'], $myBarangayId]
@@ -43,7 +43,7 @@ if (!empty($events)) {
         if (($e['status'] ?? 'Active') === 'Active') { $latestActive = $e; break; }
     }
     if ($latestActive) {
-        $ev = db_query('SELECT COUNT(*) as hh, COALESCE(SUM(x.people_count),0) as people FROM evacuation_evacuees x JOIN evacuation_centers c ON c.center_id = x.center_id WHERE x.event_id = ? AND c.barangay_id = ?', [$latestActive['event_id'], $myBarangayId])->fetch();
+        $ev = db_query('SELECT COUNT(DISTINCT COALESCE(x.household_id, -x.evacuee_id)) as hh, COALESCE(SUM(x.people_count),0) as people FROM evacuation_evacuees x JOIN evacuation_centers c ON c.center_id = x.center_id WHERE x.event_id = ? AND c.barangay_id = ?', [$latestActive['event_id'], $myBarangayId])->fetch();
         $cas = db_query('SELECT COUNT(*) FROM public.casualties WHERE event_id = ? AND barangay_id = ?', [$latestActive['event_id'], $myBarangayId])->fetchColumn();
         $stats = [$ev['people'] ?? 0, $ev['hh'] ?? 0, (int) $cas];
     }
@@ -79,9 +79,9 @@ if (!empty($events)) {
 
             <div class="sw-event-actions">
                 <?php if ($isActive): ?>
-                    <a href="evacuation-centers.php?event_id=<?= $e['event_id'] ?>" class="btn btn-light">Manage Evacuation Centers</a>
-                    <a href="casualties.php?event_id=<?= $e['event_id'] ?>" class="btn btn-light">Manage Casualties</a>
-                    <a href="damage-assessment.php?event_id=<?= $e['event_id'] ?>" class="btn btn-light">Damage Assessment</a>
+                    <a href="evacuation-centers.php?event_id=<?= $e['event_id'] ?>" class="btn btn-primary">Manage Evacuation Centers</a>
+                    <a href="casualties.php?event_id=<?= $e['event_id'] ?>" class="btn btn-primary">Manage Casualties</a>
+                    <a href="damage-assessment.php?event_id=<?= $e['event_id'] ?>" class="btn btn-primary">Damage Assessment</a>
                 <?php else: ?>
                     <button class="btn btn-light" onclick="openModal('viewModal-<?= $e['event_id'] ?>')">View Details</button>
                 <?php endif; ?>

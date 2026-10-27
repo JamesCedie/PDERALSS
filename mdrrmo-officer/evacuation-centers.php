@@ -13,7 +13,7 @@ $event   = md_find_event($eventId);
 $perBarangay = [];
 if ($event) {
     $rows = db_query(
-        'SELECT b.name AS barangay, COUNT(*) AS households, COALESCE(SUM(x.people_count), 0) AS people
+        'SELECT b.name AS barangay, COUNT(DISTINCT COALESCE(x.household_id, -x.evacuee_id)) AS households, COALESCE(SUM(x.people_count), 0) AS people
          FROM evacuation_evacuees x
          JOIN evacuation_centers c ON c.center_id = x.center_id
          JOIN barangays b ON b.barangay_id = c.barangay_id

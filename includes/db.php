@@ -112,6 +112,27 @@ function db_ensure_damage_assessments_table(): void {}
 function db_ensure_disaster_event_status(): void {}
 function db_ensure_evac_center_status_table(): void {}
 
+/**
+ * Lets a single family member be checked in while staying linked to their household
+ * (evacuation_evacuees.composition_id). Idempotent; same DDL as migration_evacuee_members.sql.
+ */
+function db_ensure_evacuee_members(): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        db_query('ALTER TABLE public.evacuation_evacuees ADD COLUMN IF NOT EXISTS composition_id INTEGER REFERENCES public.family_composition (composition_id) ON UPDATE CASCADE ON DELETE SET NULL');
+        db_query('DROP INDEX IF EXISTS public.uq_evacuees_event_household');
+        db_query('CREATE UNIQUE INDEX IF NOT EXISTS uq_evacuees_event_head ON public.evacuation_evacuees (event_id, household_id) WHERE household_id IS NOT NULL AND composition_id IS NULL');
+        db_query('CREATE UNIQUE INDEX IF NOT EXISTS uq_evacuees_event_member ON public.evacuation_evacuees (event_id, composition_id) WHERE composition_id IS NOT NULL');
+        // Every evacuee record is exactly one person (older records stored a whole household's headcount).
+        db_query('UPDATE public.evacuation_evacuees SET people_count = 1 WHERE people_count <> 1');
+    } catch (PDOException $e) {
+        error_log('db_ensure_evacuee_members: ' . $e->getMessage());
+    }
+}
+
 const EVAC_CENTER_STATUSES = ['Available', 'Occupied', 'Near Capacity', 'Full'];
 // Options a Social Worker can pick from the Occupancy Status dropdown.
 const EVAC_CENTER_SW_OPTIONS = ['Available', 'Full'];

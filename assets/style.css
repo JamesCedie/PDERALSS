@@ -1417,14 +1417,9 @@ textarea {
     border-top: 1px solid var(--border-soft);
     padding-top: 12px;
 }
-.sw-edit-form .member-editor summary {
-    list-style: none;
-    cursor: pointer;
-    color: var(--text-2);
-    font-size: 11px;
-}
-.sw-edit-form .member-editor summary::-webkit-details-marker { display:none; }
-.sw-edit-form .member-editor[open] summary { margin-bottom: 12px; color: var(--text); }
+.sw-edit-form .member-editor { padding: 12px 10px 4px; }
+.sw-edit-form .member-editor-row[hidden] { display: none; }
+.sw-member-table .member-edit-btn { min-width: 52px; justify-content: center; white-space: nowrap; }
 .sw-edit-form .member-editor .form-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
 .sw-edit-form .add-member-btn { margin: 10px 0 0; }
 
@@ -2526,6 +2521,12 @@ textarea {
 .dash-meter-free { margin-top: 8px; font-size: 12px; color: var(--tone, var(--sig-green)); }
 .dash-link { display: inline-block; margin-top: 12px; font-size: 12px; font-weight: 600; color: var(--sw-primary); text-decoration: none; }
 .dash-link:hover { text-decoration: underline; }
+/* Assigned Evacuation Center card: the tiles absorb the card's spare height so it fills the row without a big gap */
+.dash-center-card .dash-center-head { margin: 2px 0 12px; }
+.dash-center-card .dash-tiles { flex: 1 1 auto; margin-top: 0; }
+.dash-center-card .dash-tile { display: flex; flex-direction: column; justify-content: center; }
+.dash-center-card .dash-center-foot { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-soft); }
+.dash-center-card .dash-link { margin-top: 0; }
 
 /* activity / records */
 .dash-table-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: -6px; }
@@ -2570,3 +2571,7 @@ textarea {
 /* Dashboard: Vehicle Requests card - keep tiles and note together under the chart */
 .dash-note.dash-note-inline { margin-top: 0; padding-top: 10px; }
 .dash-card .dash-empty { padding: 18px 4px; }
+
+/* the household picker in Submit Damage Assessment toggles these with [hidden] */
+.sw-search-modal-input[hidden], #daHhSearch[hidden] { display: none; }
+#daHhPicked .btn { flex: none; padding: 6px 12px; }

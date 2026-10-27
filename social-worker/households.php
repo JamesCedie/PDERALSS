@@ -485,13 +485,12 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                             <td><?= htmlspecialchars($m['educational_attainment'] ?? '—') ?></td>
                             <td><?= htmlspecialchars($m['occupation'] ?? '—') ?></td>
                             <td>
-                                <button type="button" class="btn btn-light" onclick="document.getElementById('memberEditor<?= $h['household_id'] ?>-<?= $idx ?>').open=true">Edit</button>
+                                <button type="button" class="btn btn-light member-edit-btn" aria-expanded="false" aria-controls="memberEditor<?= $h['household_id'] ?>-<?= $idx ?>" onclick="toggleMemberEditor('memberEditor<?= $h['household_id'] ?>-<?= $idx ?>', this)">Edit</button>
                             </td>
                         </tr>
-                        <tr>
+                        <tr class="member-editor-row" id="memberEditor<?= $h['household_id'] ?>-<?= $idx ?>" hidden>
                             <td colspan="8" style="padding:0;border-bottom:0;">
-                                <details class="member-editor" id="memberEditor<?= $h['household_id'] ?>-<?= $idx ?>">
-                                    <summary>Editing Member <?= $idx + 1 ?></summary>
+                                <div class="member-editor">
                                     <input type="hidden" name="member_ids[<?= $idx ?>]" value="<?= htmlspecialchars($m['composition_id']) ?>">
                                     <div class="form-grid">
                                         <div class="field"><label>First Name</label><input name="comp_<?= $idx ?>_first_name" value="<?= htmlspecialchars($m['first_name']) ?>" required></div>
@@ -504,7 +503,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                                         <div class="field"><label>Educational Attainment</label><select name="comp_<?= $idx ?>_educational_attainment"><?php foreach(EDU_OPTIONS as $opt): ?><option <?= ($m['educational_attainment']??'')===$opt?'selected':'' ?>><?= $opt ?></option><?php endforeach; ?></select></div>
                                         <div class="field"><label>Occupation</label><input name="comp_<?= $idx ?>_occupation" value="<?= htmlspecialchars($m['occupation'] ?? '') ?>"></div>
                                     </div>
-                                </details>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; endif; ?>
@@ -526,6 +525,14 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
 
 <?php page_end(); ?>
 <script>
+function toggleMemberEditor(id, btn) {
+    var row = document.getElementById(id);
+    if (!row) return;
+    var show = row.hidden;
+    row.hidden = !show;
+    btn.textContent = show ? 'Done' : 'Edit';
+    btn.setAttribute('aria-expanded', show ? 'true' : 'false');
+}
 <?php if ($stage2): ?>
 document.addEventListener('DOMContentLoaded', function(){ openModal('stage2Modal'); });
 <?php elseif (isset($_GET['reopen'])): ?>

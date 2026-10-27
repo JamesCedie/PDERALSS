@@ -8,6 +8,25 @@ db_ensure_disaster_event_status();
 $currentUser = db_user_with_barangay($_SESSION['user']['id'] ?? null);
 $swBarangay  = $currentUser['address'] ?? '';
 
+// AJAX: search household heads of this Social Worker's barangay by name
+if (isset($_GET['search_household'])) {
+    header('Content-Type: application/json');
+    $q   = trim($_GET['q'] ?? '');
+    $bid = (int) ($currentUser['barangay_id'] ?? 0);
+    if (strlen($q) < 2 || !$bid) { echo json_encode([]); exit; }
+    $like = '%' . preg_replace('/\s+/', ' ', $q) . '%';
+    $out  = [];
+    foreach (db_query(
+        "SELECT household_id, firstname, middlename, lastname, nameextension FROM household
+         WHERE barangay_id = ? AND concat_ws(' ', firstname, middlename, lastname, nameextension) ILIKE ?
+         ORDER BY lastname ASC, firstname ASC LIMIT 10", [$bid, $like])->fetchAll() as $r) {
+        $out[] = ['id' => (int) $r['household_id'],
+                  'name' => preg_replace('/\s+/', ' ', trim(implode(' ', array_filter([$r['firstname'], $r['middlename'], $r['lastname'], $r['nameextension']]))))];
+    }
+    echo json_encode($out);
+    exit;
+}
+
 // Handle "Submit Assessment" (photo + georeference + watermark), then redirect back (PRG).
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assessment'])) {
     try {
@@ -80,9 +99,6 @@ foreach ($daRows as $r) {
 }
 $totalAssessments = count($records);
 
-$households = $swBarangay !== ''
-    ? db_select('household', 'barangay_id = ?', [(int) ($currentUser['barangay_id'] ?? 0)], 'household_id, firstname, middlename, lastname, nameextension', 'lastname ASC, firstname ASC')
-    : [];
 ?>
 
 <div class="md-page">
@@ -187,26 +203,21 @@ $households = $swBarangay !== ''
             <input type="hidden" name="location_source" id="daSrc" value="device">
             <input type="hidden" name="captured_ts" id="daTs">
             <div class="form-grid">
-                <div class="field">
-                    <label>Barangay</label>
-                    <input required value="<?= htmlspecialchars($swBarangay) ?>" readonly>
-                </div>
-
-                <div class="field">
-                    <label>Reporter</label>
-                    <input name="reporter" required value="<?= htmlspecialchars($_SESSION['user']['name'] ?? '') ?>">
-                </div>
-
                 <div class="field field-full">
                     <label>Household (Family Head)</label>
-                    <select name="household_id" required>
-                        <option value="">Select household…</option>
-                        <?php foreach ($households as $h):
-                            $nm = preg_replace('/\s+/', ' ', trim(($h['lastname'] ?? '') . ', ' . implode(' ', array_filter([$h['firstname'] ?? '', $h['middlename'] ?? '', $h['nameextension'] ?? '']))));
-                        ?>
-                            <option value="<?= (int) $h['household_id'] ?>"><?= htmlspecialchars($nm) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <input type="hidden" name="household_id" id="daHouseholdId" value="">
+                    <div id="daHhPicked" class="sw-search-modal-input" hidden>
+                        <input type="text" id="daHhName" readonly>
+                        <button type="button" class="btn btn-light" id="daHhChange">Change</button>
+                    </div>
+                    <div id="daHhSearch">
+                        <div class="sw-search-modal-input">
+                            <input type="text" id="daHhInput" placeholder="Search family head..." autocomplete="off">
+                            <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+                        </div>
+                        <div id="daHhResults" class="sw-resident-results"></div>
+                        <div id="daHhNone" class="sw-no-results" style="display:none;">No results found.</div>
+                    </div>
                 </div>
 
                 <div class="field">
@@ -264,6 +275,42 @@ document.addEventListener('DOMContentLoaded', function () {
     <?php endif; ?>
 
     var modal = document.getElementById('damageModal'), form = document.getElementById('damageForm');
+
+    // Household (family head) search
+    var hhId = document.getElementById('daHouseholdId'), hhInput = document.getElementById('daHhInput');
+    var hhResults = document.getElementById('daHhResults'), hhNone = document.getElementById('daHhNone');
+    var hhPicked = document.getElementById('daHhPicked'), hhName = document.getElementById('daHhName'), hhSearch = document.getElementById('daHhSearch');
+    var hhTimer = null;
+    function resetHousehold() {
+        hhId.value = ''; hhInput.value = ''; hhResults.innerHTML = ''; hhNone.style.display = 'none';
+        hhPicked.hidden = true; hhSearch.hidden = false;
+    }
+    hhInput.addEventListener('input', function () {
+        clearTimeout(hhTimer);
+        var q = hhInput.value.trim();
+        hhResults.innerHTML = ''; hhNone.style.display = 'none';
+        if (q.length < 2) return;
+        hhTimer = setTimeout(function () {
+            fetch('damage-assessment.php?search_household=1&q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data.length) { hhNone.style.display = 'block'; return; }
+                    data.forEach(function (d) {
+                        var b = document.createElement('button');
+                        b.type = 'button'; b.className = 'sw-resident-result'; b.textContent = d.name;
+                        b.addEventListener('click', function () {
+                            hhId.value = d.id; hhName.value = d.name;
+                            hhPicked.hidden = false; hhSearch.hidden = true;
+                            hhResults.innerHTML = '';
+                        });
+                        hhResults.appendChild(b);
+                    });
+                })
+                .catch(function () { hhNone.style.display = 'block'; });
+        }, 300);
+    });
+    document.getElementById('daHhChange').addEventListener('click', function () { resetHousehold(); hhInput.focus(); });
+
     var latEl = document.getElementById('daLat'), lngEl = document.getElementById('daLng');
     var accEl = document.getElementById('daAcc'), srcEl = document.getElementById('daSrc');
     var statusEl = document.getElementById('daLocStatus'), mapEl = document.getElementById('daMap'), relocateBtn = document.getElementById('daRelocate');
@@ -486,6 +533,7 @@ document.addEventListener('DOMContentLoaded', function () {
     form.addEventListener('submit', function (e) {
         e.preventDefault();
         if (sending) return;
+        if (!hhId.value) { showToast('Search and select the household (family head) first.', 'danger'); hhInput.focus(); return; }
         if (!photoBlob) { showToast('Take a photo with the camera first.', 'danger'); return; }
         if (!latEl.value || !lngEl.value) { showToast('The photo location is not ready yet. Wait for the georeference to appear, or tap Retry GPS.', 'danger'); return; }
         if (+accEl.value > MAX_OK_ACC) { showToast('GPS accuracy is only ±' + accEl.value + ' m. Move to an open area and tap Retry GPS.', 'danger'); relocateBtn.hidden = false; return; }

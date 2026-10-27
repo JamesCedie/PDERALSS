@@ -227,7 +227,7 @@ function dash_metrics(?string $b, ?array $event): array
     if ($eid) {
         // Evacuees (people = people_count, matching the Evacuation Center pages)
         foreach (dash_rows(
-            "SELECT b.name AS barangay, COUNT(*) AS hh, COALESCE(SUM(x.people_count),0) AS people
+            "SELECT b.name AS barangay, COUNT(DISTINCT COALESCE(x.household_id, -x.evacuee_id)) AS hh, COALESCE(SUM(x.people_count),0) AS people
              FROM evacuation_evacuees x
              JOIN evacuation_centers c ON c.center_id = x.center_id
              JOIN barangays b ON b.barangay_id = c.barangay_id
@@ -905,20 +905,11 @@ function dash_render_sw(array $ctx): void
     }
     echo '</div>';
 
-    echo '<div class="card dash-card"><h2>Assigned Evacuation Center</h2><div class="dash-card-sub">' . md_h($b) . '</div>';
+    echo '<div class="card dash-card dash-center-card"><h2>Assigned Evacuation Center</h2><div class="dash-card-sub">' . md_h($b) . '</div>';
     echo '<div class="dash-center-head"><h3>' . md_h($center[0]) . '</h3>' . status_badge(dash_center_status($per, $b)) . '</div>';
-    echo '<div class="dash-tiles" style="margin-top:0"><div class="dash-tile"><small>Total Evacuees</small><strong>' . dash_n($people) . '</strong></div>'
+    echo '<div class="dash-tiles"><div class="dash-tile"><small>Total Evacuees</small><strong>' . dash_n($people) . '</strong></div>'
        . '<div class="dash-tile"><small>Households</small><strong>' . dash_n($hh) . '</strong></div></div>';
-    if ($cap > 0) {
-        $pct  = (int) round($people / $cap * 100);
-        $tone = $pct >= 100 ? 'var(--sig-red)' : ($pct >= 85 ? 'var(--sig-amber)' : 'var(--sig-green)');
-        echo '<div class="dash-meter" style="--tone:' . $tone . '"><div class="dash-meter-row"><span>Center capacity</span><b>' . dash_n($people) . ' / ' . dash_n($cap) . ' · ' . $pct . '%</b></div>'
-           . '<div class="dash-meter-track"><i style="width:' . min(100, $pct) . '%"></i></div>'
-           . '<div class="dash-meter-free">' . dash_n(max(0, $cap - $people)) . ' spaces available</div></div>';
-    } else {
-        echo '<div class="dash-note">Capacity has not been set for this center.</div>';
-    }
-    echo '<div><a class="dash-link" href="evacuation-centers.php' . md_h($q) . '">Open center records &rarr;</a></div>';
+    echo '<div class="dash-center-foot"><a class="dash-link" href="evacuation-centers.php' . md_h($q) . '">Open center records &rarr;</a></div>';
     echo '</div></div>';
 
     // Row 3: vulnerable sectors
@@ -926,7 +917,6 @@ function dash_render_sw(array $ctx): void
         ['Children',            $m['children'], 'dc-b1'],
         ['Senior citizens',     $m['seniors'],  'dc-b2'],
         ['PWD',                 $m['pwd'],      'dc-b3'],
-        ['Pregnant / lactating', $m['pregnant'], 'dc-b4'],
     ];
     echo '<div class="dash-row r-2"><div class="card dash-card"><h2>Vulnerable Sectors</h2>';
     dash_donut($sectors, 'memberships', 'No registered households yet.');
