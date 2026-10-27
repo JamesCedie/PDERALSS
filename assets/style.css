@@ -2656,6 +2656,7 @@ a.dash-alert:hover { background: var(--hover-row); }
 >>>>>>> 7d79d26dda4d8e1972557b0e4cd2eca0e8566c60
 }
 @media (max-width: 380px) { .dash-kpis { grid-template-columns: 1fr; } }
+<<<<<<< HEAD
 
 
 /* Dashboard: sideways-scrolling bar chart (Damage by Barangay) */
@@ -2670,3 +2671,5 @@ a.dash-alert:hover { background: var(--hover-row); }
 /* Dashboard: Vehicle Requests card - keep tiles and note together under the chart */
 .dash-note.dash-note-inline { margin-top: 0; padding-top: 10px; }
 .dash-card .dash-empty { padding: 18px 4px; }
+=======
+>>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25

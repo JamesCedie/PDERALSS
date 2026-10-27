@@ -565,6 +565,7 @@ function dash_bar_chart(array $items, string $empty = 'No records yet.'): void
     if ($max === 0) { echo '<div class="dash-empty">' . md_h($empty) . '</div>'; return; }
 
     [$top, $step] = dash_scale($max);
+<<<<<<< HEAD
     $n = count($items);
     // Many categories (e.g. 37 barangays): give every bar its own slot and let the chart scroll sideways.
     $visible = 5;                       // bars visible at once; the rest scroll in from the right
@@ -575,17 +576,26 @@ function dash_bar_chart(array $items, string $empty = 'No records yet.'): void
     $wPct = $scroll ? round($W / ($L + $R + $visible * $minBand) * 100, 2) : 100;   // svg width as % of the card
     $pw = $W - $L - $R; $ph = $H - $T - $B;
     $band = $pw / $n; $bw = min(44, $band * 0.5);
+=======
+    $W = 560; $H = 250; $L = 38; $R = 8; $T = 24; $B = 30;
+    $pw = $W - $L - $R; $ph = $H - $T - $B;
+    $n  = count($items); $band = $pw / $n; $bw = min(44, $band * 0.5);
+>>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25
 
     $desc = [];
     foreach ($items as $it) {
         $t = 0; foreach ($it['segs'] as $sg) $t += max(0, (int) $sg[0]);
         $desc[] = $it['label'] . ' ' . $t;
     }
+<<<<<<< HEAD
     if ($scroll) echo '<div class="dash-scroll-hint" style="margin:0 0 4px;font-size:11px;color:#8a94a6;text-align:right">Showing ' . $visible . ' of ' . $n . ' barangays &middot; scroll sideways for more &rarr;</div>'
                     . '<div class="dash-scroll" style="overflow-x:auto;overflow-y:hidden;padding-bottom:6px">';
     echo '<svg class="dash-svg' . ($scroll ? ' is-wide' : '') . '" viewBox="0 0 ' . $W . ' ' . $H . '"'
        . ($scroll ? ' style="width:' . $wPct . '%;max-width:none;height:auto;display:block;overflow:visible"' : '')
        . ' role="img" aria-label="' . md_h(implode(', ', $desc)) . '">';
+=======
+    echo '<svg class="dash-svg" viewBox="0 0 ' . $W . ' ' . $H . '" role="img" aria-label="' . md_h(implode(', ', $desc)) . '">';
+>>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25
     for ($v = 0; $v <= $top; $v += $step) {
         $y = round($T + $ph - ($v / $top) * $ph, 1);
         echo '<line class="dc-grid" x1="' . $L . '" x2="' . ($W - $R) . '" y1="' . $y . '" y2="' . $y . '"/>';
@@ -602,6 +612,7 @@ function dash_bar_chart(array $items, string $empty = 'No records yet.'): void
             echo '<rect class="dc-bar" x="' . $x . '" y="' . round($yb, 1) . '" width="' . round($bw, 1) . '" height="' . $h . '" rx="2" style="--tone:' . dash_tone_var($sg[1]) . '">'
                . '<title>' . md_h($it['label'] . ($sg[2] ?? '' ? ' · ' . $sg[2] : '') . ': ' . dash_n($v)) . '</title></rect>';
         }
+<<<<<<< HEAD
         $cx = round($x + $bw / 2, 1);
         if ($total > 0) echo '<text class="dc-val" x="' . $cx . '" y="' . round($yb - 6, 1) . '">' . dash_n($total) . '</text>';
         if ($scroll) {
@@ -613,6 +624,12 @@ function dash_bar_chart(array $items, string $empty = 'No records yet.'): void
     }
     echo '</svg>';
     if ($scroll) echo '</div>';
+=======
+        echo '<text class="dc-val" x="' . round($x + $bw / 2, 1) . '" y="' . round($yb - 6, 1) . '">' . dash_n($total) . '</text>';
+        echo '<text class="dc-x" x="' . round($x + $bw / 2, 1) . '" y="' . ($H - 10) . '">' . md_h($it['label']) . '</text>';
+    }
+    echo '</svg>';
+>>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25
 }
 
 /** Line (optionally area) chart. $labels / $values are parallel arrays. */
@@ -822,9 +839,15 @@ function dash_render_md(array $ctx): void
         ['In transit', $v['transit'],  'dc-b2'],
         ['Pending',   $v['pending'],   'dc-b3'],
     ], 'requests', 'No vehicle requests yet.');
+<<<<<<< HEAD
     echo '<div class="dash-tiles"><div class="dash-tile"><small>Active requests</small><strong>' . dash_n($v['pending'] + $v['transit']) . '</strong></div>'
        . '<div class="dash-tile"><small>Completed</small><strong>' . dash_n($v['completed']) . '</strong></div></div>';
     echo '<div class="dash-note dash-note-inline">' . dash_n($v['pending']) . ' pending request' . ($v['pending'] === 1 ? '' : 's') . ' awaiting municipal dispatch</div>';
+=======
+    echo '<div class="dash-note">' . dash_n($v['pending']) . ' pending request' . ($v['pending'] === 1 ? '' : 's') . ' awaiting municipal dispatch</div>';
+    echo '<div class="dash-tiles"><div class="dash-tile"><small>Active requests</small><strong>' . dash_n($v['pending'] + $v['transit']) . '</strong></div>'
+       . '<div class="dash-tile"><small>Completed</small><strong>' . dash_n($v['completed']) . '</strong></div></div>';
+>>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25
     echo '</div></div>';
 
     // Recent activity
