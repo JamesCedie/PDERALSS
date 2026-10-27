@@ -574,9 +574,6 @@ function dash_bar_chart(array $items, string $empty = 'No records yet.'): void
     $wPct = $scroll ? round($W / ($L + $R + $visible * $minBand) * 100, 2) : 100;   // svg width as % of the card
     $pw = $W - $L - $R; $ph = $H - $T - $B;
     $band = $pw / $n; $bw = min(44, $band * 0.5);
-    $W = 560; $H = 250; $L = 38; $R = 8; $T = 24; $B = 30;
-    $pw = $W - $L - $R; $ph = $H - $T - $B;
-    $n  = count($items); $band = $pw / $n; $bw = min(44, $band * 0.5);
     $desc = [];
     foreach ($items as $it) {
         $t = 0; foreach ($it['segs'] as $sg) $t += max(0, (int) $sg[0]);
