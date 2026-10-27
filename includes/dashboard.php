@@ -563,6 +563,7 @@ function dash_bar_chart(array $items, string $empty = 'No records yet.'): void
     if ($max === 0) { echo '<div class="dash-empty">' . md_h($empty) . '</div>'; return; }
 
     [$top, $step] = dash_scale($max);
+
     $n = count($items);
     // Many categories (e.g. 37 barangays): give every bar its own slot and let the chart scroll sideways.
     $visible = 5;                       // bars visible at once; the rest scroll in from the right
@@ -573,6 +574,10 @@ function dash_bar_chart(array $items, string $empty = 'No records yet.'): void
     $wPct = $scroll ? round($W / ($L + $R + $visible * $minBand) * 100, 2) : 100;   // svg width as % of the card
     $pw = $W - $L - $R; $ph = $H - $T - $B;
     $band = $pw / $n; $bw = min(44, $band * 0.5);
+    $W = 560; $H = 250; $L = 38; $R = 8; $T = 24; $B = 30;
+    $pw = $W - $L - $R; $ph = $H - $T - $B;
+    $n  = count($items); $band = $pw / $n; $bw = min(44, $band * 0.5);
+>>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25
 
     $desc = [];
     foreach ($items as $it) {
