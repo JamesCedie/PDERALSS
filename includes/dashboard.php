@@ -576,7 +576,7 @@ function dash_bar_chart(array $items, string $empty = 'No records yet.'): void
     $band = $pw / $n; $bw = min(44, $band * 0.5);
     $W = 560; $H = 250; $L = 38; $R = 8; $T = 24; $B = 30;
     $pw = $W - $L - $R; $ph = $H - $T - $B;
-    $n  = count($items); $band = $pw / $n; $bw = min(44, $band * 0.5)
+    $n  = count($items); $band = $pw / $n; $bw = min(44, $band * 0.5);
     $desc = [];
     foreach ($items as $it) {
         $t = 0; foreach ($it['segs'] as $sg) $t += max(0, (int) $sg[0]);
