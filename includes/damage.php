@@ -22,7 +22,7 @@ define('DA_MAX_ACC_M', max(1, (int) (getenv('DA_MAX_ACCURACY_M') ?: 50)));
 
 class DaException extends RuntimeException {}
 
-// ---- CSRF ------------------------------------------------------------------
+// CSRF
 function da_csrf_token(): string
 {
     if (empty($_SESSION['da_csrf'])) {
@@ -41,7 +41,7 @@ function da_csrf_valid(): bool
     return !empty($_SESSION['da_csrf']) && hash_equals($_SESSION['da_csrf'], (string) ($_POST['csrf'] ?? ''));
 }
 
-// ---- Georeferencing --------------------------------------------------------
+// Georeferencing
 function da_haversine_m(float $lat1, float $lng1, float $lat2, float $lng2): float
 {
     $r  = 6371000.0;
@@ -118,7 +118,7 @@ function da_flag_labels(?string $flags): array
     return $out;
 }
 
-// ---- Visible watermark -----------------------------------------------------
+// Visible watermark
 /** Word-wraps text to a pixel width (TTF metrics when a font exists, ~7px/char otherwise). */
 function da_wrap(string $text, int $size, ?string $font, int $maxW): array
 {
@@ -301,7 +301,7 @@ function da_watermark(string $srcFile, string $mime, int $orientation, array $li
     return $bytes;
 }
 
-// ---- Integrity -------------------------------------------------------------
+// Integrity
 function da_secret(): string
 {
     $s = getenv('WATERMARK_SECRET');
@@ -341,7 +341,7 @@ function da_md_level(string $damageStatus): string
     return $damageStatus === 'Fully Damaged' ? 'Totally Damaged' : 'Partially Damaged';
 }
 
-// ---- Submission ------------------------------------------------------------
+// Submission
 /**
  * Validates and stores one assessment with its photo. Returns the inserted row.
  * Throws DaException with a user-facing message on any problem.
@@ -382,7 +382,7 @@ function da_submit(string $userId, string $userName, string $barangay, array $in
     $acc = (isset($in['gps_accuracy']) && is_numeric($in['gps_accuracy'])) ? max(0.0, min(100000.0, (float) $in['gps_accuracy'])) : null;
     $src = 'device';   // location is read automatically at capture time; manual pins are not accepted
 
-    // ---- file checks (photos must come from the in-app camera)
+    // file checks (photos must come from the in-app camera)
     if (($in['capture_method'] ?? '') !== 'camera') {
         throw new DaException('Photos must be taken with the in-app camera.');
     }
@@ -407,14 +407,14 @@ function da_submit(string $userId, string $userName, string $barangay, array $in
     $origSha   = hash('sha256', $origBytes);
     $exif      = da_exif_read($tmp, $mime);
 
-    // ---- georeference checks (flagged for MD review, not blocking)
+    // georeference checks (flagged for MD review, not blocking)
     $flags = [];
     if (!da_in_city($lat, $lng)) $flags[] = 'outside_city';
     if ($exif['lat'] !== null && da_haversine_m($lat, $lng, $exif['lat'], $exif['lng']) > 300) $flags[] = 'exif_mismatch';
     if ($exif['taken'] !== null && abs(time() - $exif['taken']) > 86400) $flags[] = 'old_photo';
     if ($acc !== null && $acc > DA_MAX_ACC_M) $flags[] = 'low_accuracy';
 
-    // ---- capture time: use the browser's capture moment when it is plausible, else server time
+    // capture time: use the browser's capture moment when it is plausible, else server time
     $ts = time();
     if (isset($in['captured_ts']) && is_numeric($in['captured_ts'])) {
         $c = (int) $in['captured_ts'];
@@ -423,14 +423,14 @@ function da_submit(string $userId, string $userName, string $barangay, array $in
     $ref = 'DA-' . gmdate('ymd', $ts) . '-' . strtoupper(bin2hex(random_bytes(3)));
     $local = (new DateTimeImmutable('@' . $ts))->setTimezone(new DateTimeZone('Asia/Manila'))->format('d M Y H:i:s');
 
-    // ---- address (reverse geocoded server side)
+    // address (reverse geocoded server side)
     $address = da_reverse_geocode($lat, $lng);
     if ($address !== '' && !da_font()) {
         $t = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $address);
         if ($t !== false) $address = $t;
     }
 
-    // ---- watermark
+    // watermark
     $lines = [
         'PDERALSS Damage Assessment  ' . $ref,
         $barangay . '  |  Reporter: ' . $reporter,
@@ -442,7 +442,7 @@ function da_submit(string $userId, string $userName, string $barangay, array $in
     $wmBytes  = da_watermark($tmp, $mime, $exif['orientation'], $lines, 'PDERALSS  ' . $ref);
     $photoSha = hash('sha256', $wmBytes);
 
-    // ---- store both files privately in Supabase
+    // store both files privately in Supabase
     $slug      = trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($barangay)), '-') ?: 'barangay';
     $photoPath = $slug . '/' . $ref . '.jpg';
     $origPath  = 'original/' . $slug . '/' . $ref . '.' . $exts[$mime];

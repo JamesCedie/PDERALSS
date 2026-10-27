@@ -107,7 +107,6 @@ function rg_record_distribution(array $in, string $userId): array
         return [false, 'Could not save the distribution. Please try again.'];
     }
 }
-<<<<<<< HEAD
 
 const RG_STATUSES = ['Pending', 'In Transit', 'Completed'];
 const RG_PER_PAGE = 10;
@@ -159,5 +158,3 @@ function rg_search(array $f): array
     )->fetchAll();
     return [$rows, $total, $page, $totalPages];
 }
-=======
->>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25

@@ -1,12 +1,11 @@
-/* ==========================================================
+/*
    Theme tokens
-   ----------------------------------------------------------
    Light is the default theme: it applies whenever <html> has no
    data-theme attribute, or data-theme="light". Dark is opt-in via
    data-theme="dark" (set by the toggle next to Logout and remembered
    in localStorage). The OS colour scheme is deliberately ignored.
    Every colour in this file references these tokens.
-   ========================================================== */
+   */
 :root {
     color-scheme: light;
     --bg-canvas: #F4F6FA;  /* Canvas / login background */
@@ -242,9 +241,9 @@ textarea:focus-visible {
     outline-offset: 2px;
 }
 
-/* ==========================================================
+/*
    Reset & base
-   ========================================================== */
+   */
 * {
     box-sizing: border-box;
 }
@@ -268,9 +267,9 @@ textarea {
     font: inherit;
 }
 
-/* ==========================================================
+/*
    App shell / sidebar / topbar
-   ========================================================== */
+   */
 .app {
     display: flex;
     min-height: 100vh;
@@ -390,9 +389,9 @@ textarea {
     margin-top: 3px;
 }
 
-/* ==========================================================
+/*
    Page content / layout grid
-   ========================================================== */
+   */
 .content {
     padding: 24px;
     max-width: 1600px;
@@ -434,9 +433,9 @@ textarea {
     grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
-/* ==========================================================
+/*
    Cards & stats
-   ========================================================== */
+   */
 .card {
     background: var(--surface);
     border-radius: 10px;
@@ -507,9 +506,9 @@ textarea {
     margin-top: 4px;
 }
 
-/* ==========================================================
+/*
    Tables
-   ========================================================== */
+   */
 .table-wrap {
     overflow-x: auto;
 }
@@ -541,9 +540,9 @@ textarea {
     background: var(--hover-row);
 }
 
-/* ==========================================================
+/*
    Badges
-   ========================================================== */
+   */
 .badge {
     display: inline-block;
     padding: 2px 9px;
@@ -562,9 +561,9 @@ textarea {
 .b-gray   { background: var(--st-gray-bg);   color: var(--st-gray-text);   border-color: var(--st-gray-bd); }
 .b-purple { background: var(--st-purple-bg); color: var(--st-purple-text); border-color: var(--st-purple-bd); }
 
-/* ==========================================================
+/*
    Buttons & actions
-   ========================================================== */
+   */
 .btn {
     border: 0;
     border-radius: 8px;
@@ -612,9 +611,9 @@ textarea {
     flex-wrap: wrap;
 }
 
-/* ==========================================================
+/*
    Alerts
-   ========================================================== */
+   */
 .alert {
     padding: 14px;
     border-radius: 8px;
@@ -646,9 +645,9 @@ textarea {
     color: var(--st-green-text);
 }
 
-/* ==========================================================
+/*
    Map / pins
-   ========================================================== */
+   */
 .map {
     height: 370px;
     background: var(--map-bg);
@@ -668,9 +667,9 @@ textarea {
     font-size: 12px;
 }
 
-/* ==========================================================
+/*
    Forms
-   ========================================================== */
+   */
 .form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -707,9 +706,9 @@ textarea {
     box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
-/* ==========================================================
+/*
    Modals
-   ========================================================== */
+   */
 .modal {
     display: none;
     position: fixed;
@@ -746,9 +745,9 @@ textarea {
     font-size: 20px;
 }
 
-/* ==========================================================
+/*
    Login page
-   ========================================================== */
+   */
 .login-page {
     min-height: 100vh;
     background: var(--bg-canvas);
@@ -793,9 +792,9 @@ textarea {
     margin: 8px 0 24px;
 }
 
-/* ==========================================================
+/*
    Misc utilities
-   ========================================================== */
+   */
 .empty {
     text-align: center;
     padding: 35px;
@@ -851,9 +850,9 @@ textarea {
     margin-top: 22px;
 }
 
-/* ==========================================================
+/*
    Missing helper classes (referenced in markup, not yet styled)
-   ========================================================== */
+   */
 .field-full {
     grid-column: 1 / -1;
 }
@@ -868,18 +867,18 @@ textarea {
     margin: 10px 0;
 }
 
-/* ==========================================================
+/*
    Buttons (migrated from inline styles)
-   ========================================================== */
+   */
 .btn-block {
     width: 100%;
     justify-content: center;
 }
 
-/* ==========================================================
+/*
    Barangay progress lists (migrated from inline styles)
    casualties.php per-barangay breakdown
-   ========================================================== */
+   */
 .barangay-row {
     margin: 14px 0;
 }
@@ -890,12 +889,12 @@ textarea {
     font-size: 12px;
 }
 
-/* ==========================================================
+/*
    Progress bars (migrated from inline styles)
    Shared by casualties.php and evacuation-centers.php.
    Dynamic fill amount is set per-instance via the --fill
    custom property.
-   ========================================================== */
+   */
 .progress-track {
     height: 8px;
     background: var(--border-soft);
@@ -920,11 +919,11 @@ textarea {
     background: var(--fill-red);
 }
 
-/* ==========================================================
+/*
    Map caption (migrated from inline styles)
    dashboard.php map legend box. Pin position is set
    per-instance via the --x / --y custom properties.
-   ========================================================== */
+   */
 .pin {
     left: var(--x, 0%);
     top: var(--y, 0%);
@@ -941,16 +940,16 @@ textarea {
     color: var(--text-2);
 }
 
-/* ==========================================================
+/*
    Dashboard alerts (migrated from inline styles)
-   ========================================================== */
+   */
 .alert-message {
     font-size: 13px;
 }
 
-/* ==========================================================
+/*
    Evacuation center overview list (migrated from inline styles)
-   ========================================================== */
+   */
 .center-row {
     margin-bottom: 16px;
 }
@@ -961,9 +960,9 @@ textarea {
     font-size: 13px;
 }
 
-/* ==========================================================
+/*
    Notifications (migrated from inline styles)
-   ========================================================== */
+   */
 .notif-alert {
     cursor: pointer;
 }
@@ -987,9 +986,9 @@ textarea {
     margin-top: 7px;
 }
 
-/* ==========================================================
+/*
    Relief goods (migrated from inline styles)
-   ========================================================== */
+   */
 .barangay-summary {
     border: 1px solid var(--border-soft);
     border-radius: 8px;
@@ -1001,9 +1000,9 @@ textarea {
     margin-top: 7px;
 }
 
-/* ==========================================================
+/*
    Reports (migrated from inline styles)
-   ========================================================== */
+   */
 .report-stat-value {
     font-size: 25px;
     font-weight: 600;
@@ -1019,9 +1018,9 @@ textarea {
     font-size: 22px;
 }
 
-/* ==========================================================
+/*
    Responsive
-   ========================================================== */
+   */
 @media (max-width: 1100px) {
     .sidebar {
         transform: translateX(-100%); /* hidden off-screen by default */
@@ -1062,9 +1061,9 @@ textarea {
         grid-template-columns: repeat(2, 1fr);
     }
 }
-/* ==========================================================
+/*
    PDERALSS dark UI — social worker pages (PDF reference)
-   ========================================================== */
+   */
 .sw-ui {
     --sw-bg: var(--bg-canvas);
     --sw-sidebar: var(--bg-sidebar);
@@ -1545,9 +1544,9 @@ textarea {
     .sw-breakdown { grid-template-columns:1fr; }
 }
 
-/* ==========================================================
+/*
    Login reference design
-   ========================================================== */
+   */
 .login-page {
     min-height:100vh;
     background:var(--bg-canvas);
@@ -1665,9 +1664,9 @@ textarea {
 
 .sidebar-overlay{display:none;position:fixed;inset:0;background:var(--scrim);z-index:19;}
 
-/* ==========================================================
+/*
    Targeted UI refinements
-   ========================================================== */
+   */
 
 /* Household records: keep actions on one compact line and avoid tall rows. */
 .sw-records .table {
@@ -1932,9 +1931,9 @@ textarea {
     border-color: var(--st-red-bd);
 }
 
-/* ==========================================================
+/*
    Vehicle Requests (Social Worker + MDRRMO) — dark PDERALSS UI
-   ========================================================== */
+   */
 .vr-head { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:22px; }
 .vr-head .assigned-label { margin:0; }
 .vr-section-title { font-size:15px; font-weight:700; margin:0 0 12px; color:var(--sw-text); }
@@ -2008,10 +2007,10 @@ textarea {
     .vr-cards { grid-template-columns:1fr 1fr; }
 }
 
-/* ==========================================================
+/*
    MDRRMO pages — dark PDERALSS theme (matches Vehicle Requests)
    Everything is scoped to .md-ui so Social Worker pages are untouched.
-   ========================================================== */
+   */
 /* Titles live in the top bar, so hide the in-page duplicates (also inside back-button rows). */
 .md-ui .page-head .page-title { display:none; }
 .md-ui .page-head:not(:has(.btn, .actions, form, a)) { display:none; }
@@ -2083,10 +2082,10 @@ textarea {
 @media (max-width: 760px) { .hh-folders { grid-template-columns:1fr; } }
 .hh-page .table .vr-right { text-align:right; }
 
-/* ==========================================================
+/*
    MDRRMO monitoring pages — Disaster Events, Casualty,
    Evacuation Center, Damage Assessment (scoped to .md-page)
-   ========================================================== */
+   */
 .md-page .sw-event-label { margin:4px 0 22px; }
 .md-page .sw-casualty-title { margin:0 0 12px; }
 .md-page .sw-casualty-title.mt { margin-top:26px; }
@@ -2210,7 +2209,7 @@ textarea {
 .da-stamp[hidden] { display:none; }
 
 
-/* ---- Social Worker: search bar on Household, occupancy dropdown on Evacuation Center ---- */
+/* Social Worker: search bar on Household, occupancy dropdown on Evacuation Center */
 .sw-household-list .sw-search { margin: 0 0 14px; }
 .sw-status-form { margin: 0 0 14px; }
 .sw-status-select {
@@ -2226,7 +2225,7 @@ textarea {
 @media (max-width: 600px) { .sw-status-select { width: 100%; } }
 
 
-/* ---- Disaster Events sidebar tree ---- */
+/* Disaster Events sidebar tree */
 .nav .nav-tree { position: relative; margin: 2px 0 6px 22px; padding-left: 0; }
 .nav .nav-tree::before { content: ""; position: absolute; left: 0; top: 0; bottom: 18px; width: 1px; background: var(--border-soft); }
 .nav .nav-tree-item { position: relative; display: block; margin: 2px 0 2px 14px; padding: 8px 12px; font-size: 13px; border-radius: 8px; }
@@ -2235,10 +2234,10 @@ textarea {
 .sw-ui .nav a.nav-tree-item.active { font-weight: 600; }
 
 
-/* ==========================================================
+/*
    Relief Goods & Resource Allocation (inventory UI)
    Scoped to .rg-page / .rg-modal so no other page is affected.
-   ========================================================== */
+   */
 .live-status { text-align:right; line-height:1.35; }
 .live-status-line { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:var(--text-body); }
 .live-status small { display:block; font-size:10px; color:var(--sw-soft); }
@@ -2346,11 +2345,11 @@ textarea {
 /* Relief Goods: text close button + stat tiles without icons */
 .rg-close { width:auto; height:auto; padding:6px 12px; font-size:13px; line-height:1.2; }
 
-/* ==========================================================
+/*
    Unified summary cards: small title on top, large number below.
    Used by every page (dashboards, households, casualties, evacuation,
    damage assessment, vehicle requests, relief goods, reports, users).
-   ========================================================== */
+   */
 .card.sw-summary-card {
     min-height: 104px;
     padding: 18px 20px;
@@ -2395,9 +2394,9 @@ textarea {
 .md-split.cm-top { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 860px) { .md-split.cm-top { grid-template-columns: 1fr; } }
 
-/* ==========================================================
+/*
    Layout fixes (all portal pages)
-   ========================================================== */
+   */
 /* Tablet navigation: between 760px and 1100px the sidebar was hidden but the page kept its
    left gutter and the menu button was not shown. One breakpoint (1100px, same as app.js) now
    drives the off-canvas sidebar, the hamburger button and the full-width content. */
@@ -2426,14 +2425,12 @@ textarea {
     .sw-top-title p { display: none; }
 }
 
-/* ==========================================================
+/*
    Dashboard (MDRRMO Officer + Social Worker)
-<<<<<<< HEAD
-   ----------------------------------------------------------
    Layout follows the approved dashboard mock-ups. Charts are
    server-rendered inline SVG, coloured through CSS variables
    so light and dark themes both work.
-   ========================================================== */
+   */
 .dash {
     --dc-injured: #D6847E; --dc-missing: #E8BDB8; --dc-fatal: #B42318;
     --dc-totally: #D6847E; --dc-partially: #FBE4E1;
@@ -2557,106 +2554,8 @@ textarea {
     .dash-event-form { width: 100%; }
     .dash-donut { width: 150px; height: 150px; }
     .dash-tablefoot { padding: 12px 16px; }
-=======
-   ========================================================== */
-.dash { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.dash-card { padding: 18px 20px; }
-.dash-card-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 14px; }
-.dash-card-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
-.dash-empty { color: var(--sw-muted); font-size: 13px; padding: 18px 4px; text-align: center; }
-.dash-sub { margin: 16px 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--sw-muted); }
-
-/* Header: event picker + scope */
-.dash-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 14px 20px; }
-.dash-head-main, .dash-head-side { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
-.dash-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sw-muted); }
-.dash-event-form { margin: 0; min-width: 0; }
-.dash-select {
-    max-width: 100%; min-width: 220px; padding: 8px 34px 8px 12px; font-size: 13px; font-weight: 600;
-    color: var(--sw-text); background-color: var(--sw-input); border: 1px solid var(--sw-border); border-radius: 6px;
-}
-.dash-meta { font-size: 12px; color: var(--sw-muted); }
-.dash-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; border: 1px solid var(--sw-border); border-radius: 999px; background: var(--surface-nested); color: var(--sw-text); }
-
-/* KPI cards */
-.dash-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
-.dash-kpi { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 16px 18px 16px 22px; overflow: hidden; color: var(--sw-text); text-decoration: none; transition: border-color .15s, transform .15s; }
-.dash-kpi::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--tone, var(--sig-blue)); }
-a.dash-kpi:hover { border-color: var(--tone, var(--sig-blue)); transform: translateY(-1px); }
-a.dash-kpi:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.dash-kpi-label { font-size: 13px; font-weight: 500; color: var(--sw-muted); }
-.dash-kpi-value { font-size: clamp(28px, 3vw, 36px); font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.dash-kpi-sub { font-size: 12px; color: var(--sw-muted); }
-
-/* Vulnerable groups strip */
-.dash-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.dash-strip-item { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border: 1px solid var(--border-soft); border-radius: 8px; background: var(--surface-nested); }
-.dash-strip-item strong { font-size: 24px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.dash-strip-item span { font-size: 12px; color: var(--sw-muted); }
-
-/* Layout rows */
-.dash-row { display: grid; gap: 16px; min-width: 0; }
-.dash-row.r-2   { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.dash-row.r-2-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
-.dash-row.r-3   { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-
-/* Bars */
-.dash-bars { display: flex; flex-direction: column; gap: 10px; }
-.dash-bar-row { display: grid; grid-template-columns: minmax(84px, 34%) minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 13px; }
-.dash-bar-label { color: var(--sw-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dash-bar-track { display: flex; height: 10px; border-radius: 999px; background: var(--track); overflow: hidden; }
-.dash-bar-fill { display: block; height: 100%; background: var(--tone, var(--sig-blue)); }
-.dash-bar-val { min-width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
-.dash-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 12px; font-size: 12px; color: var(--sw-muted); }
-.dash-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.dash-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-.dash-legend i.sq { border-radius: 2px; }
-.dash-legend-map { margin: 12px 0 0; }
-
-/* Alerts */
-.dash-alerts { display: flex; flex-direction: column; gap: 8px; }
-.dash-alert { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border: 1px solid var(--border-soft); border-left-width: 4px; border-radius: 8px; background: var(--surface-nested); color: var(--sw-text); text-decoration: none; }
-a.dash-alert:hover { background: var(--hover-row); }
-.dash-alert b { font-size: 13px; }
-.dash-alert span { font-size: 12px; color: var(--sw-muted); }
-.dash-alert.is-danger  { border-left-color: var(--sig-red); }
-.dash-alert.is-warning { border-left-color: var(--sig-amber); }
-.dash-alert.is-info    { border-left-color: var(--sig-blue); }
-.dash-alert.is-success { border-left-color: var(--sig-green); }
-
-/* Map */
-.dash-map { position: relative; z-index: 0; height: 360px; border: 1px solid var(--border-soft); border-radius: 10px; overflow: hidden; background: var(--map-tile-bg); }
-.dash-map .dash-empty { padding-top: 150px; }
-
-/* Activity feed */
-.dash-activity { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.dash-activity li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
-.dash-activity li:last-child { border-bottom: 0; padding-bottom: 0; }
-.dash-act-kind { grid-row: 1 / span 2; align-self: start; padding: 2px 8px; font-size: 11px; font-weight: 700; border-radius: 999px; border: 1px solid var(--tone, var(--sig-blue)); color: var(--tone, var(--sig-blue)); }
-.dash-act-text { font-size: 13px; overflow-wrap: anywhere; }
-.dash-act-meta { font-size: 12px; color: var(--sw-muted); }
-
-@media (max-width: 1280px) {
-    .dash-row.r-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .dash-row.r-3 > :last-child { grid-column: 1 / -1; }
-}
-@media (max-width: 980px) {
-    .dash-row.r-2, .dash-row.r-2-1, .dash-row.r-3 { grid-template-columns: 1fr; }
-    .dash-row.r-3 > :last-child { grid-column: auto; }
-    .dash-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 560px) {
-    .dash-card { padding: 16px; }
-    .dash-kpis { grid-template-columns: 1fr 1fr; gap: 12px; }
-    .dash-kpi { padding: 14px 14px 14px 18px; }
-    .dash-select { min-width: 0; width: 100%; }
-    .dash-event-form { width: 100%; }
-    .dash-bar-row { grid-template-columns: minmax(70px, 38%) minmax(0, 1fr) auto; }
-    .dash-map { height: 280px; }
->>>>>>> 7d79d26dda4d8e1972557b0e4cd2eca0e8566c60
 }
 @media (max-width: 380px) { .dash-kpis { grid-template-columns: 1fr; } }
-<<<<<<< HEAD
 
 
 /* Dashboard: sideways-scrolling bar chart (Damage by Barangay) */
@@ -2671,5 +2570,3 @@ a.dash-alert:hover { background: var(--hover-row); }
 /* Dashboard: Vehicle Requests card - keep tiles and note together under the chart */
 .dash-note.dash-note-inline { margin-top: 0; padding-top: 10px; }
 .dash-card .dash-empty { padding: 18px 4px; }
-=======
->>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25

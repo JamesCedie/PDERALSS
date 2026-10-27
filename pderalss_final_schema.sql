@@ -1,4 +1,3 @@
--- =====================================================================
 -- PDERALSS - FINAL DATABASE SCRIPT  (drop everything, rebuild from scratch)
 --
 -- Run this whole file once in the Supabase SQL editor.
@@ -14,11 +13,10 @@
 -- Iloilo City address is not carried over). Set each one in
 -- User Management. Barangay latitude/longitude are still empty, so map
 -- pins appear only after you fill them in.
--- =====================================================================
 
 BEGIN;
 
--- ---------- STEP 1-2: keep accounts, drop old tables -----------------
+-- STEP 1-2: keep accounts, drop old tables
 CREATE TABLE public.users_keep AS
 SELECT user_id, first_name, last_name, email, password, role, username, session_token
 FROM public.users;
@@ -38,15 +36,13 @@ DROP TABLE IF EXISTS public.users                    CASCADE;
 DROP TABLE IF EXISTS public.barangays                CASCADE;
 
 
--- ---------- STEP 3: new schema --------------------------------------
--- ---------------------------------------------------------------------
+-- STEP 3: new schema
 -- 1. barangays  [NEW]
 -- One row per barangay. Replaces the free-text barangay column in 8
 -- tables and the hardcoded lists MD_BARANGAYS (md.php), BARANGAYS
 -- (users.php), HH_BARANGAYS (mdrrmo-officer/households.php) and
 -- DASH_CENTER_DEFAULTS (dashboard.php).
 -- name must match the strings already stored when backfilling old rows.
--- ---------------------------------------------------------------------
 CREATE TABLE public.barangays (
     barangay_id SERIAL PRIMARY KEY,
     name        VARCHAR(100) NOT NULL UNIQUE,
@@ -97,14 +93,12 @@ INSERT INTO public.barangays (name) VALUES
     ('Turog-Turog');
 
 
--- ---------------------------------------------------------------------
 -- 2. users
 -- [CHANGED] address -> barangay_id. In the code, users.address is only
 -- ever used as the Social Worker's assigned barangay. That is the
 -- "Social Worker Assignment" in your entity list: one nullable FK on
 -- the user, not a separate table. MDRRMO Officers leave it NULL.
 -- [CHANGED] role gets a CHECK (only these two roles exist in access.php).
--- ---------------------------------------------------------------------
 CREATE TABLE public.users (
     user_id       VARCHAR(50)  PRIMARY KEY,
     first_name    VARCHAR(100) NOT NULL,
@@ -120,11 +114,9 @@ CREATE TABLE public.users (
 );
 
 
--- ---------------------------------------------------------------------
 -- 3. disaster_events
 -- [CHANGED] created_by becomes a real FK; status gets its CHECK and is
 -- created by the schema instead of db_ensure_disaster_event_status().
--- ---------------------------------------------------------------------
 CREATE TABLE public.disaster_events (
     event_id    SERIAL PRIMARY KEY,
     event_name  VARCHAR(150) NOT NULL,
@@ -138,7 +130,6 @@ CREATE TABLE public.disaster_events (
 );
 
 
--- ---------------------------------------------------------------------
 -- 4. household  (the family head's record)
 -- [CHANGED] barangay -> barangay_id, created_by -> FK.
 -- [NEW] updated_at: dashboard.php (dash_records) and the MDRRMO
@@ -146,7 +137,6 @@ CREATE TABLE public.disaster_events (
 --       it today because it does not exist.
 -- total_family_members / pwd_count / senior_citizens / age are kept:
 -- the forms collect them, and the dashboards sum them.
--- ---------------------------------------------------------------------
 CREATE TABLE public.household (
     household_id           SERIAL PRIMARY KEY,
     firstname              VARCHAR NOT NULL,
@@ -174,10 +164,8 @@ CREATE TABLE public.household (
 CREATE INDEX idx_household_barangay ON public.household (barangay_id);
 
 
--- ---------------------------------------------------------------------
 -- 5. family_composition  (household members, excluding the head)
 -- [CHANGED] household_id gets a real FK with ON DELETE CASCADE.
--- ---------------------------------------------------------------------
 CREATE TABLE public.family_composition (
     composition_id         SERIAL PRIMARY KEY,
     household_id           INTEGER NOT NULL REFERENCES public.household (household_id)
@@ -196,14 +184,12 @@ CREATE TABLE public.family_composition (
 CREATE INDEX idx_family_household ON public.family_composition (household_id);
 
 
--- ---------------------------------------------------------------------
 -- 6. evacuation_centers  [NEW - replaces evacuation_center_info]
 -- Today evacuation_center_info is keyed by barangay text, is created
 -- and seeded by dashboard.php at runtime, and has no coordinates, so
 -- the map pins are hardcoded in mdrrmo-officer/evacuation-centers.php.
 -- latitude/longitude are the "location for map purposes" (see fallback below).
 -- UNIQUE (barangay_id) enforces the confirmed rule: one center per barangay.
--- ---------------------------------------------------------------------
 CREATE TABLE public.evacuation_centers (
     center_id   SERIAL PRIMARY KEY,
     barangay_id INTEGER NOT NULL UNIQUE REFERENCES public.barangays (barangay_id)
@@ -231,12 +217,10 @@ FROM public.barangays
 ORDER BY barangay_id;
 
 
--- ---------------------------------------------------------------------
 -- 7. evacuation_center_status  (a center's availability per event)
 -- [CHANGED] key is (event_id, center_id) instead of (event_id, barangay).
 -- This table is required: it holds the Social Worker's Available/Full
 -- dropdown, which blocks adding evacuees and feeds the MDRRMO map.
--- ---------------------------------------------------------------------
 CREATE TABLE public.evacuation_center_status (
     event_id   INTEGER NOT NULL REFERENCES public.disaster_events (event_id)
                ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -251,7 +235,6 @@ CREATE TABLE public.evacuation_center_status (
 );
 
 
--- ---------------------------------------------------------------------
 -- 8. evacuation_evacuees  (evacuee records)
 -- [CHANGED] barangay (text) removed: the center already implies it.
 -- [CHANGED] household_no renamed people_count. The code stores the
@@ -259,7 +242,6 @@ CREATE TABLE public.evacuation_center_status (
 -- [CHANGED] event_id / center_id / household_id / added_by are now FKs.
 -- name is kept on purpose: walk-ins have no household_id, and the name
 -- keeps the record readable if the household is later deleted.
--- ---------------------------------------------------------------------
 CREATE TABLE public.evacuation_evacuees (
     evacuee_id   SERIAL PRIMARY KEY,
     event_id     INTEGER NOT NULL REFERENCES public.disaster_events (event_id)
@@ -281,12 +263,10 @@ CREATE UNIQUE INDEX uq_evacuees_event_household
     WHERE household_id IS NOT NULL;
 
 
--- ---------------------------------------------------------------------
 -- 9. casualties
 -- [CHANGED] barangay (text) -> barangay_id; added_by -> FK.
 -- name stays free text: the system records casualties by name and does
 -- not link them to household members.
--- ---------------------------------------------------------------------
 CREATE TABLE public.casualties (
     casualty_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     event_id    INTEGER NOT NULL REFERENCES public.disaster_events (event_id)
@@ -305,7 +285,6 @@ CREATE TABLE public.casualties (
 CREATE INDEX idx_casualties_event_barangay ON public.casualties (event_id, barangay_id);
 
 
--- ---------------------------------------------------------------------
 -- 10. damage_assessments  (proof photo + record, houses only)
 -- [NEW]     event_id. The MDRRMO pages open this from inside a disaster
 --           event and show the event name, but the table has no link to
@@ -320,7 +299,6 @@ CREATE INDEX idx_casualties_event_barangay ON public.casualties (event_id, baran
 -- [CHANGED] photo_path is required: the photo is the proof.
 -- [CHANGED] submitted_by -> FK.
 -- Everything else (GPS, EXIF, hashes, signature) is unchanged.
--- ---------------------------------------------------------------------
 CREATE TABLE public.damage_assessments (
     assessment_id   BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     reference_code  VARCHAR(30) NOT NULL UNIQUE,
@@ -355,11 +333,9 @@ CREATE INDEX idx_damage_event     ON public.damage_assessments (event_id);
 CREATE INDEX idx_damage_household ON public.damage_assessments (household_id);
 
 
--- ---------------------------------------------------------------------
 -- 11. vehicle_requests
 -- [CHANGED] barangay -> barangay_id; requested_by / reviewed_by -> FKs.
 -- assigned_vehicle stays free text (the clash check compares the text).
--- ---------------------------------------------------------------------
 CREATE TABLE public.vehicle_requests (
     request_id       BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     request_code     VARCHAR(20) UNIQUE,
@@ -384,10 +360,8 @@ CREATE TABLE public.vehicle_requests (
 CREATE INDEX idx_vehicle_barangay_status ON public.vehicle_requests (barangay_id, status);
 
 
--- ---------------------------------------------------------------------
 -- 12. relief_distributions
 -- [CHANGED] barangay -> barangay_id; recorded_by -> FK.
--- ---------------------------------------------------------------------
 CREATE TABLE public.relief_distributions (
     distribution_id   BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     distribution_code VARCHAR(20) UNIQUE,
@@ -407,12 +381,10 @@ CREATE TABLE public.relief_distributions (
 CREATE INDEX idx_relief_barangay ON public.relief_distributions (barangay_id);
 
 
--- ---------------------------------------------------------------------
 -- Row level security. The PHP app connects as the postgres role (which
 -- bypasses RLS); enabling RLS with no policies means Supabase's public
 -- REST API can read none of these tables. users (password hashes) and
 -- household (personal data) matter most.
--- ---------------------------------------------------------------------
 ALTER TABLE public.barangays                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users                    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.disaster_events          ENABLE ROW LEVEL SECURITY;
@@ -427,7 +399,7 @@ ALTER TABLE public.vehicle_requests         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.relief_distributions     ENABLE ROW LEVEL SECURITY;
 
 
--- ---------- STEP 4: restore accounts --------------------------------
+-- STEP 4: restore accounts
 INSERT INTO public.users
     (user_id, first_name, last_name, email, password, role, username, session_token)
 SELECT user_id, first_name, last_name, email, password, role, username, session_token

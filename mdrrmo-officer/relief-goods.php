@@ -25,23 +25,15 @@ $old        = $_SESSION['rg_old'] ?? [];
 unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['rg_old']);
 
 $stock   = rg_totals();
-<<<<<<< HEAD
 $f = rg_filters($_GET);
 [$rows, $total, $page, $totalPages] = rg_search($f);
 $totalAll  = (int) db_query('SELECT COUNT(*) FROM relief_distributions')->fetchColumn();
 $filtering = $f['q'] !== '' || $f['item'] !== '' || $f['status'] !== '' || $f['date'] !== '';
-=======
-$rows    = rg_distributions();
->>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25
 $today   = (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))->format('Y-m-d');
 $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup with what was typed
 ?>
 
-<<<<<<< HEAD
 <div class="rg-page vr-page">
-=======
-<div class="rg-page">
->>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25
 
     <?php if ($successMsg): ?><div class="alert alert-success rg-alert"><?= md_h($successMsg) ?></div><?php endif; ?>
     <?php if ($errorMsg): ?><div class="alert alert-danger rg-alert"><?= md_h($errorMsg) ?></div><?php endif; ?>
@@ -52,10 +44,6 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
             Distribute Goods
         </button>
     </div>
-<<<<<<< HEAD
-=======
-    </div>
->>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25
 
     <div class="grid g4 md-stats">
         <?php foreach ($stock as $item => $st): ?>
@@ -66,7 +54,6 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
         <?php endforeach; ?>
     </div>
 
-<<<<<<< HEAD
     <div class="vr-table-head">
         <div class="vr-section-title" style="margin-bottom:0">Distribution Tracking</div>
         <div class="mini">Showing <?= count($rows) ?> of <?= $total ?><?= $filtering ? ' matching' : '' ?> distributions</div>
@@ -94,15 +81,6 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
             <table class="table">
                 <thead>
                     <tr>
-=======
-    <section class="rg-panel">
-        <h3 class="rg-panel-title">Distribution Tracking</h3>
-        <div class="rg-table-wrap">
-            <table class="rg-table">
-                <thead>
-                    <tr>
-                        <th>Distribution ID</th>
->>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25
                         <th>Barangay</th>
                         <th>Item</th>
                         <th>Quantity</th>
@@ -112,7 +90,6 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
                     </tr>
                 </thead>
                 <tbody>
-<<<<<<< HEAD
                     <?php if (!$rows): ?>
                         <tr><td colspan="7" class="empty"><?= $totalAll === 0 ? 'No distributions recorded yet. Click “Distribute Goods” to add the first one.' : 'No distributions match your filters.' ?></td></tr>
                     <?php endif; ?>
@@ -139,26 +116,6 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
             <?php if ($page < $totalPages): ?><a class="btn btn-light" href="<?= md_h(rg_url($f, ['page' => $page + 1])) ?>">Next</a><?php endif; ?>
         </div>
     <?php endif; ?>
-=======
-                    <?php foreach ($rows as $r): ?>
-                        <tr>
-                            <td class="rg-id"><?= md_h($r['distribution_code'] ?: 'RD-' . str_pad((string) $r['distribution_id'], 3, '0', STR_PAD_LEFT)) ?></td>
-                            <td><?= md_h($r['barangay']) ?></td>
-                            <td><?= md_h($r['item']) ?></td>
-                            <td><?= number_format((int) $r['quantity']) ?></td>
-                            <td><?= md_h(substr((string) $r['date_released'], 0, 10)) ?></td>
-                            <td><?= status_badge($r['status']) ?></td>
-                            <td><?= md_h($r['received_by'] ?: '-') ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                    <?php if (!$rows): ?>
-                        <tr><td colspan="7" class="rg-empty">No distributions recorded yet. Click “Distribute Goods” to add the first one.</td></tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </section>
->>>>>>> b533edfc890dc8aff1b7f2c3d3319a2016a45c25
 
         <div id="reliefModal" class="modal rg-modal-overlay<?= $oldDist ? ' show' : '' ?>" onclick="if(event.target===this)closeModal('reliefModal')">
         <div class="modal-box rg-modal" role="dialog" aria-modal="true" aria-labelledby="reliefModalTitle">

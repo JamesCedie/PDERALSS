@@ -59,7 +59,7 @@ function vr_urgency_badge(string $urgency): string
     return status_badge($urgency);
 }
 
-// ---- CSRF (simple per-session token for the POST forms) -------------------
+// CSRF (simple per-session token for the POST forms)
 function vr_csrf_token(): string
 {
     if (empty($_SESSION['vr_csrf'])) {

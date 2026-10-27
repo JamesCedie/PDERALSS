@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function () {
         lookupAddress(lat, lng, acc, id);
     }
 
-    // ---- GPS ----------------------------------------------------------------------------------
+    // GPS
     // The GPS is switched on as soon as the modal opens (a cold GPS chip needs 10-30 s to settle) and keeps
     // running, so the fix is already good when the photo is taken. Several recent readings are combined:
     // coarse ones (Wi-Fi/cell guesses) are ignored and the accurate ones are averaged, weighted by accuracy.
@@ -425,7 +425,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     relocateBtn.addEventListener('click', function () { stopWatch(); locate(); });   // restart the GPS from scratch
 
-    // ---- In-app camera (no file picker) ----
+    // In-app camera (no file picker)
     var video = document.getElementById('daVideo'), shot = document.getElementById('daShot');
     var camMsg = document.getElementById('daCamMsg'), btnCap = document.getElementById('daCapture'), btnRetake = document.getElementById('daRetake');
     var stream = null, photoBlob = null, sending = false;

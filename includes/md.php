@@ -50,7 +50,7 @@ function md_find_event(int $eventId): ?array
     return $eventId > 0 ? db_select_one('disaster_events', 'event_id = ?', [$eventId]) : null;
 }
 
-// ---- CSRF (per-session token for MD POST forms) ---------------------------
+// CSRF (per-session token for MD POST forms)
 function md_csrf_token(): string
 {
     if (empty($_SESSION['md_csrf'])) {

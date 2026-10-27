@@ -1,7 +1,6 @@
 <?php
 /**
  * includes/db.php
- * -----------------------------------------------------------------------
  * Database connector for Supabase, connecting directly to its underlying
  * Postgres database via PDO (not the REST API).
  *
@@ -43,10 +42,9 @@
  *
  *   // DELETE rows matching a condition -> returns affected row count
  *   $count = db_delete('users', 'user_id = ?', [5]);
- * -----------------------------------------------------------------------
  */
 
-// ---- LOCAL DEVELOPMENT: .env ------------------------------------------
+// LOCAL DEVELOPMENT: .env
 // If a file named ".env" exists in the project root, its KEY=VALUE lines are loaded as
 // environment variables (real environment variables, e.g. Render's, always win).
 // ".env" is listed in .gitignore and .dockerignore, so it never reaches GitHub or the server.
@@ -62,7 +60,7 @@
     }
 })();
 
-// ---- CONFIGURE THESE -------------------------------------------------
+// CONFIGURE THESE
 // Values are read from environment variables set in Render's dashboard,
 // so credentials are never hardcoded in the source code.
 // For local XAMPP development, you can set these in your system's
@@ -73,7 +71,6 @@ define('DB_PORT', getenv('DB_PORT') ?: '5432');
 define('DB_NAME', getenv('DB_NAME'));
 define('DB_USER', getenv('DB_USER'));
 define('DB_PASS', getenv('DB_PASS') ?: '');
-// ------------------------------------------------------------------------
 
 /**
  * Returns a shared PDO connection, creating it on first use.
@@ -107,11 +104,9 @@ function db(): PDO
     return $pdo;
 }
 
-// ---------------------------------------------------------------------
 // Schema is created by the SQL file (pderalss_schema_proposal.sql), not at
 // runtime. The old db_ensure_* functions are kept as no-ops so the pages
 // that still call them keep working.
-// ---------------------------------------------------------------------
 function db_ensure_casualties_table(): void {}
 function db_ensure_damage_assessments_table(): void {}
 function db_ensure_disaster_event_status(): void {}
@@ -121,9 +116,7 @@ const EVAC_CENTER_STATUSES = ['Available', 'Occupied', 'Near Capacity', 'Full'];
 // Options a Social Worker can pick from the Occupancy Status dropdown.
 const EVAC_CENTER_SW_OPTIONS = ['Available', 'Full'];
 
-// ---------------------------------------------------------------------
 // Barangays (public.barangays) - the single source of truth.
-// ---------------------------------------------------------------------
 
 /** All barangays: [['barangay_id' => 1, 'name' => 'Abilay Norte', 'latitude' => .., 'longitude' => ..], ...] ordered by name. */
 function brgy_all(): array
