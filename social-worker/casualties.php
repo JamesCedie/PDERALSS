@@ -89,6 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_c
         $errorMsg = 'Your account has no barangay/address assigned. Please contact an MDRRMO Officer.';
     } elseif ($name === '' || !in_array($type, $allowedTypes, true) || $date === '') {
         $errorMsg = 'Please select a resident, then choose a Type and Date.';
+    } elseif ($date > today_ph()) {
+        $errorMsg = 'The date cannot be later than today.';
     } else {
         try {
             db_insert('casualties', [
@@ -218,7 +220,7 @@ page_start('Casualty Recording');
                                     <div class="field mb"><label>Name</label><input name="name" id="casNameInput" required placeholder="Enter full name"></div>
                 <div class="mini mb" id="casFamilyNote" style="display:none;"></div>
                 <div class="field mb"><label>Type</label><select name="type" required><option value="" selected disabled>Select type</option><option value="Injured">Injured</option><option value="Missing">Missing</option><option value="Fatality">Fatality</option></select></div>
-                    <div class="field mb"><label>Date</label><input name="date" type="date" required value="<?= htmlspecialchars(date('Y-m-d')) ?>"></div>
+                    <div class="field mb"><label>Date</label><input name="date" type="date" required max="<?= htmlspecialchars(today_ph()) ?>" value="<?= htmlspecialchars(date('Y-m-d')) ?>"></div>
                 <div class="actions"><button type="button" class="btn btn-light" onclick="backToCasualtySearch()">Back</button><button type="submit" class="btn btn-primary">Save</button></div>
             </form>
         </div>

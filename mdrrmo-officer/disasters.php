@@ -18,6 +18,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_event'])) {
         $errorMsg = 'Your session expired. Please try again.';
     } elseif ($eventName === '' || !$dateOk || !in_array($type, MD_DISASTER_TYPES, true)) {
         $errorMsg = 'Please fill in the event name, disaster type, and date.';
+    } elseif ($date > today_ph()) {
+        $errorMsg = 'The event date cannot be later than today.';
     } else {
         db_insert('disaster_events', [
             'event_name'  => $eventName,
@@ -172,7 +174,7 @@ $events = db_query('SELECT * FROM disaster_events ORDER BY event_id DESC')->fetc
                 </div>
                 <div class="field">
                     <label>Date</label>
-                    <input type="date" name="date" required>
+                    <input type="date" name="date" required max="<?= md_h(today_ph()) ?>">
                 </div>
                 <div class="field">
                     <label>Description</label>

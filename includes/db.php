@@ -107,6 +107,18 @@ function db(): PDO
 // Schema is created by the SQL file (pderalss_schema_proposal.sql), not at
 // runtime. The old db_ensure_* functions are kept as no-ops so the pages
 // that still call them keep working.
+/** Login lockout counter on users (added automatically if missing). */
+function db_ensure_login_lock(): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        db()->exec('ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_attempts integer NOT NULL DEFAULT 0');
+    } catch (Throwable $e) {
+        // No permission to alter: run the SQL in the README note by hand.
+    }
+}
 function db_ensure_casualties_table(): void {}
 function db_ensure_damage_assessments_table(): void {}
 function db_ensure_disaster_event_status(): void {}
@@ -268,4 +280,12 @@ function db_delete(string $table, string $where, array $params = []): int
 {
     $stmt = db_query("DELETE FROM {$table} WHERE {$where}", $params);
     return $stmt->rowCount();
+}
+
+/** Today's date (Y-m-d) in Philippine time - the latest date a user may pick in a date field. */
+if (!function_exists('today_ph')) {
+    function today_ph(): string
+    {
+        return (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d');
+    }
 }

@@ -165,3 +165,127 @@ document.addEventListener('DOMContentLoaded', function () {
         applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
     });
 });
+
+// Date limiter: no date field may be set later than today (Philippine time).
+// Fields that already declare a max, or opt out with data-allow-future (e.g. vehicle bookings), are left alone.
+document.addEventListener('DOMContentLoaded', function () {
+    var today;
+    try { today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date()); } catch (e) { today = new Date().toISOString().slice(0, 10); }
+    document.querySelectorAll('input[type="date"]').forEach(function (el) {
+        if (el.hasAttribute('data-allow-future') || el.hasAttribute('max')) return;
+        el.setAttribute('max', today);
+    });
+});
+
+
+/* ── Household forms: integer-only fields, age-linked date of birth, count limiters ── */
+(function () {
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function fmt(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+
+    // Valid birth dates for someone who is exactly `age` years old today: [earliest, latest].
+    function dobRange(age) {
+        var t = new Date();
+        var latest   = new Date(t.getFullYear() - age,     t.getMonth(), t.getDate());
+        var earliest = new Date(t.getFullYear() - age - 1, t.getMonth(), t.getDate() + 1);
+        return [fmt(earliest), fmt(latest)];
+    }
+    function num(el) { var n = parseInt(el.value, 10); return isNaN(n) ? null : n; }
+
+    // Whole numbers only: no decimals, negatives, exponent, and never above the field's max.
+    function bindInteger(el) {
+        function clean() {
+            var digits = String(el.value).replace(/\D/g, '');
+            if (el.value !== '' && digits === '') { el.value = ''; return; }
+            if (digits === '') return;
+            var n = parseInt(digits, 10), max = el.getAttribute('max');
+            if (max !== null && max !== '' && n > parseInt(max, 10)) n = parseInt(max, 10);
+            if (String(n) !== el.value) el.value = String(n);
+        }
+        el.addEventListener('keydown', function (e) {
+            if (['e', 'E', '+', '-', '.', ','].indexOf(e.key) !== -1) e.preventDefault();
+        });
+        el.addEventListener('paste', function (e) {
+            e.preventDefault();
+            var t = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+            el.value = t; clean(); el.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        el.addEventListener('wheel', function () { if (document.activeElement === el) el.blur(); }, { passive: true });
+        el.addEventListener('input', clean);
+    }
+
+    // Date of birth can only be picked within the range that matches the age typed.
+    function bindDob(form, initial) {
+        var age = form.querySelector('[name="age"]'), dob = form.querySelector('[name="date_of_birth"]');
+        if (!age || !dob) return;
+        function sync(clear) {
+            var a = num(age);
+            if (a === null) { dob.disabled = true; dob.value = ''; dob.removeAttribute('min'); return; }
+            var r = dobRange(a);
+            dob.disabled = false; dob.min = r[0]; dob.max = r[1];
+            if (clear && dob.value && (dob.value < r[0] || dob.value > r[1])) dob.value = '';
+        }
+        age.addEventListener('input', function () { sync(true); });
+        sync(false);
+    }
+
+    // Step 1: PWD / senior counts can never exceed the total family members.
+    function bindHead(form) {
+        var age = form.elements['age'], total = form.elements['total_family_members'],
+            pwd = form.elements['pwd_count'], sen = form.elements['senior_citizens'];
+        var maxM = parseInt(form.dataset.maxMembers, 10) || 15, seniorAge = parseInt(form.dataset.seniorAge, 10) || 60;
+        function sync() {
+            var t = num(total), cap = (t === null || t < 1) ? maxM : Math.min(t, maxM);
+            [pwd, sen].forEach(function (el) {
+                el.max = cap;
+                var v = num(el); if (v !== null && v > cap) el.value = cap;
+            });
+            var a = num(age), headSenior = a !== null && a >= seniorAge;
+            sen.min = headSenior ? 1 : 0;
+            sen.setCustomValidity(headSenior && (num(sen) || 0) < 1
+                ? 'The household head is ' + seniorAge + '+, so at least 1 senior citizen is required.' : '');
+            total.setCustomValidity(t === null || t < 1 ? 'Total family members must be at least 1.' : '');
+        }
+        ['age', 'total_family_members', 'pwd_count', 'senior_citizens'].forEach(function (n) {
+            form.elements[n].addEventListener('input', sync);
+        });
+        sync();
+    }
+
+    // Step 2: Save stays disabled until every member field is filled and the numbers are consistent.
+    function bindMembers(form) {
+        var btn = document.getElementById('hhSaveBtn'), msg = document.getElementById('hhMemberMsg');
+        var headAge = parseInt(form.dataset.headAge, 10) || 0, seniors = parseInt(form.dataset.seniors, 10) || 0,
+            seniorAge = parseInt(form.dataset.seniorAge, 10) || 60;
+        var fields = form.querySelectorAll('input:not([type=hidden]), select');
+        function check() {
+            var empty = 0;
+            fields.forEach(function (el) {
+                if (el.required && (el.value === '' || (el.pattern && !el.checkValidity()))) empty++;
+            });
+            var invalid = !form.checkValidity();
+            var found = headAge >= seniorAge ? 1 : 0;
+            form.querySelectorAll('[name$="_age"]').forEach(function (a) { var v = num(a); if (v !== null && v >= seniorAge) found++; });
+            var text = '', isErr = false;
+            if (found > seniors) {
+                text = found + ' people in this household are ' + seniorAge + '+ but Senior Citizens in Step 1 is ' + seniors + '. Go back to Step 1 to correct it.';
+                isErr = true;
+            } else if (empty > 0 || invalid) {
+                text = 'Fill in all the information for every member to enable Save.';
+            }
+            msg.textContent = text; msg.classList.toggle('is-error', isErr);
+            btn.disabled = invalid || found > seniors;
+        }
+        form.addEventListener('input', check);
+        form.addEventListener('change', check);
+        form.addEventListener('submit', function (e) { check(); if (btn.disabled) e.preventDefault(); });
+        check();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('input[data-int]').forEach(bindInteger);
+        document.querySelectorAll('form[data-hh-head]').forEach(function (f) { bindDob(f); bindHead(f); });
+        document.querySelectorAll('form[data-hh-dob]').forEach(function (f) { bindDob(f); });
+        document.querySelectorAll('form[data-hh-members]').forEach(bindMembers);
+    });
+})();

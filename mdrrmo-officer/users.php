@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/access.php'; require_page_access();
 require_once '../includes/db.php';
+require_once '../includes/password.php';
 
 // The one account nobody should be able to edit or delete through this screen.
 const PROTECTED_ADMIN_EMAIL = 'ADMIN@gmail.com';
@@ -36,6 +37,45 @@ function generate_next_user_id(string $role): string
 $successMsg = null;
 $errorMsg   = null;
 
+require_once '../includes/otp.php';
+
+// AJAX: send an email-verification OTP to the address typed in the Add User form
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email_otp'])) {
+    header('Content-Type: application/json');
+    $email = trim($_POST['email'] ?? '');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { echo json_encode(['success' => false, 'message' => 'Enter a valid email first.']); exit; }
+    if (db_select_one('users', 'email = ?', [$email])) { echo json_encode(['success' => false, 'message' => 'That email is already used.']); exit; }
+    $prev = $_SESSION['email_verify'] ?? null;
+    if ($prev && time() - $prev['sent_at'] < 60) { echo json_encode(['success' => false, 'message' => 'Please wait a minute before resending.']); exit; }
+
+    $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    if ($err = otp_send_email($email, $otp)) { echo json_encode(['success' => false, 'message' => $err]); exit; }
+    $_SESSION['email_verify'] = [
+        'email'    => strtolower($email),
+        'otp_hash' => password_hash($otp, PASSWORD_DEFAULT),
+        'expires'  => time() + 300,
+        'sent_at'  => time(),
+        'tries'    => 0,
+        'verified' => false,
+    ];
+    echo json_encode(['success' => true, 'message' => 'OTP sent to ' . $email . '.']);
+    exit;
+}
+
+// AJAX: check the code the officer typed
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_email_otp'])) {
+    header('Content-Type: application/json');
+    $v     = $_SESSION['email_verify'] ?? null;
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    if (!$v || $v['email'] !== $email || time() > $v['expires']) { echo json_encode(['success' => false, 'message' => 'OTP expired. Send a new one.']); exit; }
+    if ($v['tries'] >= 5) { echo json_encode(['success' => false, 'message' => 'Too many attempts. Send a new OTP.']); exit; }
+    $_SESSION['email_verify']['tries']++;
+    if (!password_verify(trim($_POST['otp_code'] ?? ''), $v['otp_hash'])) { echo json_encode(['success' => false, 'message' => 'Invalid OTP code.']); exit; }
+    $_SESSION['email_verify']['verified'] = true;
+    echo json_encode(['success' => true, 'message' => 'Email verified.']);
+    exit;
+}
+
 // Handle "Add User" submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
     $firstname = trim($_POST['first_name'] ?? '');
@@ -46,7 +86,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
     $password  = $_POST['password'] ?? '';
     $barangayId = ($role === 'Social Worker') ? (brgy_id($_POST['address'] ?? '') ?: null) : null;
 
-    if ($firstname && $lastname && $username && $email && $password) {
+    $ev = $_SESSION['email_verify'] ?? null;
+    if (!$ev || empty($ev['verified']) || $ev['email'] !== strtolower($email)) {
+        $errorMsg = 'Please verify the email with an OTP first.';
+    } elseif ($password !== '' && ($pwErr = password_policy_error($password))) {
+        $errorMsg = $pwErr;
+    } elseif ($firstname && $lastname && $username && $email && $password) {
         $existing = db_select_one('users', 'email = ? OR username = ?', [$email, $username]);
         if ($existing) {
             $errorMsg = 'A user with that email or username already exists.';
@@ -61,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_user'])) {
                 'role'      => $role,
                 'barangay_id' => $barangayId,
             ]);
+            unset($_SESSION['email_verify']);
             $successMsg = 'User account created.';
         }
     } else {
@@ -94,12 +140,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user'])) {
             'role'      => $role,
             'barangay_id' => $barangayId,
         ];
-        if ($password !== '') {
-            $data['password'] = password_hash($password, PASSWORD_DEFAULT);
+        $pwErr = $password !== '' ? password_policy_error($password) : null;
+        if ($pwErr) {
+            $errorMsg = $pwErr;
+        } else {
+            if ($password !== '') {
+                db_ensure_login_lock();
+                $data['password'] = password_hash($password, PASSWORD_DEFAULT);
+                $data['failed_attempts'] = 0;   // a new password also unlocks the account
+            }
+            db_update('users', $data, 'user_id = ?', [$id]);
+            $successMsg = 'User updated.';
         }
-
-        db_update('users', $data, 'user_id = ?', [$id]);
-        $successMsg = 'User updated.';
     }
 }
 
@@ -224,7 +276,13 @@ foreach ($users as $u) {
                 </div>
                 <div class="field">
                     <label>Email</label>
-                    <input type="email" name="email" required>
+                    <input type="email" name="email" id="addEmail" required>
+                    <button type="button" class="btn btn-light" id="sendEmailOtpBtn" onclick="sendEmailOtp()" style="margin-top:6px">Send OTP</button>
+                    <div id="emailOtpBox" style="display:none;margin-top:6px">
+                        <input type="text" id="addEmailOtp" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="6-digit code">
+                        <button type="button" class="btn btn-light" onclick="verifyEmailOtp()" style="margin-top:6px">Verify</button>
+                    </div>
+                    <span class="mini" id="emailOtpStatus"></span>
                 </div>
                 <div class="field">
                     <label>Role</label>
@@ -244,11 +302,12 @@ foreach ($users as $u) {
                 </div>
                 <div class="field">
                     <label>Password</label>
-                    <input type="password" name="password" required>
+                    <input type="password" name="password" required pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s]).{8,16}" title="8-16 characters with uppercase and lowercase letters, a number and a special character." maxlength="16">
+                    <span class="mini">8-16 characters, uppercase + lowercase, a number and a special character.</span>
                 </div>
             </div>
             <div class="actions mt">
-                <button class="btn btn-primary">Create User</button>
+                <button class="btn btn-primary" id="createUserBtn" disabled>Create User</button>
             </div>
         </form>
     </div>
@@ -299,7 +358,8 @@ foreach ($users as $u) {
                     </div>
                     <div class="field">
                         <label>New Password</label>
-                        <input type="password" name="password" placeholder="Leave blank to keep current password">
+                        <input type="password" name="password" placeholder="Leave blank to keep current password" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s]).{8,16}" title="8-16 characters with uppercase and lowercase letters, a number and a special character." maxlength="16">
+                        <span class="mini">8-16 characters, uppercase + lowercase, a number and a special character.</span>
                     </div>
                 </div>
                 <div class="actions mt">
@@ -309,5 +369,47 @@ foreach ($users as $u) {
         </div>
     </div>
 <?php endforeach; ?>
+
+<script>
+(function () {
+    const post = (body) => fetch('users.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+    }).then(r => r.json());
+    const $ = (id) => document.getElementById(id);
+
+    // Typing a different email invalidates any earlier verification.
+    $('addEmail').addEventListener('input', function () {
+        $('createUserBtn').disabled = true;
+        $('emailOtpBox').style.display = 'none';
+        $('emailOtpStatus').textContent = '';
+        $('sendEmailOtpBtn').disabled = false;
+        $('sendEmailOtpBtn').textContent = 'Send OTP';
+    });
+
+    window.sendEmailOtp = function () {
+        const email = $('addEmail').value.trim();
+        if (!email) { alert('Enter the email first.'); return; }
+        const btn = $('sendEmailOtpBtn');
+        btn.disabled = true; btn.textContent = 'Sending...';
+        post('send_email_otp=1&email=' + encodeURIComponent(email)).then(function (d) {
+            $('emailOtpStatus').textContent = d.message || '';
+            if (d.success) { $('emailOtpBox').style.display = ''; btn.textContent = 'OTP sent'; }
+            else { btn.disabled = false; btn.textContent = 'Send OTP'; }
+        }).catch(function () { btn.disabled = false; btn.textContent = 'Send OTP'; alert('Something went wrong.'); });
+    };
+
+    window.verifyEmailOtp = function () {
+        const email = $('addEmail').value.trim();
+        const code = $('addEmailOtp').value.trim();
+        post('verify_email_otp=1&email=' + encodeURIComponent(email) + '&otp_code=' + encodeURIComponent(code))
+            .then(function (d) {
+                $('emailOtpStatus').textContent = d.message || '';
+                $('createUserBtn').disabled = !d.success;
+            }).catch(function () { alert('Something went wrong.'); });
+    };
+})();
+</script>
 
 <?php page_end(); ?>

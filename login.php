@@ -1,6 +1,10 @@
 <?php
 session_start();
 require_once 'includes/db.php';
+require_once 'includes/password.php';
+
+const MAX_LOGIN_ATTEMPTS = 4;
+db_ensure_login_lock();
 
 $error = null;
 
@@ -93,8 +97,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
         echo json_encode(['success' => false, 'message' => 'Verify OTP first.']); exit;
     }
     if ($newPass === '' || $newPass !== $confirm) { echo json_encode(['success' => false, 'message' => 'Passwords do not match.']); exit; }
+    if ($policyErr = password_policy_error($newPass)) { echo json_encode(['success' => false, 'message' => $policyErr]); exit; }
 
-    $affected = db_update('users', ['password' => password_hash($newPass, PASSWORD_DEFAULT)], 'username = ?', [$username]);
+    $affected = db_update('users', ['password' => password_hash($newPass, PASSWORD_DEFAULT), 'failed_attempts' => 0], 'username = ?', [$username]);
     unset($_SESSION['password_reset'], $_SESSION['otp_verified_for']);
     if ($affected < 1) { echo json_encode(['success' => false, 'message' => 'Failed to update password.']); exit; }
     echo json_encode(['success' => true, 'message' => 'Password updated. You can now log in.']);
@@ -106,12 +111,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
     $password = $_POST['password'] ?? '';
 
     $user = db_select_one('users', 'username = ?', [$username]);
+    $lockedMsg = 'Too many failed attempts. This account is locked - use "Forgot Password?" to reset your password.';
 
-    if ($user && password_verify($password, $user['password'])) {
+    if ($user && (int) ($user['failed_attempts'] ?? 0) >= MAX_LOGIN_ATTEMPTS) {
+        // Locked: even the correct password is refused until the password is reset via OTP.
+        $error = $lockedMsg;
+    } elseif ($user && password_verify($password, $user['password'])) {
         // Generate a unique session token and store it in the DB
         // This invalidates any existing session for this account (single-session enforcement)
         $token = bin2hex(random_bytes(32));
-        db_update('users', ['session_token' => $token], 'user_id = ?', [$user['user_id']]);
+        db_update('users', ['session_token' => $token, 'failed_attempts' => 0], 'user_id = ?', [$user['user_id']]);
 
         $_SESSION['user'] = [
             'id'   => $user['user_id'],
@@ -126,7 +135,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
         exit;
     }
 
-    $error = 'Invalid username or password.';
+    if (!$error) {
+        $error = 'Invalid username or password.';
+        if ($user) {
+            $n = (int) db_query('UPDATE users SET failed_attempts = failed_attempts + 1 WHERE user_id = ? RETURNING failed_attempts', [$user['user_id']])->fetchColumn();
+            $error = $n >= MAX_LOGIN_ATTEMPTS
+                ? $lockedMsg
+                : 'Invalid username or password. ' . (MAX_LOGIN_ATTEMPTS - $n) . ' attempt' . (MAX_LOGIN_ATTEMPTS - $n === 1 ? '' : 's') . ' left.';
+        }
+    }
 }
 ?>
 <!doctype html>
@@ -222,6 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
                 <button class="icon-btn" onclick="closeModal('resetPasswordModal')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
             <p class="mini mb">OTP verified. Enter your new password.</p>
+            <p class="mini mb">Must be <?= PASSWORD_POLICY_HINT ?></p>
             <form onsubmit="event.preventDefault(); resetPassword()">
                 <div class="field mb">
                     <label>New Password</label>

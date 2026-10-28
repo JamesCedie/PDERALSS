@@ -183,7 +183,7 @@ $visible  = 5;
             </div>
             <div class="field full">
                 <label>Requested date</label>
-                <input type="date" name="requested_date" min="<?= vr_today()->format('Y-m-d') ?>" required>
+                <input type="date" name="requested_date" data-allow-future min="<?= vr_today()->format('Y-m-d') ?>" required>
             </div>
             <div class="field full">
                 <label>Notes</label>

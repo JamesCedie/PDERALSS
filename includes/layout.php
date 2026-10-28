@@ -56,6 +56,22 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
     if ($isSocialWorker && $current === 'damage-assessment.php') $backPage = 'disasters.php';
     // Optional back button for the top bar: [href, label]. Pages can pass their own.
     if (!$back && $backPage) $back = [$backPage, 'Disaster Events'];
+
+    // Breadcrumb trail (both portals): Dashboard / [Disaster Events /] Current page
+    $crumbs = [];
+    $navLabels = [];
+    foreach ($activeNav as $n) $navLabels[$n[0]] = $n[1];
+    if ($current === 'dashboard.php') {
+        $crumbs = [[null, 'Dashboard']];
+    } else {
+        $crumbs[] = ['dashboard.php', 'Dashboard'];
+        if ($inEventTree) {
+            $crumbs[] = ['disasters.php' . $treeQuery, 'Disaster Events'];
+            $crumbs[] = [null, $eventSubPages[$current]];
+        } else {
+            $crumbs[] = [null, $navLabels[$current] ?? $title];
+        }
+    }
 ?>
 <!doctype html>
 <html lang="en">
@@ -163,6 +179,19 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
 
             <main class="content">
                 <?php if ($modern): ?><div id="swToastContainer" class="sw-toast-container" aria-live="polite" aria-atomic="true"></div><?php endif; ?>
+                <?php if ($crumbs): ?>
+                    <nav class="md-breadcrumb" aria-label="Breadcrumb">
+                        <ol>
+                            <?php foreach ($crumbs as $c): ?>
+                                <?php if ($c[0] !== null): ?>
+                                    <li><a href="<?= htmlspecialchars($c[0]) ?>"><?= htmlspecialchars($c[1]) ?></a></li>
+                                <?php else: ?>
+                                    <li><span aria-current="page"><?= htmlspecialchars($c[1]) ?></span></li>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </ol>
+                    </nav>
+                <?php endif; ?>
 <?php
 }
 

@@ -2427,14 +2427,14 @@ textarea {
    so light and dark themes both work.
    */
 .dash {
-    --dc-injured: #D6847E; --dc-missing: #E8BDB8; --dc-fatal: #B42318;
-    --dc-totally: #D6847E; --dc-partially: #FBE4E1;
+    --dc-injured: #F5B82E; --dc-missing: #F27A24; --dc-fatal: #D92D20;
+    --dc-totally: #D92D20; --dc-partially: #F5B82E;
     --dc-b1: #1D5FA8; --dc-b2: #7FA5D4; --dc-b3: #B5C9E3; --dc-b4: #DCE6F3;
     display: flex; flex-direction: column; gap: 20px; min-width: 0;
 }
 :root[data-theme="dark"] .dash {
-    --dc-injured: #C9625B; --dc-missing: #7A4A4A; --dc-fatal: #EF4444;
-    --dc-totally: #C9625B; --dc-partially: #5B3A3C;
+    --dc-injured: #E0A83A; --dc-missing: #E8772E; --dc-fatal: #EF4444;
+    --dc-totally: #EF4444; --dc-partially: #E0A83A;
     --dc-b1: #3D8FE0; --dc-b2: #2F6BAA; --dc-b3: #24496F; --dc-b4: #1B3652;
 }
 .dash > *, .dash-row > * { min-width: 0; }
@@ -2599,3 +2599,44 @@ textarea {
 #hhTable th:nth-child(1), #hhTable td:nth-child(1) { width: auto; }
 #hhTable th:nth-child(2), #hhTable td:nth-child(2) { width: 18%; }
 #hhTable th:nth-child(3), #hhTable td:nth-child(3) { width: 22%; text-align: right; }
+
+
+/* MD dashboard: Vehicle Requests card fills the row height (no empty gap under it).
+   The donut centres in the spare space and the tiles + note stay together at the bottom. */
+.dash-veh-card .dash-donut-wrap { flex: 1 1 auto; align-content: center; }
+.dash-veh-card .dash-tiles { margin-top: 0; }
+.dash-veh-card .dash-tile { display: flex; flex-direction: column; justify-content: center; }
+.dash-veh-card .dash-note.dash-note-inline { margin-top: 0; padding: 10px 0 14px; }
+
+/* Breadcrumbs (MD portal) */
+.md-breadcrumb { margin: 0 0 16px; }
+.md-breadcrumb ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 13px; color: var(--sw-muted); }
+.md-breadcrumb li { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.md-breadcrumb li + li::before { content: "/"; color: var(--sw-soft, var(--sw-muted)); opacity: .7; }
+.md-breadcrumb a { color: var(--sw-muted); text-decoration: none; font-weight: 500; }
+.md-breadcrumb a:hover { color: var(--sw-primary); text-decoration: underline; }
+.md-breadcrumb [aria-current="page"] { color: var(--sw-text); font-weight: 600; }
+
+
+/* ---- MD dashboard: no dead space inside cards that share a row ---- */
+/* Donut cards (Casualty Breakdown, Vehicle Requests): the chart takes the spare height,
+   is centred in it, and is sized up so it matches the neighbouring bar chart. */
+.dash-row .dash-card > .dash-donut-wrap { flex: 1 1 auto; align-content: center; align-items: center; justify-content: center; }
+.dash-row .dash-card > .dash-donut-wrap .dash-donut { width: clamp(180px, 46%, 240px); height: auto; aspect-ratio: 1; }
+.dash-row .dash-card > .dash-empty { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; padding: 18px 4px; }
+.dash-card > .dash-note { margin-top: 0; }
+
+/* Center Occupancy lists every barangay (37+) - cap its height and scroll inside the card
+   so it no longer forces the Vehicle Requests card to stretch with empty space. */
+.dash-centers { max-height: 340px; overflow-y: auto; padding-right: 6px; }
+.dash-centers::-webkit-scrollbar { width: 8px; }
+.dash-centers::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+.dash-centers::-webkit-scrollbar-track { background: var(--track); border-radius: 999px; }
+
+
+/* Household forms: helper text + disabled DOB */
+.field-hint { display: block; margin-top: 4px; font-size: 11px; color: var(--sw-muted, #667085); line-height: 1.3; }
+.hh-member-msg { margin: 10px 0 0; min-height: 16px; font-size: 12px; }
+.hh-member-msg.is-error { color: var(--sig-red, #B42318); font-weight: 600; }
+.field input:disabled { opacity: .6; cursor: not-allowed; }
+.btn:disabled, .btn[disabled] { opacity: .5; cursor: not-allowed; pointer-events: none; }

@@ -17,6 +17,32 @@ const EDU_OPTIONS = [
 ];
 
 const CIVIL_OPTIONS = ['Married', 'Single', 'Widowed', 'Separated'];
+const RELATIONSHIP_OPTIONS = ['Spouse', 'Son', 'Daughter', 'Parent', 'Sibling', 'Other'];
+
+// Realistic limits for Philippine households (adjust here if the LGU needs different caps).
+const HH_MIN_HEAD_AGE = 18;   // household head must be of legal age
+const HH_MAX_AGE      = 120;  // oldest realistic age on record
+const HH_MAX_MEMBERS  = 15;   // average PH household is ~4-5; 15 already covers large extended families
+const HH_SENIOR_AGE   = 60;   // senior citizen per RA 9994
+
+/** Whole non-negative number only (no decimals, signs or exponents) within [$min, $max]; null if invalid. */
+function hh_int(mixed $v, int $min, int $max): ?int
+{
+    $v = trim((string) $v);
+    if ($v === '' || !preg_match('/^\d{1,4}$/', $v)) return null;
+    $n = (int) $v;
+    return ($n < $min || $n > $max) ? null : $n;
+}
+
+/** True when the date of birth is a real date, not in the future, and gives exactly $age years today. */
+function hh_dob_matches_age(string $dob, int $age): bool
+{
+    $d = DateTimeImmutable::createFromFormat('!Y-m-d', $dob, new DateTimeZone('Asia/Manila'));
+    if (!$d || $d->format('Y-m-d') !== $dob) return false;
+    $today = new DateTimeImmutable(today_ph(), new DateTimeZone('Asia/Manila'));
+    if ($d > $today) return false;
+    return $d->diff($today)->y === $age;
+}
 
 // Sex is stored in the database as the full values Male/Female.
 // Accept the legacy M/F values when reading older records, but always write
@@ -45,25 +71,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['stage']) && $_POST['s
     $middlename    = trim($_POST['middle_name'] ?? '');
     $lastname      = trim($_POST['last_name'] ?? '');
     $nameextension = trim($_POST['name_extension'] ?? '');
-    $age           = (int) ($_POST['age'] ?? 0);
+    $age           = hh_int($_POST['age'] ?? '', HH_MIN_HEAD_AGE, HH_MAX_AGE);
     $sex           = sex_value($_POST['sex'] ?? '');
     $civilStatus   = $_POST['civil_status'] ?? '';
     $education     = $_POST['educational_attainment'] ?? '';
     $occupation    = trim($_POST['occupation'] ?? '');
-    $dob           = $_POST['date_of_birth'] ?? null;
+    $dob           = trim((string) ($_POST['date_of_birth'] ?? '')) ?: null;
     $contact       = trim($_POST['contact_no'] ?? '');
     $is4ps         = $_POST['is_4ps_member'] ?? 'No';
-    $totalMembers  = max(1, (int) ($_POST['total_family_members'] ?? 1));
-    $pwdCount      = (int) ($_POST['pwd_count'] ?? 0);
-    $seniorCount   = (int) ($_POST['senior_citizens'] ?? 0);
+    $totalMembers  = hh_int($_POST['total_family_members'] ?? '', 1, HH_MAX_MEMBERS);
+    $pwdCount      = hh_int($_POST['pwd_count'] ?? '', 0, HH_MAX_MEMBERS);
+    $seniorCount   = hh_int($_POST['senior_citizens'] ?? '', 0, HH_MAX_MEMBERS);
 
-    if ($firstname && $lastname && $socialWorkerAddress && in_array($sex, ['Male', 'Female'], true)) {
+    if ($age === null) {
+        $errorMsg = 'Age must be a whole number from ' . HH_MIN_HEAD_AGE . ' to ' . HH_MAX_AGE . ' (no decimals or negatives).';
+    } elseif ($totalMembers === null) {
+        $errorMsg = 'Total Family Members must be a whole number from 1 to ' . HH_MAX_MEMBERS . '.';
+    } elseif ($pwdCount === null || $pwdCount > $totalMembers) {
+        $errorMsg = 'PWDs in Household must be a whole number and cannot exceed the Total Family Members (' . $totalMembers . ').';
+    } elseif ($seniorCount === null || $seniorCount > $totalMembers) {
+        $errorMsg = 'Senior Citizens must be a whole number and cannot exceed the Total Family Members (' . $totalMembers . ').';
+    } elseif ($age >= HH_SENIOR_AGE && $seniorCount < 1) {
+        $errorMsg = 'The household head is ' . HH_SENIOR_AGE . '+ years old, so Senior Citizens must be at least 1.';
+    } elseif ($dob && !hh_dob_matches_age($dob, $age)) {
+        $errorMsg = 'Date of birth does not match the age entered (or is later than today).';
+    } elseif ($firstname && $lastname && $socialWorkerAddress && in_array($sex, ['Male', 'Female'], true)) {
         $row = db_insert('household', [
             'firstname'             => $firstname,
             'middlename'            => $middlename ?: null,
             'lastname'              => $lastname,
             'nameextension'         => $nameextension ?: null,
-            'age'                   => $age ?: null,
+            'age'                   => $age,
             'date_of_birth'         => $dob ?: null,
             'sex'                   => $sex,
             'civil_status'          => $civilStatus,
@@ -97,32 +135,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['stage']) && $_POST['s
 }
 
 // ── Stage 2: Save family composition members ──────────────────────────────────
+// Every member (total family members - 1, the head is already saved) must be fully filled in.
+// Nothing is saved unless ALL of them are valid.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['stage']) && $_POST['stage'] === '2') {
     $householdId  = $_SESSION['pending_household_id'] ?? null;
-    $totalMembers = $_SESSION['pending_total_members'] ?? 0;
+    $totalMembers = (int) ($_SESSION['pending_total_members'] ?? 0);
 
-    if ($householdId) {
-        $membersToAdd = $totalMembers - 1; // head already saved in stage 1
-        for ($i = 0; $i < $membersToAdd; $i++) {
-            $fn = trim($_POST["member_{$i}_first_name"] ?? '');
-            $ln = trim($_POST["member_{$i}_last_name"] ?? '');
-            if (!$fn || !$ln) continue;
-
-            db_insert('family_composition', [
-                'household_id'           => $householdId,
-                'first_name'             => $fn,
-                'middle_name'            => trim($_POST["member_{$i}_middle_name"] ?? '') ?: null,
-                'last_name'              => $ln,
-                'age'                    => (int) ($_POST["member_{$i}_age"] ?? 0) ?: null,
-                'sex'                    => sex_value($_POST["member_{$i}_sex"] ?? ''),
-                'civil_status'           => $_POST["member_{$i}_civil_status"] ?? '',
-                'relationship'           => trim($_POST["member_{$i}_relationship"] ?? '') ?: null,
-                'educational_attainment' => $_POST["member_{$i}_educational_attainment"] ?? '',
-                'occupation'             => trim($_POST["member_{$i}_occupation"] ?? '') ?: null,
-            ]);
-        }
-        unset($_SESSION['pending_household_id'], $_SESSION['pending_total_members']);
+    if (!$householdId || $totalMembers < 2) {
+        header('Location: households.php');
+        exit;
     }
+
+    $head = db_select_one('household', 'household_id = ?', [$householdId]);
+    $membersToAdd = $totalMembers - 1;
+    $rows = [];
+    $problem = null;
+    $seniorsFound = ($head && (int) ($head['age'] ?? 0) >= HH_SENIOR_AGE) ? 1 : 0;
+
+    for ($i = 0; $i < $membersToAdd && !$problem; $i++) {
+        $n   = $i + 1;
+        $fn  = trim($_POST["member_{$i}_first_name"] ?? '');
+        $ln  = trim($_POST["member_{$i}_last_name"] ?? '');
+        $age = hh_int($_POST["member_{$i}_age"] ?? '', 0, HH_MAX_AGE);
+        $sex = sex_value($_POST["member_{$i}_sex"] ?? '');
+        $civ = $_POST["member_{$i}_civil_status"] ?? '';
+        $rel = $_POST["member_{$i}_relationship"] ?? '';
+        $edu = $_POST["member_{$i}_educational_attainment"] ?? '';
+        $occ = trim($_POST["member_{$i}_occupation"] ?? '');
+
+        if ($fn === '' || $ln === '' || $occ === ''
+            || !in_array($sex, ['Male', 'Female'], true)
+            || !in_array($civ, CIVIL_OPTIONS, true)
+            || !in_array($rel, RELATIONSHIP_OPTIONS, true)
+            || !in_array($edu, EDU_OPTIONS, true)) {
+            $problem = "Member {$n}: please fill in all the information.";
+        } elseif ($age === null) {
+            $problem = "Member {$n}: age must be a whole number from 0 to " . HH_MAX_AGE . '.';
+        }
+        if ($problem) break;
+
+        if ($age >= HH_SENIOR_AGE) $seniorsFound++;
+        $rows[] = [
+            'household_id'           => $householdId,
+            'first_name'             => $fn,
+            'middle_name'            => trim($_POST["member_{$i}_middle_name"] ?? '') ?: null,
+            'last_name'              => $ln,
+            'age'                    => $age,
+            'sex'                    => $sex,
+            'civil_status'           => $civ,
+            'relationship'           => $rel,
+            'educational_attainment' => $edu,
+            'occupation'             => $occ,
+        ];
+    }
+
+    if (!$problem && $head && $seniorsFound > (int) ($head['senior_citizens'] ?? 0)) {
+        $problem = $seniorsFound . ' people in this household are ' . HH_SENIOR_AGE . '+ years old, but Senior Citizens in Step 1 is '
+                 . (int) $head['senior_citizens'] . '. Go back to Step 1 and correct it.';
+    }
+
+    if ($problem) {
+        $_SESSION['flash_error'] = $problem;
+        header('Location: households.php?stage=2');
+        exit;
+    }
+
+    foreach ($rows as $row) db_insert('family_composition', $row);
+    unset($_SESSION['pending_household_id'], $_SESSION['pending_total_members']);
 
     $_SESSION['flash_success'] = 'Household and family composition saved.';
     header('Location: households.php');
@@ -138,14 +217,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_household'])) {
         $errorMsg = 'Household not found.';
     } elseif ((int) $target['barangay_id'] !== (int) ($currentUser['barangay_id'] ?? 0)) {
         $errorMsg = 'You can only edit households in your own barangay.';
+    } elseif (($editAge = hh_int($_POST['age'] ?? '', HH_MIN_HEAD_AGE, HH_MAX_AGE)) === null) {
+        $errorMsg = 'Age must be a whole number from ' . HH_MIN_HEAD_AGE . ' to ' . HH_MAX_AGE . ' (no decimals or negatives).';
+    } elseif (($_POST['date_of_birth'] ?? '') !== '' && !hh_dob_matches_age((string) $_POST['date_of_birth'], $editAge)) {
+        $errorMsg = 'Date of birth does not match the age entered (or is later than today).';
+    } elseif (array_filter((array) ($_POST['member_ids'] ?? []), fn($cid, $ix) => $cid && hh_int($_POST["comp_{$ix}_age"] ?? '', 0, HH_MAX_AGE) === null, ARRAY_FILTER_USE_BOTH)) {
+        $errorMsg = 'Each family member age must be a whole number from 0 to ' . HH_MAX_AGE . '.';
     } else {
         db_update('household', [
             'firstname'              => trim($_POST['first_name'] ?? ''),
             'middlename'             => trim($_POST['middle_name'] ?? '') ?: null,
             'lastname'               => trim($_POST['last_name'] ?? ''),
             'nameextension'          => trim($_POST['name_extension'] ?? '') ?: null,
-            'age'                    => (int) ($_POST['age'] ?? 0) ?: null,
-            'date_of_birth'          => $_POST['date_of_birth'] ?: null,
+            'age'                    => $editAge,
+            'date_of_birth'          => ($_POST['date_of_birth'] ?? '') ?: null,
             'sex'                    => sex_value($_POST['sex'] ?? ''),
             'civil_status'           => $_POST['civil_status'] ?? '',
             'educational_attainment' => $_POST['educational_attainment'] ?? '',
@@ -165,7 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_household'])) {
                 'first_name'             => trim($_POST["comp_{$idx}_first_name"] ?? ''),
                 'middle_name'            => trim($_POST["comp_{$idx}_middle_name"] ?? '') ?: null,
                 'last_name'              => trim($_POST["comp_{$idx}_last_name"] ?? ''),
-                'age'                    => (int) ($_POST["comp_{$idx}_age"] ?? 0) ?: null,
+                'age'                    => hh_int($_POST["comp_{$idx}_age"] ?? '', 0, HH_MAX_AGE),
                 'sex'                    => sex_value($_POST["comp_{$idx}_sex"] ?? ''),
                 'civil_status'           => $_POST["comp_{$idx}_civil_status"] ?? '',
                 'relationship'           => trim($_POST["comp_{$idx}_relationship"] ?? '') ?: null,
@@ -192,6 +277,10 @@ if (isset($_GET['stage']) && $_GET['stage'] === 'back' && isset($_SESSION['pendi
 require '../includes/layout.php';
 page_start('Household Management');
 
+if (isset($_SESSION['flash_error'])) {
+    $errorMsg = $_SESSION['flash_error'];
+    unset($_SESSION['flash_error']);
+}
 if (isset($_SESSION['flash_success'])) {
     $successMsg = $_SESSION['flash_success'];
     unset($_SESSION['flash_success']);
@@ -199,6 +288,7 @@ if (isset($_SESSION['flash_success'])) {
 
 $stage2 = isset($_GET['stage']) && $_GET['stage'] === '2' && isset($_SESSION['pending_household_id']);
 $stage2TotalMembers = $stage2 ? (int) ($_SESSION['pending_total_members'] ?? 1) : 1;
+$stage2Head = $stage2 ? db_select_one('household', 'household_id = ?', [$_SESSION['pending_household_id']]) : null;
 
 // ── Household list data ───────────────────────────────────────────────────────
 $households = db_query('SELECT h.*, b.name AS barangay FROM household h JOIN barangays b ON b.barangay_id = h.barangay_id WHERE h.barangay_id = ? ORDER BY h.household_id DESC', [(int) ($currentUser['barangay_id'] ?? 0)])->fetchAll();
@@ -288,7 +378,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
             <button class="icon-btn" onclick="closeModal('householdModal')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
 
-        <form method="post">
+        <form method="post" data-hh-head data-max-members="<?= HH_MAX_MEMBERS ?>" data-max-age="<?= HH_MAX_AGE ?>" data-senior-age="<?= HH_SENIOR_AGE ?>">
             <input type="hidden" name="stage" value="1">
             <div class="form-grid">
                 <div class="field"><label>First Name</label><input name="first_name" placeholder="e.g. Juan" required></div>
@@ -296,7 +386,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                 <div class="field"><label>Last Name</label><input name="last_name" placeholder="e.g. Dela Cruz" required></div>
 
                 <div class="field"><label>Name Extension</label><input name="name_extension" placeholder="e.g. Jr., III (Optional)"></div>
-                <div class="field"><label>Age</label><input type="number" name="age" min="0" placeholder="e.g. 42"></div>
+                <div class="field"><label>Age</label><input type="number" name="age" data-int min="<?= HH_MIN_HEAD_AGE ?>" max="<?= HH_MAX_AGE ?>" step="1" inputmode="numeric" placeholder="e.g. 42" required><small class="field-hint"><?= HH_MIN_HEAD_AGE ?>–<?= HH_MAX_AGE ?> years, whole number</small></div>
                 <div class="field"><label>Sex</label>
                     <select name="sex" required><option value="" disabled selected>Select sex</option><option value="M">Male</option><option value="F">Female</option></select>
                 </div>
@@ -309,15 +399,15 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                 </div>
                 <div class="field"><label>Occupation</label><input name="occupation" placeholder="e.g. Carpenter"></div>
 
-                <div class="field"><label>Date of Birth</label><input type="date" name="date_of_birth" placeholder="YYYY-MM-DD"></div>
+                <div class="field"><label>Date of Birth</label><input type="date" name="date_of_birth" max="<?= htmlspecialchars(today_ph()) ?>" placeholder="YYYY-MM-DD"><small class="field-hint">Enter the age first; only matching dates can be picked</small></div>
                 <div class="field"><label>Contact No.</label><input name="contact_no" maxlength="11" pattern="\d{11}" placeholder="e.g. 0917XXXXXXX"></div>
                 <div class="field"><label>4P's Member</label>
                     <select name="is_4ps_member" required><option value="" disabled selected>Select Yes / No</option><option value="No">No</option><option value="Yes">Yes</option></select>
                 </div>
 
-                <div class="field"><label>Total Family Members</label><input type="number" name="total_family_members" min="1" value="0"></div>
-                <div class="field"><label>PWDs in Household</label><input type="number" name="pwd_count" min="0" value="0"></div>
-                <div class="field"><label>Senior Citizens</label><input type="number" name="senior_citizens" min="0" value="0"></div>
+                <div class="field"><label>Total Family Members</label><input type="number" name="total_family_members" data-int min="1" max="<?= HH_MAX_MEMBERS ?>" step="1" inputmode="numeric" value="1" required><small class="field-hint">1–<?= HH_MAX_MEMBERS ?> including the head</small></div>
+                <div class="field"><label>PWDs in Household</label><input type="number" name="pwd_count" data-int min="0" max="<?= HH_MAX_MEMBERS ?>" step="1" inputmode="numeric" value="0" required><small class="field-hint">Cannot exceed total family members</small></div>
+                <div class="field"><label>Senior Citizens</label><input type="number" name="senior_citizens" data-int min="0" max="<?= HH_MAX_MEMBERS ?>" step="1" inputmode="numeric" value="0" required><small class="field-hint">Cannot exceed total family members</small></div>
             </div>
 
             <div class="actions">
@@ -340,34 +430,35 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
             <button class="icon-btn" onclick="window.location='households.php?stage=back'" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
 
-        <form method="post">
+        <form method="post" data-hh-members data-head-age="<?= (int) ($stage2Head['age'] ?? 0) ?>" data-seniors="<?= (int) ($stage2Head['senior_citizens'] ?? 0) ?>" data-senior-age="<?= HH_SENIOR_AGE ?>" novalidate>
             <input type="hidden" name="stage" value="2">
             <?php $membersToAdd = max(1, $stage2TotalMembers - 1); ?>
             <?php for ($i = 0; $i < $membersToAdd; $i++): ?>
                 <div class="sw-modal-section-title">Member <?= $i + 1 ?></div>
                 <div class="form-grid">
-                    <div class="field"><label>First Name</label><input name="member_<?= $i ?>_first_name" placeholder="e.g. Juan" required></div>
-                    <div class="field"><label>Middle Name</label><input name="member_<?= $i ?>_middle_name" placeholder="e.g. Ramos"></div>
-                    <div class="field"><label>Last Name</label><input name="member_<?= $i ?>_last_name" placeholder="e.g. Dela Cruz" required></div>
-                    <div class="field"><label>Age</label><input type="number" name="member_<?= $i ?>_age" min="0" placeholder="e.g. 21"></div>
+                    <div class="field"><label>First Name</label><input name="member_<?= $i ?>_first_name" placeholder="e.g. Juan" required pattern="\S.*" title="This field is required"></div>
+                    <div class="field"><label>Middle Name</label><input name="member_<?= $i ?>_middle_name" placeholder="e.g. Ramos (optional)"></div>
+                    <div class="field"><label>Last Name</label><input name="member_<?= $i ?>_last_name" placeholder="e.g. Dela Cruz" required pattern="\S.*" title="This field is required"></div>
+                    <div class="field"><label>Age</label><input type="number" name="member_<?= $i ?>_age" data-int min="0" max="<?= HH_MAX_AGE ?>" step="1" inputmode="numeric" placeholder="e.g. 21" required></div>
                     <div class="field"><label>Sex</label>
-                        <select name="member_<?= $i ?>_sex"><option value="" disabled selected>Select sex</option><option value="M">Male</option><option value="F">Female</option></select>
+                        <select name="member_<?= $i ?>_sex" required><option value="" disabled selected>Select sex</option><option value="M">Male</option><option value="F">Female</option></select>
                     </div>
                     <div class="field"><label>Civil Status</label>
-                        <select name="member_<?= $i ?>_civil_status"><option value="" disabled selected>Select status</option><?php foreach (CIVIL_OPTIONS as $opt): ?><option value="<?= htmlspecialchars($opt) ?>"><?= htmlspecialchars($opt) ?></option><?php endforeach; ?></select>
+                        <select name="member_<?= $i ?>_civil_status" required><option value="" disabled selected>Select status</option><?php foreach (CIVIL_OPTIONS as $opt): ?><option value="<?= htmlspecialchars($opt) ?>"><?= htmlspecialchars($opt) ?></option><?php endforeach; ?></select>
                     </div>
-                    <div class="field"><label>Relationship to Head</label><select name="member_<?= $i ?>_relationship"><option value="" disabled selected>Select relationship</option><option>Spouse</option><option>Son</option><option>Daughter</option><option>Parent</option><option>Sibling</option><option>Other</option></select></div>
+                    <div class="field"><label>Relationship to Head</label><select name="member_<?= $i ?>_relationship" required><option value="" disabled selected>Select relationship</option><?php foreach (RELATIONSHIP_OPTIONS as $opt): ?><option><?= htmlspecialchars($opt) ?></option><?php endforeach; ?></select></div>
                     <div class="field"><label>Educational Attainment</label>
-                        <select name="member_<?= $i ?>_educational_attainment"><option value="" disabled selected>Select education</option><?php foreach (EDU_OPTIONS as $opt): ?><option value="<?= htmlspecialchars($opt) ?>"><?= htmlspecialchars($opt) ?></option><?php endforeach; ?></select>
+                        <select name="member_<?= $i ?>_educational_attainment" required><option value="" disabled selected>Select education</option><?php foreach (EDU_OPTIONS as $opt): ?><option value="<?= htmlspecialchars($opt) ?>"><?= htmlspecialchars($opt) ?></option><?php endforeach; ?></select>
                     </div>
-                    <div class="field"><label>Occupation</label><input name="member_<?= $i ?>_occupation" placeholder="e.g. Student"></div>
+                    <div class="field"><label>Occupation</label><input name="member_<?= $i ?>_occupation" placeholder="e.g. Student, None" required pattern="\S.*" title="This field is required"></div>
                 </div>
                 <?php if ($i < $membersToAdd - 1): ?><hr class="sw-member-divider"><?php endif; ?>
             <?php endfor; ?>
 
+            <div id="hhMemberMsg" class="field-hint hh-member-msg" role="status" aria-live="polite"></div>
             <div class="actions">
                 <a href="households.php?stage=back" class="btn btn-light">Back to Step 1</a>
-                <button class="btn btn-primary">Save Household</button>
+                <button class="btn btn-primary" id="hhSaveBtn" disabled>Save Household</button>
             </div>
         </form>
     </div>
@@ -446,7 +537,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
             <button class="icon-btn" onclick="closeModal('editModal-<?= $h['household_id'] ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
 
-        <form method="post" class="sw-edit-form">
+        <form method="post" class="sw-edit-form" data-hh-dob data-max-age="<?= HH_MAX_AGE ?>">
             <input type="hidden" name="edit_household" value="1">
             <input type="hidden" name="household_id" value="<?= htmlspecialchars($h['household_id']) ?>">
 
@@ -456,12 +547,12 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                 <div class="field"><label>Middle Name</label><input name="middle_name" value="<?= htmlspecialchars($h['middlename'] ?? '') ?>"></div>
                 <div class="field"><label>Last Name</label><input name="last_name" value="<?= htmlspecialchars($h['lastname']) ?>" required></div>
                 <div class="field"><label>Name Extension</label><input name="name_extension" value="<?= htmlspecialchars($h['nameextension'] ?? '') ?>"></div>
-                <div class="field"><label>Age</label><input type="number" name="age" min="0" value="<?= htmlspecialchars($h['age'] ?? '') ?>"></div>
+                <div class="field"><label>Age</label><input type="number" name="age" data-int min="<?= HH_MIN_HEAD_AGE ?>" max="<?= HH_MAX_AGE ?>" step="1" inputmode="numeric" required value="<?= htmlspecialchars($h['age'] ?? '') ?>"></div>
                 <div class="field"><label>Sex</label><select name="sex" required><?php foreach([['Male','Male'],['Female','Female']] as $opt): ?><option value="<?= $opt[0] ?>" <?= sex_value($h['sex']??'')===$opt[0]?'selected':'' ?>><?= $opt[1] ?></option><?php endforeach; ?></select></div>
                 <div class="field"><label>Civil Status</label><select name="civil_status"><?php foreach(CIVIL_OPTIONS as $opt): ?><option <?= ($h['civil_status']??'')===$opt?'selected':'' ?>><?= $opt ?></option><?php endforeach; ?></select></div>
                 <div class="field"><label>Educational Attainment</label><select name="educational_attainment"><?php foreach(EDU_OPTIONS as $opt): ?><option <?= ($h['educational_attainment']??'')===$opt?'selected':'' ?>><?= $opt ?></option><?php endforeach; ?></select></div>
                 <div class="field"><label>Occupation</label><input name="occupation" value="<?= htmlspecialchars($h['occupation'] ?? '') ?>"></div>
-                <div class="field"><label>Date of Birth</label><input type="date" name="date_of_birth" value="<?= htmlspecialchars($h['date_of_birth'] ?? '') ?>"></div>
+                <div class="field"><label>Date of Birth</label><input type="date" name="date_of_birth" max="<?= htmlspecialchars(today_ph()) ?>" value="<?= htmlspecialchars($h['date_of_birth'] ?? '') ?>"></div>
                 <div class="field"><label>Contact No.</label><input name="contact_no" maxlength="11" pattern="\d{11}" value="<?= htmlspecialchars($h['contact_no'] ?? '') ?>"></div>
                 <div class="field"><label>4P's Member</label><select name="is_4ps_member"><?php foreach(['No','Yes'] as $opt): ?><option <?= ($h['is_4ps_member']??'')===$opt?'selected':'' ?>><?= $opt ?></option><?php endforeach; ?></select></div>
             </div>
@@ -494,7 +585,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                                         <div class="field"><label>First Name</label><input name="comp_<?= $idx ?>_first_name" value="<?= htmlspecialchars($m['first_name']) ?>" required></div>
                                         <div class="field"><label>Middle Name</label><input name="comp_<?= $idx ?>_middle_name" value="<?= htmlspecialchars($m['middle_name'] ?? '') ?>"></div>
                                         <div class="field"><label>Last Name</label><input name="comp_<?= $idx ?>_last_name" value="<?= htmlspecialchars($m['last_name']) ?>" required></div>
-                                        <div class="field"><label>Age</label><input type="number" name="comp_<?= $idx ?>_age" value="<?= htmlspecialchars($m['age'] ?? '') ?>"></div>
+                                        <div class="field"><label>Age</label><input type="number" name="comp_<?= $idx ?>_age" data-int min="0" max="<?= HH_MAX_AGE ?>" step="1" inputmode="numeric" required value="<?= htmlspecialchars($m['age'] ?? '') ?>"></div>
                                         <div class="field"><label>Sex</label><select name="comp_<?= $idx ?>_sex"><?php foreach([['Male','Male'],['Female','Female']] as $opt): ?><option value="<?= $opt[0] ?>" <?= sex_value($m['sex']??'')===$opt[0]?'selected':'' ?>><?= $opt[1] ?></option><?php endforeach; ?></select></div>
                                         <div class="field"><label>Civil Status</label><select name="comp_<?= $idx ?>_civil_status"><?php foreach(CIVIL_OPTIONS as $opt): ?><option <?= ($m['civil_status']??'')===$opt?'selected':'' ?>><?= $opt ?></option><?php endforeach; ?></select></div>
                                         <div class="field"><label>Relationship</label><input name="comp_<?= $idx ?>_relationship" value="<?= htmlspecialchars($m['relationship'] ?? '') ?>"></div>
@@ -509,7 +600,6 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                 </table>
             </div>
 
-            <button type="button" class="btn btn-primary add-member-btn" onclick="showToast('New members can be added through the Family Composition step during household registration.', 'info')">Add Member</button>
 
             <div class="actions">
                 <button type="button" class="btn btn-light" onclick="closeModal('editModal-<?= $h['household_id'] ?>')">Cancel</button>

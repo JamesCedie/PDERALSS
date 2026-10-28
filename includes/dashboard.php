@@ -773,9 +773,9 @@ function dash_render_md(array $ctx): void
     if (!$event) { echo '<div class="dash-empty">' . $noEv . '</div>'; }
     else {
         dash_donut([
-            ['Fatalities', $m['cas']['Fatality'], 'dc-fatal'],
-            ['Missing',    $m['cas']['Missing'],  'dc-missing'],
-            ['Injured',    $m['cas']['Injured'],  'dc-injured'],
+            ['Fatalities', $m['cas']['Fatality'], 'red'],
+            ['Missing',    $m['cas']['Missing'],  'amber'],
+            ['Injured',    $m['cas']['Injured'],  'blue'],
         ], 'casualties', 'No casualties recorded for this event.', true);
         if ($m['cas']['total'] > 0) {
             echo '<div class="dash-note">Recorded reports · Updated ' . md_h(dash_time($m['cas_updated'])) . '</div>';
@@ -814,15 +814,15 @@ function dash_render_md(array $ctx): void
     echo '</ul></div>';
 
     $v = $m['veh'];
-    echo '<div class="card dash-card"><h2>Vehicle Requests</h2>';
+    echo '<div class="card dash-card dash-veh-card"><h2>Vehicle Requests</h2>';
+    echo '<div class="dash-tiles"><div class="dash-tile"><small>Active requests</small><strong>' . dash_n($v['pending'] + $v['transit']) . '</strong></div>'
+       . '<div class="dash-tile"><small>Completed</small><strong>' . dash_n($v['completed']) . '</strong></div></div>';
+    echo '<div class="dash-note dash-note-inline">' . dash_n($v['pending']) . ' pending request' . ($v['pending'] === 1 ? '' : 's') . ' awaiting municipal dispatch</div>';
     dash_donut([
         ['Completed', $v['completed'], 'dc-b1'],
         ['In transit', $v['transit'],  'dc-b2'],
         ['Pending',   $v['pending'],   'dc-b3'],
     ], 'requests', 'No vehicle requests yet.');
-    echo '<div class="dash-tiles"><div class="dash-tile"><small>Active requests</small><strong>' . dash_n($v['pending'] + $v['transit']) . '</strong></div>'
-       . '<div class="dash-tile"><small>Completed</small><strong>' . dash_n($v['completed']) . '</strong></div></div>';
-    echo '<div class="dash-note dash-note-inline">' . dash_n($v['pending']) . ' pending request' . ($v['pending'] === 1 ? '' : 's') . ' awaiting municipal dispatch</div>';
     echo '</div></div>';
 
     // Recent activity
@@ -884,9 +884,9 @@ function dash_render_sw(array $ctx): void
     if (!$event) { echo '<div class="dash-empty">' . $noEv . '</div>'; }
     else {
         dash_donut([
-            ['Fatalities', $m['cas']['Fatality'], 'dc-fatal'],
-            ['Missing',    $m['cas']['Missing'],  'dc-missing'],
-            ['Injured',    $m['cas']['Injured'],  'dc-injured'],
+            ['Fatalities', $m['cas']['Fatality'], 'red'],
+            ['Missing',    $m['cas']['Missing'],  'amber'],
+            ['Injured',    $m['cas']['Injured'],  'blue'],
         ], 'casualties', 'No casualties recorded for this event.');
         if ($m['cas']['total'] > 0) {
             echo '<div class="dash-note">Included in the municipality’s ' . dash_n($m['cas_muni']) . ' reported casualties.</div>';
@@ -914,9 +914,9 @@ function dash_render_sw(array $ctx): void
 
     // Row 3: vulnerable sectors
     $sectors = [
-        ['Children',            $m['children'], 'dc-b1'],
-        ['Senior citizens',     $m['seniors'],  'dc-b2'],
-        ['PWD',                 $m['pwd'],      'dc-b3'],
+        ['Children',            $m['children'], 'blue'],
+        ['Senior citizens',     $m['seniors'],  'amber'],
+        ['PWD',                 $m['pwd'],      'purple'],
     ];
     echo '<div class="dash-row r-2"><div class="card dash-card"><h2>Vulnerable Sectors</h2>';
     dash_donut($sectors, 'memberships', 'No registered households yet.');

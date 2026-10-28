@@ -13,11 +13,9 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/md.php';
 
 // item => unit shown under the count
+// Relief distribution tracks Food Packs only.
 const RG_ITEMS = [
-    'Food Packs'     => 'packs',
-    'Water (Liters)' => 'liters',
-    'Medicine'       => 'boxes',
-    'Hygiene Kits'   => 'kits',
+    'Food Packs' => 'packs',
 ];
 const RG_MAX_QTY = 1000000;
 
@@ -134,8 +132,8 @@ function rg_url(array $f, array $override = []): string
 /** Filtered + paged list. Returns [rows, total, page, totalPages]. */
 function rg_search(array $f): array
 {
-    $where = ['1=1'];
-    $params = [];
+    $where = ['d.item = ?'];
+    $params = [array_key_first(RG_ITEMS)];
     if ($f['q'] !== '') {
         $like = '%' . addcslashes($f['q'], '%_\\') . '%';
         $where[] = "(d.distribution_code ILIKE ? OR b.name ILIKE ? OR d.item ILIKE ? OR COALESCE(d.received_by, '') ILIKE ?)";

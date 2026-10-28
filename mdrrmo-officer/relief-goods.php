@@ -27,8 +27,8 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['rg_old'])
 $stock   = rg_totals();
 $f = rg_filters($_GET);
 [$rows, $total, $page, $totalPages] = rg_search($f);
-$totalAll  = (int) db_query('SELECT COUNT(*) FROM relief_distributions')->fetchColumn();
-$filtering = $f['q'] !== '' || $f['item'] !== '' || $f['status'] !== '' || $f['date'] !== '';
+$totalAll  = (int) db_query('SELECT COUNT(*) FROM relief_distributions WHERE item = ?', [array_key_first(RG_ITEMS)])->fetchColumn();
+$filtering = $f['q'] !== '' || $f['status'] !== '' || $f['date'] !== '';
 $today   = (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))->format('Y-m-d');
 $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup with what was typed
 ?>
@@ -62,17 +62,13 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
     <form method="get" class="vr-filters" id="rgFilters">
         <label class="sw-search vr-search">
             <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
-            <input type="search" name="q" value="<?= md_h($f['q']) ?>" placeholder="Search distribution ID, barangay, or item" maxlength="100">
+            <input type="search" name="q" value="<?= md_h($f['q']) ?>" placeholder="Search barangay or recipient" maxlength="100">
         </label>
         <select name="status" onchange="this.form.submit()" aria-label="Filter by status">
             <option value="">All statuses</option>
             <?php foreach (RG_STATUSES as $s): ?><option <?= $f['status'] === $s ? 'selected' : '' ?>><?= md_h($s) ?></option><?php endforeach; ?>
         </select>
-        <select name="item" onchange="this.form.submit()" aria-label="Filter by item">
-            <option value="">All items</option>
-            <?php foreach (array_keys(RG_ITEMS) as $it): ?><option <?= $f['item'] === $it ? 'selected' : '' ?>><?= md_h($it) ?></option><?php endforeach; ?>
-        </select>
-        <input type="date" name="date" value="<?= md_h($f['date']) ?>" onchange="this.form.submit()" aria-label="Filter by date released">
+        <input type="date" name="date" max="<?= $today ?>" value="<?= md_h($f['date']) ?>" onchange="this.form.submit()" aria-label="Filter by date released">
         <?php if ($filtering): ?><a class="vr-link" href="relief-goods.php">Clear</a><?php endif; ?>
     </form>
 
@@ -134,11 +130,8 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
                     </div>
                     <div class="rg-field">
                         <label for="rgItem">Item</label>
-                        <select id="rgItem" name="item">
-                            <?php foreach (array_keys(RG_ITEMS) as $it): ?>
-                                <option<?= ($oldDist['item'] ?? '') === $it ? ' selected' : '' ?>><?= md_h($it) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <input type="hidden" name="item" value="Food Packs">
+                        <input id="rgItem" type="text" value="Food Packs" readonly aria-readonly="true">
                     </div>
                     <div class="rg-field">
                         <label for="rgQty">Quantity</label>
