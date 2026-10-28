@@ -249,18 +249,26 @@ $eventIsActive = $currentEvent && ($currentEvent['status'] ?? 'Active') === 'Act
         <div style="max-height:420px;overflow-y:auto;">
             <table class="table" id="swTable">
                 <thead>
-                    <tr><th>Name</th><th>Date/Time</th></tr>
+                    <tr><th>Name</th><th>Family Head</th><th>Date/Time</th></tr>
                 </thead>
                 <tbody>
                     <?php if (empty($evacuees)): ?>
-                        <tr><td colspan="2" class="empty">No evacuees recorded yet.</td></tr>
+                        <tr><td colspan="3" class="empty">No evacuees recorded yet.</td></tr>
                     <?php else: foreach ($evacuees as $e): ?>
-                        <tr data-search="<?= md_h(strtolower($e['name'] . ' ' . ($e['composition_id'] ? $e['head_name'] : ''))) ?>">
+                        <?php
+                            // A member shows their family head's name; the head themselves shows "Family head";
+                            // a manually-entered person with no household record has no head to show.
+                            $headCell = $e['composition_id']
+                                ? preg_replace('/\s+/', ' ', trim((string) $e['head_name']))
+                                : ($e['household_id'] ? 'Family head' : '—');
+                        ?>
+                        <tr data-search="<?= md_h(strtolower($e['name'] . ' ' . $headCell)) ?>">
                             <td><?= htmlspecialchars($e['name']) ?></td>
+                            <td><?= htmlspecialchars($headCell) ?></td>
                             <td><?= htmlspecialchars(date('M d, Y H:i', strtotime($e['created_at']))) ?></td>
                         </tr>
                     <?php endforeach; endif; ?>
-                    <tr id="swNoMatch" hidden><td colspan="2" class="empty">No evacuees match your search.</td></tr>
+                    <tr id="swNoMatch" hidden><td colspan="3" class="empty">No evacuees match your search.</td></tr>
                 </tbody>
             </table>
         </div>

@@ -2575,3 +2575,20 @@ textarea {
 /* the household picker in Submit Damage Assessment toggles these with [hidden] */
 .sw-search-modal-input[hidden], #daHhSearch[hidden] { display: none; }
 #daHhPicked .btn { flex: none; padding: 6px 12px; }
+
+/* Household picker: the wrapper already draws the box, so the inner input must not draw a second one */
+.field .sw-search-modal-input input,
+.sw-ui .field .sw-search-modal-input input {
+    border: 0; box-shadow: none; background: transparent; padding: 0; border-radius: 0; width: auto; min-width: 0;
+}
+.field .sw-search-modal-input input:focus,
+.sw-ui .field .sw-search-modal-input input:focus { border: 0; box-shadow: none; }
+.field .sw-search-modal-input:focus-within { border-color: var(--focus, var(--sig-blue)); box-shadow: 0 0 0 2px var(--focus-ring); }
+
+/* Social Worker household records now has 3 columns (Family Head Name / Members / Action) */
+.sw-household-list .sw-records .table th:nth-child(1),
+.sw-household-list .sw-records .table td:nth-child(1) { width: auto; }
+.sw-household-list .sw-records .table th:nth-child(2),
+.sw-household-list .sw-records .table td:nth-child(2) { width: 18%; }
+.sw-household-list .sw-records .table th:nth-child(3),
+.sw-household-list .sw-records .table td:nth-child(3) { width: 22%; text-align: right; }

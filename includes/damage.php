@@ -12,7 +12,7 @@ require_once __DIR__ . '/supabase.php';
 
 const DA_MAX_BYTES    = 12 * 1024 * 1024;
 const DA_MAX_EDGE     = 1600;
-const DA_DAMAGE_TYPES = ['Fully Damaged', 'Partially Damaged', 'Minor Damage'];
+const DA_DAMAGE_TYPES = ['Fully Damaged', 'Partially Damaged'];
 // Rough bounding box of Oton, Iloilo: lat min, lat max, lng min, lng max.
 const DA_CITY_BBOX    = [10.67, 10.78, 122.41, 122.53];
 // GPS accuracy (metres) worse than this is flagged 'low_accuracy' and refused by the form.

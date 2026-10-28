@@ -246,7 +246,6 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
             <table class="table sw-table" id="swTable">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Family Head Name</th>
                         <th>Members</th>
                         <th>Action</th>
@@ -254,15 +253,14 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                 </thead>
                 <tbody>
                     <?php if (empty($households)): ?>
-                        <tr><td colspan="4" class="empty">No households recorded yet.</td></tr>
+                        <tr><td colspan="3" class="empty">No households recorded yet.</td></tr>
                     <?php endif; ?>
                     <?php foreach($households as $h):
                         $fullName = preg_replace('/\s+/', ' ', trim(implode(' ', array_filter([
                             $h['firstname'], $h['middlename'], $h['lastname'], $h['nameextension']
                         ]))));
                     ?>
-                        <tr data-search="<?= htmlspecialchars(strtolower($h['household_id'] . ' ' . $fullName)) ?>">
-                            <td><?= htmlspecialchars($h['household_id']) ?></td>
+                        <tr data-search="<?= htmlspecialchars(strtolower($fullName)) ?>">
                             <td><strong><?= htmlspecialchars($fullName) ?></strong></td>
                             <td><?= htmlspecialchars($h['total_family_members']) ?></td>
                             <td class="sw-record-actions">
@@ -271,7 +269,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                    <tr id="swNoMatch" hidden><td colspan="4" class="empty">No households match your search.</td></tr>
+                    <tr id="swNoMatch" hidden><td colspan="3" class="empty">No households match your search.</td></tr>
                 </tbody>
             </table>
         </div>
