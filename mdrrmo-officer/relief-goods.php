@@ -63,6 +63,7 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
         <label class="sw-search vr-search">
             <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
             <input type="search" name="q" value="<?= md_h($f['q']) ?>" placeholder="Search barangay or recipient" maxlength="100">
+            <input type="search" name="q" value="<?= md_h($f['q']) ?>" placeholder="Search barangay, or item" maxlength="100">
         </label>
         <select name="status" onchange="this.form.submit()" aria-label="Filter by status">
             <option value="">All statuses</option>
