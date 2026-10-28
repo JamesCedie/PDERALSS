@@ -267,10 +267,12 @@ if ($selected !== null) {
 <?php else: ?>
     <?php
         $records = db_query(
-            'SELECT x.name, x.people_count, x.created_at
+            "SELECT x.name, x.household_id, x.composition_id, x.created_at,
+                    concat_ws(' ', h.firstname, h.middlename, h.lastname, h.nameextension) AS head_name
              FROM evacuation_evacuees x
              JOIN evacuation_centers c ON c.center_id = x.center_id
-             WHERE x.event_id = ? AND c.barangay_id = ? ORDER BY x.created_at DESC',
+             LEFT JOIN household h ON h.household_id = x.household_id
+             WHERE x.event_id = ? AND c.barangay_id = ? ORDER BY x.created_at DESC",
             [$eventId, brgy_id($selected)]
         )->fetchAll();
         $people = $perBarangay[$selected]['people'] ?? 0;
@@ -293,16 +295,23 @@ if ($selected !== null) {
     <div class="sw-data-table">
         <table class="table" id="mdTable">
             <thead>
-                <tr><th>Name</th><th>Household No</th><th>Date/Time</th></tr>
+                <tr><th>Name</th><th>Family Head</th><th>Date/Time</th></tr>
             </thead>
             <tbody>
             <?php if (!$records): ?>
                 <tr><td colspan="3" class="empty">No evacuees recorded yet.</td></tr>
             <?php endif; ?>
             <?php foreach ($records as $r): ?>
-                <tr data-search="<?= md_h(strtolower($r['name'])) ?>">
+                <?php
+                    // A member shows their family head's name; the head themselves shows "Family head";
+                    // a manually-entered person with no household record has no head to show.
+                    $headCell = $r['composition_id']
+                        ? preg_replace('/\s+/', ' ', trim((string) $r['head_name']))
+                        : ($r['household_id'] ? 'Family head' : '-');
+                ?>
+                <tr data-search="<?= md_h(strtolower($r['name'] . ' ' . $headCell)) ?>">
                     <td><?= md_h($r['name']) ?></td>
-                    <td><?= md_h($r['people_count'] ?? '—') ?></td>
+                    <td><?= md_h($headCell) ?></td>
                     <td><?= md_h(md_date($r['created_at'], 'M j, Y g:i A')) ?></td>
                 </tr>
             <?php endforeach; ?>

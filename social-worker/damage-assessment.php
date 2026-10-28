@@ -223,7 +223,7 @@ $totalAssessments = count($records);
                 <div class="field">
                     <label>Damage Status</label>
                     <select name="damage_status">
-                        <option>Totally Damaged</option>
+                        <option>Fully Damaged</option>
                         <option>Partially Damaged</option>
                     </select>
                 </div>

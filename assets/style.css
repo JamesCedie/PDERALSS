@@ -2592,3 +2592,10 @@ textarea {
 .sw-household-list .sw-records .table td:nth-child(2) { width: 18%; }
 .sw-household-list .sw-records .table th:nth-child(3),
 .sw-household-list .sw-records .table td:nth-child(3) { width: 22%; text-align: right; }
+
+/* MD Officer household records: same 3-column layout and spacing as the Social Worker table */
+#hhTable { table-layout: fixed; width: 100%; }
+#hhTable th, #hhTable td { vertical-align: middle; }
+#hhTable th:nth-child(1), #hhTable td:nth-child(1) { width: auto; }
+#hhTable th:nth-child(2), #hhTable td:nth-child(2) { width: 18%; }
+#hhTable th:nth-child(3), #hhTable td:nth-child(3) { width: 22%; text-align: right; }
