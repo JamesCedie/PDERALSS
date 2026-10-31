@@ -20,7 +20,7 @@ function vr_filters(array $src): array
     return [
         'q'       => mb_substr(trim((string) ($src['q'] ?? '')), 0, 100),
         'status'  => in_array($status, VR_STATUSES, true) ? $status : '',
-        'purpose' => in_array($purpose, VR_PURPOSES, true) ? $purpose : '',
+        'purpose' => in_array($purpose, vr_filter_purposes(), true) ? $purpose : '',
         'date'    => vr_parse_date($src['date'] ?? '') ?? '',
         'page'    => max(1, (int) ($src['page'] ?? 1)),
     ];
@@ -37,7 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'revie
     $back     = vr_filters($_POST);
     $id       = (int) ($_POST['request_id'] ?? 0);
     $decision = $_POST['decision'] ?? '';
-    $vehicle  = trim((string) ($_POST['assigned_vehicle'] ?? ''));
+    $vehicleRaw = trim((string) ($_POST['vehicle_number'] ?? ''));
+    $vehicle  = preg_match('/^[0-9]$/', $vehicleRaw) ? (int) $vehicleRaw : null;   // 0-9
     $error    = null;
     $success  = null;
 
@@ -51,12 +52,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'revie
     $req   = $id > 0 ? db_select_one('vehicle_requests', 'request_id = ?', [$id]) : null;
     $clash = null;
 
-    // Don't double-book a vehicle on the same date.
-    if ($req && isset($transitions[$decision]) && $transitions[$decision]['vehicle'] && $vehicle !== '') {
+    // Don't double-book a vehicle in the same date + time slot.
+    if ($req && isset($transitions[$decision]) && $transitions[$decision]['vehicle'] && $vehicle !== null) {
+        $timeSql = $req['requested_time'] ? 'requested_time = CAST(? AS time)' : 'requested_time IS NULL';
+        $args    = [$vehicle, $req['requested_date']];
+        if ($req['requested_time']) $args[] = substr($req['requested_time'], 0, 5);
+        $args[]  = $id;
         $clash = db_select_one(
             'vehicle_requests',
-            "LOWER(assigned_vehicle) = LOWER(?) AND requested_date = ? AND status IN ('Approved','Scheduled') AND request_id <> ?",
-            [$vehicle, $req['requested_date'], $id],
+            "vehicle_number = ? AND requested_date = ? AND {$timeSql} AND status IN ('Approved','Scheduled') AND request_id <> ?",
+            $args,
             'request_code'
         );
     }
@@ -69,12 +74,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'revie
         $error = 'Unknown action.';
     } elseif (!in_array($req['status'], $transitions[$decision]['from'], true)) {
         $error = "{$req['request_code']} is already {$req['status']} — it can't be changed that way.";
-    } elseif ($transitions[$decision]['vehicle'] && $vehicle === '') {
-        $error = 'Enter the assigned vehicle first.';
-    } elseif (mb_strlen($vehicle) > 100) {
-        $error = 'Assigned vehicle must be 100 characters or fewer.';
+    } elseif ($transitions[$decision]['vehicle'] && $vehicle === null) {
+        $error = 'Enter a vehicle number from 0 to 9 first.';
     } elseif ($clash) {
-        $error = "{$vehicle} is already assigned to {$clash['request_code']} on " . vr_date($req['requested_date']) . '.';
+        $error = sprintf('MD-%02d is already assigned to %s in that time slot.', $vehicle, $clash['request_code']);
     } else {
         $t    = $transitions[$decision];
         $data = [
@@ -83,19 +86,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'revie
             'reviewed_at' => gmdate('c'),
             'updated_at'  => gmdate('c'),
         ];
-        if ($t['vehicle'])           $data['assigned_vehicle'] = $vehicle;
-        if ($decision === 'reject')  $data['assigned_vehicle'] = null;
+        if ($t['vehicle'])           $data['vehicle_number'] = $vehicle;
+        if ($decision === 'reject')  $data['vehicle_number'] = null;
 
-        $in      = implode(',', array_fill(0, count($t['from']), '?'));
-        $changed = db_update('vehicle_requests', $data, "request_id = ? AND status IN ({$in})", array_merge([$id], $t['from']));
+        $in = implode(',', array_fill(0, count($t['from']), '?'));
+        try {
+            $changed = db_update('vehicle_requests', $data, "request_id = ? AND status IN ({$in})", array_merge([$id], $t['from']));
+        } catch (PDOException $e) {
+            if ($e->getCode() !== '23505') throw $e;   // unique_violation: vehicle already used in this slot
+            $changed = -1;
+        }
 
-        if ($changed === 0) {
+        if ($changed === -1) {
+            $error = 'That vehicle number was just assigned to another request in the same time slot.';
+        } elseif ($changed === 0) {
             $error = "{$req['request_code']} was just updated by someone else. Please review it again.";
         } else {
+            $label   = $vehicle !== null ? sprintf('MD-%02d', $vehicle) : '';
             $success = match ($decision) {
-                'approve'  => "{$req['request_code']} approved and assigned to {$vehicle}.",
+                'approve'  => "{$req['request_code']} approved and assigned to {$label}.",
                 'reject'   => "{$req['request_code']} rejected.",
-                'schedule' => "{$req['request_code']} scheduled with {$vehicle}.",
+                'schedule' => "{$req['request_code']} scheduled with {$label}.",
                 'complete' => "{$req['request_code']} marked as completed.",
             };
         }
@@ -121,14 +132,14 @@ $where  = ['1=1'];
 $params = [];
 if ($f['q'] !== '') {
     $like = '%' . addcslashes($f['q'], '%_\\') . '%';
-    $where[] = "(v.request_code ILIKE ? OR b.name ILIKE ? OR v.purpose ILIKE ? OR COALESCE(v.assigned_vehicle, '') ILIKE ? OR CONCAT(u.first_name, ' ', u.last_name) ILIKE ?)";
+    $where[] = "(v.request_code ILIKE ? OR b.name ILIKE ? OR v.purpose ILIKE ? OR COALESCE(v.passenger_name, '') ILIKE ? OR CONCAT(u.first_name, ' ', u.last_name) ILIKE ?)";
     array_push($params, $like, $like, $like, $like, $like);
 }
 if ($f['status'] !== '')  { $where[] = 'v.status = ?';         $params[] = $f['status']; }
 if ($f['purpose'] !== '') { $where[] = 'v.purpose = ?';        $params[] = $f['purpose']; }
 if ($f['date'] !== '')    { $where[] = 'v.requested_date = ?'; $params[] = $f['date']; }
 $whereSql = implode(' AND ', $where);
-$join     = 'FROM vehicle_requests v JOIN barangays b ON b.barangay_id = v.barangay_id LEFT JOIN users u ON u.user_id::text = v.requested_by';
+$join     = 'FROM vehicle_requests v JOIN barangays b ON b.barangay_id = v.barangay_id LEFT JOIN hospitals h ON h.hospital_id = v.hospital_id LEFT JOIN users u ON u.user_id::text = v.requested_by';
 
 $total      = (int) db_query("SELECT COUNT(*) {$join} WHERE {$whereSql}", $params)->fetchColumn();
 $totalPages = max(1, (int) ceil($total / VR_PER_PAGE));
@@ -136,7 +147,7 @@ $page       = min($f['page'], $totalPages);
 $offset     = ($page - 1) * VR_PER_PAGE;
 
 $requests = db_query(
-    "SELECT v.*, b.name AS barangay, TRIM(CONCAT(u.first_name, ' ', u.last_name)) AS requester_name
+    "SELECT v.*, b.name AS barangay, h.name AS hospital_name, TRIM(CONCAT(u.first_name, ' ', u.last_name)) AS requester_name
      {$join} WHERE {$whereSql}
      ORDER BY (v.status = 'Pending') DESC, v.created_at DESC, v.request_id DESC
      LIMIT " . VR_PER_PAGE . " OFFSET {$offset}",
@@ -164,7 +175,8 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
 
     <div class="vr-table-head">
         <div>
-            <div class="vr-section-title" style="margin-bottom:0">Social Worker Vehicle Requests</div>
+            <div class="vr-section-title" style="margin-bottom:0">Social Worker Requests</div>
+            <div class="mini">Review, approve, schedule, and monitor municipal vehicle support.</div>
         </div>
         <div class="mini">Showing <?= count($requests) ?> of <?= $total ?><?= $filtering ? ' matching' : '' ?> requests</div>
     </div>
@@ -172,7 +184,7 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
     <form method="get" class="vr-filters" id="vrFilters">
         <label class="sw-search vr-search">
             <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
-            <input type="search" name="q" value="<?= vr_h($f['q']) ?>" placeholder="Search barangay, or purpose" maxlength="100">
+            <input type="search" name="q" value="<?= vr_h($f['q']) ?>" placeholder="Search request ID, requester, or barangay" maxlength="100">
         </label>
         <select name="status" onchange="this.form.submit()" aria-label="Filter by status">
             <option value="">All statuses</option>
@@ -180,9 +192,9 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
         </select>
         <select name="purpose" onchange="this.form.submit()" aria-label="Filter by purpose">
             <option value="">All purposes</option>
-            <?php foreach (VR_PURPOSES as $p): ?><option <?= $f['purpose'] === $p ? 'selected' : '' ?>><?= vr_h($p) ?></option><?php endforeach; ?>
+            <?php foreach (vr_filter_purposes() as $p): ?><option <?= $f['purpose'] === $p ? 'selected' : '' ?>><?= vr_h($p) ?></option><?php endforeach; ?>
         </select>
-        <input type="date" name="date" data-allow-future value="<?= vr_h($f['date']) ?>" onchange="this.form.submit()" aria-label="Filter by requested date">
+        <input type="date" name="date" data-allow-future value="<?= vr_h($f['date']) ?>" onchange="this.form.submit()" aria-label="Filter by requested date" title="Requested date">
         <?php if ($filtering): ?><a class="vr-link" href="vehicle-requests.php">Clear</a><?php endif; ?>
     </form>
 
@@ -194,10 +206,10 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
                         <th>Requested by</th>
                         <th>Barangay</th>
                         <th>Purpose</th>
-                        <th>Passengers</th>
-                        <th>Urgency</th>
+                        <th>Passenger Name</th>
                         <th>Date</th>
-                        <th>Assigned vehicle</th>
+                        <th>Time</th>
+                        <th>Vehicle Number</th>
                         <th>Status</th>
                         <th class="vr-right">Actions</th>
                     </tr>
@@ -214,10 +226,10 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
                             </td>
                             <td><?= vr_h($r['barangay']) ?></td>
                             <td><?= vr_h($r['purpose']) ?></td>
-                            <td><?= (int) $r['passengers'] ?></td>
-                            <td><?= vr_urgency_badge($r['urgency']) ?></td>
+                            <td><?= $r['passenger_name'] ? vr_h($r['passenger_name']) : '<span class="vr-muted">—</span>' ?></td>
                             <td><?= vr_h(vr_date($r['requested_date'], 'j M Y')) ?></td>
-                            <td><?= $r['assigned_vehicle'] ? vr_h($r['assigned_vehicle']) : '<span class="vr-muted">—</span>' ?></td>
+                            <td><?= vr_h(vr_time12($r['requested_time'])) ?></td>
+                            <td><?= vr_vehicle_label($r) !== '' ? vr_h(vr_vehicle_label($r)) : '<span class="vr-muted">—</span>' ?></td>
                             <td><?= vr_status_badge($r['status']) ?></td>
                             <td class="vr-right"><button class="btn btn-dark-sm" onclick="openModal('manageVehicle-<?= (int) $r['request_id'] ?>')">Manage</button></td>
                         </tr>
@@ -248,7 +260,7 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
             <div class="modal-head">
                 <div>
                     <h2>Manage Vehicle Request</h2>
-                    <div class="mini"><?= vr_h($r['requester_name'] ?: 'Unknown user') ?> · <?= vr_h($r['barangay']) ?> · <?= vr_h($r['request_code']) ?></div>
+                    <div class="mini"><?= vr_h($r['requester_name'] ?: 'Unknown user') ?> · Brgy. <?= vr_h($r['barangay']) ?> · <?= vr_h($r['request_code']) ?></div>
                 </div>
                 <button type="button" class="icon-btn" onclick="closeModal('<?= $mid ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
@@ -262,19 +274,23 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
                 <?php endif; endforeach; ?>
                 <input type="hidden" name="page" value="<?= (int) $page ?>">
 
-                <div class="field full vr-assign">
-                    <label>Assigned vehicle</label>
+                <div class="field full">
+                    <label>Vehicle Number</label>
                     <?php if ($editable): ?>
-                        <input name="assigned_vehicle" value="<?= vr_h($r['assigned_vehicle']) ?>" maxlength="100" placeholder="Enter assigned vehicle">
+                        <input type="number" name="vehicle_number" min="0" max="9" step="1" inputmode="numeric" value="<?= $r['vehicle_number'] !== null ? (int) $r['vehicle_number'] : '' ?>" placeholder="Enter vehicle number (0–9)">
                     <?php else: ?>
-                        <div class="vr-readonly"><?= $r['assigned_vehicle'] ? vr_h($r['assigned_vehicle']) : '<span class="vr-muted">None</span>' ?></div>
+                        <div class="vr-readonly"><?= vr_vehicle_label($r) !== '' ? vr_h(vr_vehicle_label($r)) : '<span class="vr-muted">None</span>' ?></div>
                     <?php endif; ?>
                 </div>
                 <div class="field full"><label>Purpose</label><div class="vr-readonly"><?= vr_h($r['purpose']) ?></div></div>
-                <div class="field"><label>Passengers</label><div class="vr-readonly"><?= (int) $r['passengers'] ?></div></div>
-                <div class="field"><label>Urgency</label><div class="vr-readonly"><?= vr_h($r['urgency']) ?></div></div>
+                <div class="field"><label>Passenger name</label><div class="vr-readonly"><?= $r['passenger_name'] ? vr_h($r['passenger_name']) : '<span class="vr-muted">—</span>' ?></div></div>
+                <div class="field"><label>Hospital</label><div class="vr-readonly"><?= $r['hospital_name'] ? vr_h($r['hospital_name']) : '<span class="vr-muted">—</span>' ?></div></div>
                 <div class="field full"><label>Requested date</label><div class="vr-readonly"><?= vr_h(vr_date($r['requested_date'], 'j M Y')) ?></div></div>
+                <div class="field full"><label>Requested time</label><div class="vr-readonly"><?= vr_h(vr_time12($r['requested_time'])) ?></div></div>
                 <div class="field full"><label>Notes</label><div class="vr-readonly vr-notes"><?= $r['notes'] ? vr_h($r['notes']) : '<span class="vr-muted">No notes</span>' ?></div></div>
+                <?php if ($status === 'Cancelled'): ?>
+                    <div class="field full"><label>Cancelled by the Social Worker</label><div class="vr-readonly vr-notes"><?= !empty($r['cancel_reason']) ? vr_h($r['cancel_reason']) : '<span class="vr-muted">No reason given</span>' ?></div></div>
+                <?php endif; ?>
 
                 <div class="vr-actions vr-actions-split">
                     <button type="button" class="btn btn-light" onclick="closeModal('<?= $mid ?>')"><?= $primary ? 'Cancel' : 'Close' ?></button>
