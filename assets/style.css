@@ -2661,3 +2661,141 @@ textarea {
     .dash-live-tiles { grid-template-columns: 1fr; }
     .dash-live-tile strong { font-size: 32px; }
 }
+
+/*
+   Vehicle Requests v2 — availability calendar, time slots, wider modals
+   */
+.vr-modal { width:min(640px, calc(100vw - 40px)) !important; }
+.vr-page .table td.vr-wrap { white-space:normal; min-width:110px; max-width:220px; }
+.vr-page .table td.vr-wrap-wide { min-width:170px; }
+.vr-form .field input[type=number] { appearance:textfield; -moz-appearance:textfield; }
+.vr-form-error { grid-column:1 / -1; background:var(--st-red-bg-soft); border:1px solid var(--st-red-bd); color:var(--st-red-text); border-radius:8px; padding:10px 12px; font-size:12px; }
+.vr-form-error[hidden] { display:none; }
+
+.vr-cal { background:var(--surface-nested); border:1px solid var(--border-soft); border-radius:10px; padding:12px 12px 10px; }
+.vr-cal-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; font-size:13px; }
+.vr-cal-tools { display:flex; align-items:center; gap:12px; font-size:11px; color:var(--sw-muted); }
+.vr-legend { display:inline-flex; align-items:center; gap:5px; }
+.vr-lg { width:7px; height:7px; border-radius:50%; display:inline-block; }
+.vr-lg.ok { background:var(--sig-green); }
+.vr-lg.no { background:var(--sig-red); }
+.vr-nav { width:26px; height:26px; line-height:1; border-radius:6px; border:1px solid var(--btn-sec-bd); background:var(--btn-sec-bg); color:var(--btn-sec-text); cursor:pointer; font-size:16px; }
+.vr-nav:disabled { opacity:.4; cursor:not-allowed; }
+.vr-cal-grid { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:6px; }
+.vr-cal-dow { margin-bottom:6px; text-align:center; font-size:11px; color:var(--sw-muted); }
+.vr-day {
+    height:30px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;
+    border:1px solid var(--border-soft); background:var(--surface); color:var(--text-body);
+}
+.vr-day.out { opacity:.45; cursor:default; font-weight:400; }
+.vr-day.ok  { background:var(--st-green-bg); border-color:var(--st-green-bd); color:var(--st-green-text); }
+.vr-day.ok:hover { filter:brightness(1.08); }
+.vr-day.no  { background:var(--st-red-bg); border-color:var(--st-red-bd); color:var(--st-red-text); cursor:not-allowed; }
+.vr-day.sel { box-shadow:0 0 0 2px var(--sig-green); }
+.vr-day:focus-visible { outline:2px solid var(--focus); outline-offset:1px; }
+.vr-cal-foot { margin-top:8px; font-size:11px; color:var(--sw-muted); }
+
+.vr-date-tag { float:right; color:var(--sig-green); font-size:12px; }
+.vr-slots { border:1px solid var(--border-soft); border-radius:8px; overflow:hidden; background:var(--surface-nested); }
+.vr-slots-head { display:flex; justify-content:space-between; padding:9px 12px; font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--sw-muted); background:var(--th-bg); }
+.vr-slot { display:flex; align-items:center; gap:10px; padding:9px 12px; font-size:13px; border-top:1px solid var(--track); cursor:pointer; }
+.vr-slot > span:nth-of-type(1) { flex:1; }
+.vr-slot input { width:auto; margin:0; accent-color:var(--accent); }
+.vr-slot:has(input:checked) { background:var(--st-blue-bg); }
+.vr-slot.no { cursor:not-allowed; color:var(--sw-soft); }
+.vr-slot-tag { font-size:11px; display:inline-flex; align-items:center; gap:5px; }
+.vr-slot-tag::before { content:''; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.vr-slot-tag.ok { color:var(--st-green-text); }
+.vr-slot-tag.no { color:var(--st-red-text); }
+.vr-slot-empty { padding:14px 12px; font-size:12px; color:var(--sw-muted); }
+.vr-label-row { display:flex; justify-content:space-between; }
+@media (max-width: 560px) {
+    .vr-cal-grid { gap:4px; }
+    .vr-day { height:34px; }
+}
+
+/* Time-slot rows: beat the generic ".sw-ui .field label" (uppercase / block) rules */
+.vr-form .field label.vr-slot {
+    display:flex; align-items:center; gap:10px; margin:0; padding:9px 12px;
+    font-size:13px; font-weight:600; text-transform:none; letter-spacing:0; color:var(--text-body);
+}
+.vr-form .field label.vr-slot.no { color:var(--sw-soft); }
+.vr-form .field .vr-slot input[type=radio] {
+    width:16px; height:16px; padding:0; margin:0; flex:none; border:0; background:none; box-shadow:none; accent-color:var(--accent);
+}
+.vr-form .field .vr-slot > span:nth-of-type(1) { flex:none; }
+.vr-form .field .vr-slot-tag { margin-left:auto; font-weight:600; text-transform:none; letter-spacing:0; }
+.vr-form .field .vr-date-tag { text-transform:none; letter-spacing:0; font-weight:600; }
+
+/* MDRRMO dashboard: vehicle schedule */
+.vs-card { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr); gap:20px; align-items:start; }
+.vs-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; font-size:14px; }
+.vs-tools { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--sw-muted); }
+.vs-key { display:inline-flex; align-items:center; gap:5px; }
+.vs-tools .vr-nav { width:auto; min-width:26px; padding:0 8px; }
+.vs-dot { width:7px; height:7px; border-radius:50%; display:inline-block; background:var(--sig-gray); }
+.vs-dot.s-pending { background:var(--sig-amber); }
+.vs-dot.s-approved { background:var(--sig-green); }
+.vs-dot.s-scheduled { background:var(--sig-blue); }
+.vs-dot.s-completed { background:var(--sig-purple); }
+.vs-grid { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:6px; }
+.vs-dow { margin-bottom:6px; text-align:center; font-size:11px; color:var(--sw-muted); }
+.vs-cell {
+    min-height:62px; padding:6px 7px; border-radius:8px; text-align:left; display:flex; flex-direction:column; gap:4px;
+    border:1px solid var(--border-soft); background:var(--surface-nested); color:var(--text-body); font-size:12px; cursor:pointer;
+}
+.vs-cell.out { background:none; border-color:transparent; cursor:default; }
+.vs-cell.has { border-color:var(--st-blue-bd); }
+.vs-cell.today .vs-num { color:var(--accent); font-weight:700; }
+.vs-cell.sel { box-shadow:0 0 0 2px var(--sig-blue); }
+.vs-num { font-weight:600; }
+.vs-dots { display:flex; gap:3px; }
+.vs-count { font-size:10px; color:var(--sw-muted); }
+.vs-day { border:1px solid var(--border-soft); border-radius:10px; background:var(--surface-nested); padding:12px; max-height:430px; overflow:auto; }
+.vs-day-head { font-size:13px; font-weight:700; margin-bottom:10px; }
+.vs-empty { font-size:12px; color:var(--sw-muted); padding:8px 0; }
+.vs-trip { padding:10px 0; border-top:1px solid var(--track); }
+.vs-trip:first-of-type { border-top:0; padding-top:0; }
+.vs-trip-top { display:flex; align-items:center; gap:10px; font-size:13px; }
+.vs-veh { margin-left:auto; color:var(--sw-muted); font-size:12px; }
+.vs-trip-main { margin-top:4px; font-size:12px; }
+.vs-trip-meta { margin-top:2px; font-size:11px; color:var(--sw-muted); }
+@media (max-width: 1000px) { .vs-card { grid-template-columns:1fr; } }
+@media (max-width: 560px) { .vs-cell { min-height:48px; padding:4px; } .vs-count { display:none; } }
+
+/* 24-hour slot list scrolls inside its box */
+#vrSlotRows { max-height:288px; overflow-y:auto; }
+
+/* Cancel booking (Social Worker view modal) */
+.vr-cancel-box { margin-top:18px; padding:14px; border:1px solid var(--st-red-bd); background:var(--st-red-bg-soft); border-radius:10px; display:grid; gap:10px; }
+.vr-cancel-title { font-weight:700; font-size:13px; color:var(--st-red-text); }
+.vr-cancel-text { font-size:12px; color:var(--sw-muted); }
+.vr-cancel-text strong { color:var(--st-amber-text); }
+.vr-cancel-box .btn-reject { justify-self:start; }
+
+/* MDRRMO dashboard: "Needs attention" strip */
+.dash-attn { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; }
+.dash-attn-item { display:flex; flex-direction:column; gap:3px; padding:12px 14px; border-radius:10px; border:1px solid var(--border-soft); background:var(--surface); color:var(--text-body); text-decoration:none; border-left-width:4px; }
+.dash-attn-item strong { font-size:13px; }
+.dash-attn-item span { font-size:12px; color:var(--sw-muted); }
+a.dash-attn-item:hover { background:var(--hover-row); }
+.dash-attn-item.is-danger  { border-left-color:var(--sig-red); }
+.dash-attn-item.is-warning { border-left-color:var(--sig-amber); }
+.dash-attn-item.is-info    { border-left-color:var(--sig-blue); }
+
+/* SW dashboard: vehicle availability calendar */
+.vs-dot.s-full { background:var(--sig-red); }
+.vs-cell.va-ok { background:var(--st-green-bg); border-color:var(--st-green-bd); color:var(--st-green-text); }
+.vs-cell.va-no { background:var(--st-red-bg); border-color:var(--st-red-bd); color:var(--st-red-text); }
+.vs-cell.va-ok .vs-count, .vs-cell.va-no .vs-count { color:inherit; }
+.vs-cell.past { opacity:.45; cursor:default; }
+.va-slot { display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--track); font-size:12px; }
+.va-slot:first-child { border-top:0; }
+.va-time { font-weight:600; min-width:150px; }
+.va-slot.no .va-time { color:var(--sw-soft); }
+.va-tag { margin-left:auto; display:inline-flex; align-items:center; gap:5px; font-weight:600; }
+.va-tag::before { content:''; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.va-tag.ok { color:var(--st-green-text); }
+.va-tag.no { color:var(--st-red-text); }
+.va-mine { color:var(--text-body); font-size:11px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.va-slot .badge { margin-left:auto; }
