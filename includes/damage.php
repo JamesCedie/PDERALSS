@@ -173,21 +173,28 @@ function da_reverse_geocode(float $lat, float $lng): string
     if (!is_array($j)) return '';
     $a = is_array($j['address'] ?? null) ? $j['address'] : [];
 
-    $street = trim(implode(' ', array_filter([$a['house_number'] ?? '', $a['road'] ?? ''])));
-    $parts  = [];
+    // Keep the address components in predictable fields instead of mixing in
+    // neighbourhoods/districts that can make the displayed location misleading.
+    $street = trim(implode(' ', array_filter([
+        trim((string) ($a['house_number'] ?? '')),
+        trim((string) ($a['road'] ?? '')),
+    ], static fn($v) => $v !== '')));
+    $locality = trim((string) ($a['city'] ?? $a['town'] ?? $a['municipality'] ?? $a['village'] ?? ''));
+    $region = trim((string) ($a['state'] ?? $a['province'] ?? $a['state_district'] ?? ''));
+    $postal = trim((string) ($a['postcode'] ?? ''));
+    $country = trim((string) ($a['country'] ?? ''));
+
+    $parts = [];
     foreach ([
-        $street,
-        $a['neighbourhood'] ?? ($a['quarter'] ?? ($a['suburb'] ?? ($a['village'] ?? ''))),
-        $a['city_district'] ?? '',
-        $a['city'] ?? ($a['town'] ?? ($a['municipality'] ?? ($a['county'] ?? ''))),
-    ] as $p) {
-        $p = trim((string) $p);
-        if ($p !== '' && !in_array($p, $parts, true)) $parts[] = $p;
+        'Address Line 1' => $street,
+        'Locality / City' => $locality,
+        'Region / State' => $region,
+        'Postal Code' => $postal,
+        'Country' => $country,
+    ] as $label => $value) {
+        if ($value !== '') $parts[] = $label . ': ' . $value;
     }
-    if (!$parts && !empty($j['display_name'])) {
-        $parts = array_slice(array_map('trim', explode(',', (string) $j['display_name'])), 0, 4);
-    }
-    $addr = mb_substr(implode(', ', $parts), 0, 300);
+    $addr = mb_substr(implode(' | ', $parts), 0, 500);
     return preg_replace('/[^\P{C}\n]+/u', '', $addr) ?? '';
 }
 

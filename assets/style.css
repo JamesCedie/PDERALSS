@@ -2799,3 +2799,14 @@ a.dash-attn-item:hover { background:var(--hover-row); }
 .va-tag.no { color:var(--st-red-text); }
 .va-mine { color:var(--text-body); font-size:11px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .va-slot .badge { margin-left:auto; }
+
+/* Vehicle calendars now sit on the Vehicle Requests pages, above the requests table. */
+.vr-page > .vs-card { margin-bottom: 4px; }
+.vr-page > .vs-card + .vr-table-head { margin-top: 26px; }
+
+/* Dashboard "Schedule for Today" card. */
+.vs-today { max-height: 360px; overflow: auto; }
+.vs-today .vs-empty { padding: 14px 4px; text-align: center; }
+
+/* Dashboard event state: shared status badge + label (replaces the old .dash-pill). */
+.dash-event-state { display:inline-flex; align-items:center; gap:8px; font-size:12px; color:var(--sw-muted); }

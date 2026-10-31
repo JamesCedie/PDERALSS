@@ -169,6 +169,8 @@ $visible  = 5;
         <?php endforeach; ?>
     </div>
 
+    <?php if ($barangay !== '') vr_render_availability_calendar($barangay); ?>
+
     <div class="vr-table-head">
         <div class="vr-section-title"><?= vr_h($barangay ?: 'Barangay') ?> Request History</div>
         <?php if (count($requests) > $visible): ?>

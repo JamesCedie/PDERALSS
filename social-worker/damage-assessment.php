@@ -140,7 +140,7 @@ $totalAssessments = count($records);
         <?php foreach ($records as $r): ?>
             <tr data-search="<?= md_h(strtolower($r['head'] . ' ' . $r['level'] . ' ' . $r['ref'])) ?>">
                 <td><strong><?= md_h($r['head']) ?></strong></td>
-                <td><?= md_h($r['level']) ?></td>
+                <td><?= status_badge($r['level']) ?></td>
                 <td><?= md_h($r['date']) ?></td>
                 <td class="vr-right"><button type="button" class="btn btn-dark-sm" onclick="openModal('damageView-<?= $r['id'] ?>')">View</button></td>
             </tr>
@@ -163,7 +163,7 @@ $totalAssessments = count($records);
             </div>
             <div class="sw-view-grid">
                 <div class="sw-view-item"><label>Household Head</label><div><?= md_h($r['head']) ?></div></div>
-                <div class="sw-view-item"><label>Damage Level</label><div><?= md_h($r['level']) ?></div></div>
+                <div class="sw-view-item"><label>Damage Level</label><div><?= status_badge($r['level']) ?></div></div>
                 <div class="sw-view-item"><label>Date Assessed</label><div><?= md_h($r['date']) ?></div></div>
                 <div class="sw-view-item"><label>Reported Damage</label><div><?= md_h($r['reported']) ?></div></div>
                 <div class="sw-view-item"><label>Reporter</label><div><?= md_h($r['reporter']) ?></div></div>
@@ -340,12 +340,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     function composeAddress(j) {
         var a = (j && j.address) || {}, parts = [];
-        var street = [a.house_number, a.road].filter(Boolean).join(' ');
-        [street, a.neighbourhood || a.quarter || a.suburb || a.village, a.city_district, a.city || a.town || a.municipality || a.county].forEach(function (p) {
-            if (p && parts.indexOf(p) === -1) parts.push(p);
+        var street = [a.house_number, a.road].filter(Boolean).join(' ').trim();
+        var fields = [
+            ['Address Line 1', street],
+            ['Locality / City', a.city || a.town || a.municipality || a.village || ''],
+            ['Region / State', a.state || a.province || a.state_district || ''],
+            ['Postal Code', a.postcode || ''],
+            ['Country', a.country || '']
+        ];
+        fields.forEach(function (field) {
+            var value = String(field[1] || '').trim();
+            if (value) parts.push(field[0] + ': ' + value);
         });
-        if (!parts.length && j && j.display_name) parts = j.display_name.split(',').slice(0, 4).map(function (x) { return x.trim(); });
-        return parts.join(', ');
+        return parts.join(' | ');
     }
     function lookupAddress(lat, lng, acc, id) {
         fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=en&lat=' + lat + '&lon=' + lng)

@@ -173,6 +173,8 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
         <?php endforeach; ?>
     </div>
 
+    <?php vr_render_schedule_calendar(); ?>
+
     <div class="vr-table-head">
         <div>
             <div class="vr-section-title" style="margin-bottom:0">Social Worker Requests</div>
@@ -222,7 +224,6 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
                         <tr>
                             <td>
                                 <strong><?= vr_h($r['requester_name'] ?: 'Unknown user') ?></strong>
-                                <div class="vr-code"><?= vr_h($r['request_code']) ?></div>
                             </td>
                             <td><?= vr_h($r['barangay']) ?></td>
                             <td><?= vr_h($r['purpose']) ?></td>

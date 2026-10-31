@@ -756,7 +756,7 @@ function dash_event_bar(array $ctx, string $sideHtml = ''): void
                 </form>
                 <?php if ($event): ?>
                     <?php $active = ($event['status'] ?? 'Active') === 'Active'; ?>
-                    <span class="dash-pill <?= $active ? 'is-active' : 'is-passed' ?>"><?= $active ? 'Active' : 'Passed' ?> Disaster Event</span>
+                    <span class="dash-event-state"><?= status_badge($active ? 'Active' : 'Passed') ?><span>Disaster Event</span></span>
                 <?php endif; ?>
             <?php else: ?>
                 <span class="dash-label">No disaster event has been logged yet.</span>
@@ -854,63 +854,6 @@ function dash_render(array $ctx, bool $isMd): void
     echo '</div>';
 }
 
-/**
- * Vehicle schedule (MDRRMO dashboard): every non-rejected request in a window around today,
- * grouped by date for the month calendar. Rendered by assets/vehicle-schedule.js.
- */
-function dash_vehicle_schedule(): void
-{
-    $today = vr_today();
-    $from  = $today->modify('-62 days')->format('Y-m-d');
-    $to    = $today->modify('+120 days')->format('Y-m-d');
-    $rows  = dash_rows(
-        "SELECT v.request_code AS code, v.requested_date::text AS d, to_char(v.requested_time, 'HH24:MI') AS t,
-                v.purpose, v.passenger_name AS passenger, v.status, v.vehicle_number AS veh, v.assigned_vehicle AS legacy_veh,
-                b.name AS barangay, h.name AS hospital
-         FROM vehicle_requests v
-         JOIN barangays b ON b.barangay_id = v.barangay_id
-         LEFT JOIN hospitals h ON h.hospital_id = v.hospital_id
-         WHERE v.requested_date BETWEEN ? AND ? AND v.status NOT IN ('Rejected', 'Cancelled')
-         ORDER BY v.requested_date, v.requested_time NULLS LAST, v.request_id",
-        [$from, $to]
-    );
-
-    $days = [];
-    foreach ($rows as $r) {
-        $days[$r['d']][] = [
-            'code'      => (string) $r['code'],
-            'time'      => (string) ($r['t'] ?? ''),
-            'purpose'   => (string) $r['purpose'],
-            'passenger' => (string) ($r['passenger'] ?? ''),
-            'status'    => (string) $r['status'],
-            'vehicle'   => vr_vehicle_label(['vehicle_number' => $r['veh'], 'assigned_vehicle' => $r['legacy_veh']]),
-            'barangay'  => (string) $r['barangay'],
-            'hospital'  => (string) ($r['hospital'] ?? ''),
-        ];
-    }
-    $payload = ['today' => $today->format('Y-m-d'), 'from' => $from, 'to' => $to, 'days' => (object) $days];
-
-    echo '<div class="dash-table-head"><h2 class="dash-section">Vehicle Schedule</h2><a class="vr-link" href="vehicle-requests.php">Manage requests &rarr;</a></div>';
-    echo '<div class="card dash-card vs-card" id="vsRoot">'
-       . '<div class="vs-cal">'
-       .   '<div class="vs-head"><strong id="vsTitle"></strong><div class="vs-tools">'
-       .     '<span class="vs-key"><i class="vs-dot s-pending"></i>Pending</span>'
-       .     '<span class="vs-key"><i class="vs-dot s-approved"></i>Approved</span>'
-       .     '<span class="vs-key"><i class="vs-dot s-scheduled"></i>Scheduled</span>'
-       .     '<span class="vs-key"><i class="vs-dot s-completed"></i>Completed</span>'
-       .     '<button type="button" class="vr-nav" id="vsPrev" aria-label="Previous month">‹</button>'
-       .     '<button type="button" class="vr-nav" id="vsToday" aria-label="Go to today">Today</button>'
-       .     '<button type="button" class="vr-nav" id="vsNext" aria-label="Next month">›</button>'
-       .   '</div></div>'
-       .   '<div class="vs-grid vs-dow"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>'
-       .   '<div class="vs-grid" id="vsGrid"></div>'
-       . '</div>'
-       . '<div class="vs-day"><div class="vs-day-head" id="vsDayTitle"></div><div id="vsDayList"></div></div>'
-       . '</div>';
-    echo '<script type="application/json" id="vsData">' . json_encode($payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . '</script>';
-    echo '<script src="../assets/vehicle-schedule.js"></script>';
-}
-
 /** "Needs attention" strip: the live alerts, most urgent first. Hidden when everything is clear. */
 function dash_attention_strip(array $ctx): void
 {
@@ -927,54 +870,6 @@ function dash_attention_strip(array $ctx): void
         echo '<' . $tag . ' class="dash-attn-item is-' . md_h($a[0]) . '"' . $href . '><strong>' . md_h($a[1]) . '</strong><span>' . md_h($a[2]) . '</span></' . $tag . '>';
     }
     echo '</div>';
-}
-
-/**
- * Vehicle availability calendar (Social Worker dashboard). Same availability the booking form uses,
- * read-only: green day = at least one free slot, red = fully booked / closed. Clicking a day lists
- * its time slots. The worker's own barangay bookings are marked; other barangays' details stay private.
- */
-function dash_vehicle_availability(string $barangay): void
-{
-    try {
-        $avail = vr_availability();
-        $bid   = brgy_id($barangay);
-        $mine  = [];
-        if ($bid > 0) {
-            foreach (db_query(
-                "SELECT requested_date::text AS d, to_char(requested_time, 'HH24:MI') AS t, passenger_name AS passenger, status, request_code AS code
-                 FROM vehicle_requests
-                 WHERE barangay_id = ? AND requested_date >= ? AND requested_time IS NOT NULL AND status IN ('Pending','Approved','Scheduled')
-                 ORDER BY requested_date, requested_time",
-                [$bid, $avail['today']]
-            )->fetchAll() as $r) {
-                $mine[$r['d']][] = ['time' => (string) $r['t'], 'passenger' => (string) ($r['passenger'] ?? ''), 'status' => (string) $r['status'], 'code' => (string) $r['code']];
-            }
-        }
-    } catch (Throwable $e) {
-        error_log('vehicle availability card failed: ' . $e->getMessage());
-        return;
-    }
-    $avail['mine'] = (object) $mine;
-
-    echo '<div class="dash-table-head"><h2 class="dash-section">Vehicle Availability</h2><a class="vr-link" href="vehicle-requests.php">Request a vehicle &rarr;</a></div>';
-    echo '<div class="card dash-card vs-card" id="vaRoot">'
-       . '<div class="vs-cal">'
-       .   '<div class="vs-head"><strong id="vaTitle"></strong><div class="vs-tools">'
-       .     '<span class="vs-key"><i class="vs-dot s-approved"></i>Available</span>'
-       .     '<span class="vs-key"><i class="vs-dot s-full"></i>Fully booked</span>'
-       .     '<span class="vs-key"><i class="vs-dot s-scheduled"></i>Your barangay</span>'
-       .     '<button type="button" class="vr-nav" id="vaPrev" aria-label="Previous month">‹</button>'
-       .     '<button type="button" class="vr-nav" id="vaToday" aria-label="Go to today">Today</button>'
-       .     '<button type="button" class="vr-nav" id="vaNext" aria-label="Next month">›</button>'
-       .   '</div></div>'
-       .   '<div class="vs-grid vs-dow"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>'
-       .   '<div class="vs-grid" id="vaGrid"></div>'
-       . '</div>'
-       . '<div class="vs-day"><div class="vs-day-head" id="vaDayTitle"></div><div id="vaDayList"></div></div>'
-       . '</div>';
-    echo '<script type="application/json" id="vaData">' . json_encode($avail, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . '</script>';
-    echo '<script src="../assets/vehicle-availability.js"></script>';
 }
 
 function dash_render_md(array $ctx): void
@@ -1084,8 +979,8 @@ function dash_render_md(array $ctx): void
     // Row 2: damage + vehicle requests
     echo '<div class="dash-row r-2">'; $cardDamage(); $cardVehicles(); echo '</div>';
 
-    // Vehicle schedule calendar
-    dash_vehicle_schedule();
+    // Today's vehicle trips (the full calendar now lives on the Vehicle Requests page)
+    vr_render_today_schedule(null);
 
     // Row 3: trends
     echo '<div class="dash-row r-2">'; $cardEvacPerBrgy(); $cardEvacTime(); echo '</div>';
@@ -1101,7 +996,7 @@ function dash_render_md(array $ctx): void
            . '<td><strong>' . md_h(md_short_barangay($a['barangay'])) . '</strong></td>'
            . '<td>' . md_h($a['text']) . '</td>'
            . '<td>' . md_h($a['who'] !== '' ? $a['who'] : '—') . '</td>'
-           . '<td>' . md_h($a['status']) . '</td></tr>';
+           . '<td>' . status_badge($a['status']) . '</td></tr>';
     }
     echo '</tbody></table></div><div class="dash-tablefoot"><span>Showing ' . count($ctx['rows']) . ' recent ' . (count($ctx['rows']) === 1 ? 'activity' : 'activities')
        . '</span><a href="reports.php">View all activity &rarr;</a></div></div>';
@@ -1159,8 +1054,8 @@ function dash_render_sw(array $ctx): void
     echo '</div>';
     echo '</div>';
 
-    // Vehicle availability calendar (dates + time slots the worker can book)
-    dash_vehicle_availability($b);
+    // Today's vehicle trips for this barangay (the availability calendar now lives on the Vehicle Requests page)
+    vr_render_today_schedule($b);
 
     // Row 2: damage assessments + evacuees over time
     echo '<div class="dash-row r-2">';

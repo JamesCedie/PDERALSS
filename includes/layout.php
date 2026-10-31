@@ -204,8 +204,8 @@ function page_end()
 function status_badge($status)
 {
     // ONE colour scheme for every status in the system.
-    //   green  = good / completed     yellow = waiting / caution     red  = problem / stop
-    //   blue   = in progress/info    gray   = neutral / closed
+    //   green  = good / approved      yellow = waiting / caution     red  = problem / stop
+    //   purple = completed           blue   = in progress/info    gray   = neutral / closed / cancelled
     $map = [
         // availability & lifecycle
         'Available'     => 'b-green',
@@ -219,11 +219,18 @@ function status_badge($status)
         'Under Review'  => 'b-yellow',
         'Scheduled'     => 'b-blue',
         'In Transit'    => 'b-blue',
-        'Completed'     => 'b-green',
+        'Completed'     => 'b-purple',
+        'Cancelled'     => 'b-gray',
+        'Recorded'      => 'b-green',
+        'Updated'       => 'b-blue',
+        'Submitted'     => 'b-blue',
         'Full'          => 'b-red',
         'Rejected'      => 'b-red',
         'Inactive'      => 'b-gray',
         'Passed'        => 'b-gray',
+        // damage level
+        'Totally Damaged'   => 'b-red',
+        'Partially Damaged' => 'b-yellow',
         // urgency
         'High'          => 'b-red',
         'Medium'        => 'b-yellow',
