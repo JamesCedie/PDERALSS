@@ -8,7 +8,19 @@
 
 require_once __DIR__ . '/db.php';
 
-const MD_DISASTER_TYPES = ['Typhoon', 'Flood', 'Earthquake', 'Landslide', 'Fire'];
+const MD_DISASTER_TYPES = ['Typhoon', 'Flood', 'Earthquake', 'Landslide', 'Fire', 'Others'];
+
+/**
+ * Display label for an event's disaster type. For the "Others" type the
+ * officer-specified text (disaster_events.type_other) is shown, e.g.
+ * "Others (Volcanic Eruption)". Other types are returned unchanged.
+ */
+function md_event_type_label(array $event): string
+{
+    $type  = (string) ($event['type'] ?? '');
+    $other = trim((string) ($event['type_other'] ?? ''));
+    return ($type === 'Others' && $other !== '') ? 'Others (' . $other . ')' : $type;
+}
 const MD_DAMAGE_LEVELS = ['Totally Damaged', 'Partially Damaged'];
 
 function md_h($v): string

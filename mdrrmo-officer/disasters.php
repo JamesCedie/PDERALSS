@@ -10,6 +10,7 @@ $errorMsg   = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_event'])) {
     $eventName   = trim($_POST['event_name'] ?? '');
     $type        = $_POST['type'] ?? '';
+    $typeOther   = trim((string) ($_POST['type_other'] ?? ''));
     $date        = trim((string) ($_POST['date'] ?? ''));
     $description = trim($_POST['description'] ?? '');
     $dateOk      = ($d = DateTimeImmutable::createFromFormat('!Y-m-d', $date)) && $d->format('Y-m-d') === $date;
@@ -18,17 +19,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_event'])) {
         $errorMsg = 'Your session expired. Please try again.';
     } elseif ($eventName === '' || !$dateOk || !in_array($type, MD_DISASTER_TYPES, true)) {
         $errorMsg = 'Please fill in the event name, disaster type, and date.';
+    } elseif ($type === 'Others' && $typeOther === '') {
+        $errorMsg = 'Please specify the disaster type.';
+    } elseif ($type === 'Others' && mb_strlen($typeOther) > 100) {
+        $errorMsg = 'The specified disaster type must be 100 characters or fewer.';
     } elseif ($date > today_ph()) {
         $errorMsg = 'The event date cannot be later than today.';
     } else {
-        db_insert('disaster_events', [
+        $row = [
             'event_name'  => $eventName,
             'type'        => $type,
             'date'        => $date,
             'description' => $description,
             'status'      => 'Active',
             'created_by'  => $_SESSION['user']['id'] ?? null,
-        ]);
+        ];
+        // Only sent for "Others", so the other types keep working even before the column exists.
+        if ($type === 'Others') $row['type_other'] = $typeOther;
+        db_insert('disaster_events', $row);
         $_SESSION['flash_success'] = 'Disaster event added and marked Active.';
         header('Location: disasters.php');
         exit;
@@ -93,7 +101,7 @@ $events = db_query('SELECT * FROM disaster_events ORDER BY event_id DESC')->fetc
                 ?>
                     <div class="card md-event-card">
                         <h3><?= md_h($e['event_name']) ?></h3>
-                        <div class="mini">DE-<?= md_h($e['event_id']) ?> · <?= md_h($e['type']) ?></div>
+                        <div class="mini">DE-<?= md_h($e['event_id']) ?> · <?= md_h(md_event_type_label($e)) ?></div>
 
                         <div class="event-status-row">
                             <?= status_badge($isActive ? 'Active' : 'Passed') ?>
@@ -165,12 +173,16 @@ $events = db_query('SELECT * FROM disaster_events ORDER BY event_id DESC')->fetc
                 </div>
                 <div class="field">
                     <label>Type</label>
-                    <select name="type" required>
+                    <select name="type" id="eventTypeSelect" required>
                         <option value="" disabled selected>Select disaster type</option>
                         <?php foreach (MD_DISASTER_TYPES as $t): ?>
                             <option><?= md_h($t) ?></option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+                <div class="field" id="eventTypeOtherField" style="display:none;">
+                    <label>Please Specify</label>
+                    <input name="type_other" id="eventTypeOther" maxlength="100" placeholder="Specify the type of disaster">
                 </div>
                 <div class="field">
                     <label>Date</label>
@@ -187,5 +199,22 @@ $events = db_query('SELECT * FROM disaster_events ORDER BY event_id DESC')->fetc
         </form>
     </div>
 </div>
+
+<script>
+(function () {
+    var select = document.getElementById('eventTypeSelect');
+    var field  = document.getElementById('eventTypeOtherField');
+    var input  = document.getElementById('eventTypeOther');
+    if (!select || !field || !input) return;
+    function toggleOther() {
+        var show = select.value === 'Others';
+        field.style.display = show ? '' : 'none';
+        input.required = show;
+        if (!show) input.value = '';
+    }
+    select.addEventListener('change', toggleOther);
+    toggleOther();
+})();
+</script>
 
 <?php page_end(); ?>

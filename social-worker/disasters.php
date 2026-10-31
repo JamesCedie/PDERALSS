@@ -1,6 +1,7 @@
 <?php
 require_once '../includes/access.php'; require_page_access();
 require_once '../includes/db.php';
+require_once '../includes/md.php';
 db_ensure_disaster_event_status();
 db_ensure_casualties_table();
 
@@ -67,7 +68,7 @@ if (!empty($events)) {
     ?>
         <div class="card sw-event-card">
             <h3><?= htmlspecialchars($e['event_name']) ?> Event</h3>
-            <div class="event-code">DE-<?= htmlspecialchars($e['event_id']) ?> &nbsp;·&nbsp; <?= htmlspecialchars($e['type']) ?></div>
+            <div class="event-code">DE-<?= htmlspecialchars($e['event_id']) ?> &nbsp;·&nbsp; <?= htmlspecialchars(md_event_type_label($e)) ?></div>
             <div class="event-status-row" style="justify-content:flex-start;margin:0 0 14px;">
                 <?= status_badge($isActive ? 'Active' : 'Passed') ?>
             </div>
@@ -81,7 +82,6 @@ if (!empty($events)) {
                 <?php if ($isActive): ?>
                     <a href="evacuation-centers.php?event_id=<?= $e['event_id'] ?>" class="btn btn-primary">Manage Evacuation Centers</a>
                     <a href="casualties.php?event_id=<?= $e['event_id'] ?>" class="btn btn-primary">Manage Casualties</a>
-                    <a href="damage-assessment.php?event_id=<?= $e['event_id'] ?>" class="btn btn-primary">Damage Assessment</a>
                 <?php else: ?>
                     <button class="btn btn-light" onclick="openModal('viewModal-<?= $e['event_id'] ?>')">View Details</button>
                 <?php endif; ?>
@@ -97,7 +97,7 @@ if (!empty($events)) {
 <div id="viewModal-<?= $e['event_id'] ?>" class="modal">
     <div class="modal-box">
         <div class="modal-head">
-            <div><h2><?= htmlspecialchars($e['event_name']) ?></h2><div class="mini"><?= htmlspecialchars($e['type']) ?> · <?= htmlspecialchars($e['date']) ?></div></div>
+            <div><h2><?= htmlspecialchars($e['event_name']) ?></h2><div class="mini"><?= htmlspecialchars(md_event_type_label($e)) ?> · <?= htmlspecialchars($e['date']) ?></div></div>
             <button class="icon-btn" onclick="closeModal('viewModal-<?= $e['event_id'] ?>')" aria-label="Close"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <p class="mini"><?= htmlspecialchars($e['description']) ?></p>

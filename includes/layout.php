@@ -38,6 +38,8 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
         'casualties.php'         => 'Casualties',
         'damage-assessment.php'  => 'Damage Assessment',
     ];
+    // Damage Assessment (incl. Submit Assessment) is MD Officer only; Social Workers don't get it in the tree.
+    if ($isSocialWorker) unset($eventSubPages['damage-assessment.php']);
     $inEventTree = isset($eventSubPages[$current]);
     $navCurrent  = $inEventTree ? 'disasters.php' : $current;
     // Keep the chosen disaster event in the tree links. Social Workers fall back to the latest Active event.
@@ -53,7 +55,6 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
     $backPage = null;
     if ($isSocialWorker && $current === 'evacuation-centers.php') $backPage = 'disasters.php';
     if ($isSocialWorker && $current === 'casualties.php') $backPage = 'disasters.php';
-    if ($isSocialWorker && $current === 'damage-assessment.php') $backPage = 'disasters.php';
     // Optional back button for the top bar: [href, label]. Pages can pass their own.
     if (!$back && $backPage) $back = [$backPage, 'Disaster Events'];
 

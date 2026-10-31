@@ -102,6 +102,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evacuee']) && $ev
     }
 }
 
+// Handle the Time Out button: stamps the current date/time on one evacuee of this center.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['time_out_evacuee']) && $eventId) {
+    $evacueeId = (int) ($_POST['evacuee_id'] ?? 0);
+    if (!md_csrf_valid()) {
+        $errorMsg = 'Your session expired. Please reload the page and try again.';
+    } elseif (!$currentEvent || ($currentEvent['status'] ?? 'Active') !== 'Active') {
+        $errorMsg = 'This disaster event is no longer active, so evacuees can no longer be timed out.';
+    } elseif (!$myCenterId || $evacueeId <= 0) {
+        $errorMsg = 'Invalid time out request.';
+    } else {
+        // Scoped to this event + this Social Worker's own center, and only if not already timed out.
+        // NOW() is used (like the Time In default) so both columns share the same clock.
+        $done = db_query(
+            'UPDATE evacuation_evacuees SET time_out = NOW(), time_out_by = ?
+             WHERE evacuee_id = ? AND event_id = ? AND center_id = ? AND time_out IS NULL',
+            [$_SESSION['user']['id'] ?? null, $evacueeId, $eventId, $myCenterId]
+        )->rowCount();
+        if ($done) {
+            $_SESSION['flash_success'] = 'Time out recorded.';
+            header('Location: evacuation-centers.php?event_id=' . $eventId);
+            exit;
+        }
+        $errorMsg = 'That evacuee was not found or has already timed out.';
+    }
+}
+
 // Handle the Occupancy Status dropdown (saved per event + barangay)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['set_center_status']) && $eventId) {
     $newStatus = (string) ($_POST['center_status'] ?? '');
@@ -184,6 +210,8 @@ $evacuees    = ($eventId && $myCenterId) ? db_query(
      FROM evacuation_evacuees x LEFT JOIN household h ON h.household_id = x.household_id
      WHERE x.event_id = ? AND x.center_id = ? ORDER BY x.created_at DESC", [$eventId, $myCenterId])->fetchAll() : [];
 $totalPeople = array_sum(array_column($evacuees, 'people_count'));
+// Current count = evacuees still inside the center (no Time Out yet). Separate from the total above.
+$currentPeople = array_sum(array_map(static fn($e) => $e['time_out'] === null ? (int) $e['people_count'] : 0, $evacuees));
 // A household counts once, however many of its members were checked in separately.
 $totalHH     = count(array_unique(array_map(static fn($e) => $e['household_id'] ? 'h' . $e['household_id'] : 'e' . $e['evacuee_id'], $evacuees)));
 
@@ -234,7 +262,8 @@ $eventIsActive = $currentEvent && ($currentEvent['status'] ?? 'Active') === 'Act
 
     <?php if ($centerStatus === 'Full'): ?><div class="sw-inline-alert sw-inline-error">This center is Full — adding evacuees is disabled. Set the status to Available to add more.</div><?php endif; ?>
 
-    <div class="grid g2 md-stats">
+    <div class="grid g3 md-stats">
+        <div class="card sw-summary-card"><div class="stat-label">Current Count in Center</div><div class="stat-value"><?= htmlspecialchars($currentPeople) ?></div></div>
         <div class="card sw-summary-card"><div class="stat-label">Total People</div><div class="stat-value"><?= htmlspecialchars($totalPeople) ?></div></div>
         <div class="card sw-summary-card"><div class="stat-label">Total Households</div><div class="stat-value"><?= htmlspecialchars($totalHH) ?></div></div>
     </div>
@@ -249,11 +278,11 @@ $eventIsActive = $currentEvent && ($currentEvent['status'] ?? 'Active') === 'Act
         <div style="max-height:420px;overflow-y:auto;">
             <table class="table" id="swTable">
                 <thead>
-                    <tr><th>Name</th><th>Family Head</th><th>Date/Time</th></tr>
+                    <tr><th>Name</th><th>Family Head</th><th>Time In</th><th>Time Out</th><th>Action</th></tr>
                 </thead>
                 <tbody>
                     <?php if (empty($evacuees)): ?>
-                        <tr><td colspan="3" class="empty">No evacuees recorded yet.</td></tr>
+                        <tr><td colspan="5" class="empty">No evacuees recorded yet.</td></tr>
                     <?php else: foreach ($evacuees as $e): ?>
                         <?php
                             // A member shows their family head's name; the head themselves shows "Family head";
@@ -266,9 +295,20 @@ $eventIsActive = $currentEvent && ($currentEvent['status'] ?? 'Active') === 'Act
                             <td><?= htmlspecialchars($e['name']) ?></td>
                             <td><?= htmlspecialchars($headCell) ?></td>
                             <td><?= htmlspecialchars(date('M d, Y H:i', strtotime($e['created_at']))) ?></td>
+                            <td><?= $e['time_out'] ? htmlspecialchars(date('M d, Y H:i', strtotime($e['time_out']))) : '' ?></td>
+                            <td>
+                                <?php if ($e['time_out'] === null && $eventIsActive): ?>
+                                    <form method="post" style="margin:0;" onsubmit="return confirm('Record time out for this evacuee now?');">
+                                        <?= md_csrf_field() ?>
+                                        <input type="hidden" name="time_out_evacuee" value="1">
+                                        <input type="hidden" name="evacuee_id" value="<?= (int) $e['evacuee_id'] ?>">
+                                        <button type="submit" class="btn btn-light">Time Out</button>
+                                    </form>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     <?php endforeach; endif; ?>
-                    <tr id="swNoMatch" hidden><td colspan="3" class="empty">No evacuees match your search.</td></tr>
+                    <tr id="swNoMatch" hidden><td colspan="5" class="empty">No evacuees match your search.</td></tr>
                 </tbody>
             </table>
         </div>

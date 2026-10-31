@@ -13,7 +13,8 @@ $event   = md_find_event($eventId);
 $perBarangay = [];
 if ($event) {
     $rows = db_query(
-        'SELECT b.name AS barangay, COUNT(DISTINCT COALESCE(x.household_id, -x.evacuee_id)) AS households, COALESCE(SUM(x.people_count), 0) AS people
+        'SELECT b.name AS barangay, COUNT(DISTINCT COALESCE(x.household_id, -x.evacuee_id)) AS households, COALESCE(SUM(x.people_count), 0) AS people,
+                COALESCE(SUM(CASE WHEN x.time_out IS NULL THEN x.people_count ELSE 0 END), 0) AS current_people
          FROM evacuation_evacuees x
          JOIN evacuation_centers c ON c.center_id = x.center_id
          JOIN barangays b ON b.barangay_id = c.barangay_id
@@ -21,7 +22,7 @@ if ($event) {
         [$eventId]
     )->fetchAll();
     foreach ($rows as $r) {
-        $perBarangay[$r['barangay']] = ['households' => (int) $r['households'], 'people' => (int) $r['people']];
+        $perBarangay[$r['barangay']] = ['households' => (int) $r['households'], 'people' => (int) $r['people'], 'current' => (int) $r['current_people']];
     }
 }
 // Availability chosen by each Social Worker (Occupancy Status dropdown); falls back to Occupied/Available by headcount.
@@ -94,6 +95,7 @@ if ($selected !== null) {
                 'name'       => $ci['center_name'] ?? (md_short_barangay($n) . ' Evacuation Center'),
                 'people'     => $people,
                 'households' => $perBarangay[$n]['households'] ?? 0,
+                'current'    => $perBarangay[$n]['current'] ?? 0,
                 'status'     => $storedStatus[$n] ?? 'Available',
                 'lat'        => $spot[0],
                 'lng'        => $spot[1],
@@ -144,6 +146,7 @@ if ($selected !== null) {
                 <h3 id="mdCName"></h3>
                 <div class="mini" id="mdCBarangay"></div>
                 <div class="md-center-stats">
+                    <div class="sw-breakdown-item" style="grid-column:1/-1;"><label>CURRENT COUNT</label><strong id="mdCCurrent">0</strong></div>
                     <div class="sw-breakdown-item"><label>TOTAL EVACUEES</label><strong id="mdCPeople">0</strong></div>
                     <div class="sw-breakdown-item"><label>HOUSEHOLDS</label><strong id="mdCHouseholds">0</strong></div>
                 </div>
@@ -219,6 +222,7 @@ if ($selected !== null) {
             Object.keys(markers).forEach(function (k) { markers[k].setZIndexOffset(+k === i ? 1000 : 0); });
             document.getElementById('mdCName').textContent = c.name;
             document.getElementById('mdCBarangay').textContent = c.barangay;
+            document.getElementById('mdCCurrent').textContent = Number(c.current) || 0;
             document.getElementById('mdCPeople').textContent = Number(c.people) || 0;
             document.getElementById('mdCHouseholds').textContent = Number(c.households) || 0;
             var st = document.getElementById('mdCStatus');
@@ -267,7 +271,7 @@ if ($selected !== null) {
 <?php else: ?>
     <?php
         $records = db_query(
-            "SELECT x.name, x.household_id, x.composition_id, x.created_at,
+            "SELECT x.name, x.household_id, x.composition_id, x.created_at, x.time_out,
                     concat_ws(' ', h.firstname, h.middlename, h.lastname, h.nameextension) AS head_name
              FROM evacuation_evacuees x
              JOIN evacuation_centers c ON c.center_id = x.center_id
@@ -276,12 +280,14 @@ if ($selected !== null) {
             [$eventId, brgy_id($selected)]
         )->fetchAll();
         $people = $perBarangay[$selected]['people'] ?? 0;
+        $current = $perBarangay[$selected]['current'] ?? 0;
         $hh     = $perBarangay[$selected]['households'] ?? 0;
     ?>
     <div class="sw-event-label">Event:<strong><?= md_h($event['event_name']) ?> · <?= md_h(md_short_barangay($selected)) ?></strong></div>
 
     <div class="sw-casualty-title">Occupancy Count Breakdown</div>
-    <div class="grid g2 md-stats">
+    <div class="grid g3 md-stats">
+        <div class="card sw-summary-card"><div class="stat-label">Current Count in Center</div><div class="stat-value"><?= number_format($current) ?></div></div>
         <div class="card sw-summary-card"><div class="stat-label">Total People</div><div class="stat-value"><?= number_format($people) ?></div></div>
         <div class="card sw-summary-card"><div class="stat-label">Total Households</div><div class="stat-value"><?= number_format($hh) ?></div></div>
     </div>
@@ -295,11 +301,11 @@ if ($selected !== null) {
     <div class="sw-data-table">
         <table class="table" id="mdTable">
             <thead>
-                <tr><th>Name</th><th>Family Head</th><th>Date/Time</th></tr>
+                <tr><th>Name</th><th>Family Head</th><th>Time In</th><th>Time Out</th></tr>
             </thead>
             <tbody>
             <?php if (!$records): ?>
-                <tr><td colspan="3" class="empty">No evacuees recorded yet.</td></tr>
+                <tr><td colspan="4" class="empty">No evacuees recorded yet.</td></tr>
             <?php endif; ?>
             <?php foreach ($records as $r): ?>
                 <?php
@@ -313,9 +319,10 @@ if ($selected !== null) {
                     <td><?= md_h($r['name']) ?></td>
                     <td><?= md_h($headCell) ?></td>
                     <td><?= md_h(md_date($r['created_at'], 'M j, Y g:i A')) ?></td>
+                    <td><?= $r['time_out'] ? md_h(md_date($r['time_out'], 'M j, Y g:i A')) : '' ?></td>
                 </tr>
             <?php endforeach; ?>
-            <tr id="mdNoMatch" hidden><td colspan="3" class="empty">No evacuees match your search.</td></tr>
+            <tr id="mdNoMatch" hidden><td colspan="4" class="empty">No evacuees match your search.</td></tr>
             </tbody>
         </table>
     </div>

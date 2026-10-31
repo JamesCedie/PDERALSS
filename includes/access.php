@@ -15,7 +15,6 @@ const ROLE_ACCESS = [
         'households.php',
         'casualties.php',
         'evacuation-centers.php',
-        'damage-assessment.php',
         'vehicle-requests.php',
         'reports.php',
         'disasters.php',
