@@ -508,9 +508,54 @@ function dash_build(?string $barangay, int $requestedEvent = 0, bool $withAlerts
         'centers'  => dash_centers($names),
         'rows'     => $barangay === null ? dash_activity($eid) : dash_records($barangay, $eid),
         'alerts'   => [],
+        'live'     => dash_live_evacuees($barangay, $event),
     ];
     if ($withAlerts) $ctx['alerts'] = dash_alerts($ctx);
     return $ctx;
+}
+
+// ── Live evacuee In/Out count ───────────────────────────────────────────────
+/**
+ * Current head-count for one event: "In" = still checked in (time_out IS NULL), "Out" = timed out.
+ * $b = null -> municipality-wide (with a per-barangay split); $b = '...' -> that barangay only.
+ */
+function dash_live_evacuees(?string $b, ?array $event): array
+{
+    $out = ['in' => 0, 'out' => 0, 'total' => 0, 'in_hh' => 0, 'per' => []];
+    if ($event) {
+        $f = $b ? ' AND c.barangay_id = ?' : '';
+        foreach (dash_rows(
+            "SELECT br.name AS barangay,
+                    COALESCE(SUM(x.people_count) FILTER (WHERE x.time_out IS NULL), 0)     AS n_in,
+                    COALESCE(SUM(x.people_count) FILTER (WHERE x.time_out IS NOT NULL), 0) AS n_out,
+                    COUNT(DISTINCT CASE WHEN x.time_out IS NULL THEN COALESCE(x.household_id, -x.evacuee_id) END) AS hh_in
+             FROM evacuation_evacuees x
+             JOIN evacuation_centers c ON c.center_id = x.center_id
+             JOIN barangays br ON br.barangay_id = c.barangay_id
+             WHERE x.event_id = ?{$f} GROUP BY br.name ORDER BY n_in DESC, br.name",
+            array_merge([(int) $event['event_id']], $b ? [brgy_id($b)] : [])) as $r) {
+            $row = ['barangay' => md_short_barangay((string) $r['barangay']), 'in' => (int) $r['n_in'], 'out' => (int) $r['n_out']];
+            $out['per'][]  = $row;
+            $out['in']    += $row['in'];
+            $out['out']   += $row['out'];
+            $out['in_hh'] += (int) $r['hh_in'];
+        }
+    }
+    $out['total']   = $out['in'] + $out['out'];
+    $out['updated'] = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('g:i:s A');
+    return $out;
+}
+
+/** JSON endpoint polled by the live card: dashboard.php?live=1&event_id=N (call before any output). */
+function dash_live_endpoint(?string $b): void
+{
+    if (!isset($_GET['live'])) return;
+    $events = dash_rows('SELECT event_id, event_name, type, date, status FROM disaster_events ORDER BY event_id DESC LIMIT 30');
+    $event  = dash_pick_event($events, (int) ($_GET['event_id'] ?? 0));
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store');
+    echo json_encode(dash_live_evacuees($b, $event));
+    exit;
 }
 
 /** Status of one barangay's center: what the Social Worker set, otherwise Available. */
@@ -731,6 +776,77 @@ function dash_kpi_row(array $kpis): void
     echo '</div>';
 }
 
+/** Live In/Out evacuee card. Refreshes itself every 10 s while the selected event is Active. */
+function dash_live_card(array $ctx, bool $isMd): void
+{
+    $event  = $ctx['event'];
+    $live   = $ctx['live'];
+    $active = $event && ($event['status'] ?? 'Active') === 'Active';
+    $eid    = $event ? (int) $event['event_id'] : 0;
+
+    echo '<div class="card dash-card dash-live" id="dashLive" data-event="' . $eid . '" data-active="' . ($active ? '1' : '0') . '" data-md="' . ($isMd ? '1' : '0') . '">';
+    echo '<div class="dash-live-head"><h2>Live Evacuee Count</h2>';
+    if ($event) {
+        echo '<span class="dash-live-status' . ($active ? ' is-live' : '') . '" id="dashLiveStatus"><i class="live-dot" aria-hidden="true"></i><span>'
+           . ($active ? 'Live · Updated ' . md_h($live['updated']) : 'Event passed · final count') . '</span></span>';
+    }
+    echo '</div>';
+
+    if (!$event) {
+        echo '<div class="dash-empty">No disaster event selected.</div></div>';
+        return;
+    }
+
+    echo '<div class="dash-live-tiles">'
+       . '<div class="dash-live-tile is-in"><small>Currently In</small><strong data-live="in">' . dash_n($live['in']) . '</strong>'
+       . '<em><span data-live="in_hh">' . dash_n($live['in_hh']) . '</span> household' . ($live['in_hh'] === 1 ? '' : 's') . ' sheltered</em></div>'
+       . '<div class="dash-live-tile is-out"><small>Checked Out</small><strong data-live="out">' . dash_n($live['out']) . '</strong><em>Left the center</em></div>'
+       . '<div class="dash-live-tile"><small>Total Registered</small><strong data-live="total">' . dash_n($live['total']) . '</strong><em>In + Out</em></div>'
+       . '</div>';
+
+    if ($isMd) {
+        echo '<div class="dash-live-table"><table class="table"><thead><tr><th>Barangay</th><th class="num">In</th><th class="num">Out</th></tr></thead><tbody id="dashLiveBody">';
+        if (!$live['per']) echo '<tr><td colspan="3" class="empty">No evacuees recorded for this event.</td></tr>';
+        foreach ($live['per'] as $r) {
+            echo '<tr><td>' . md_h($r['barangay']) . '</td><td class="num">' . dash_n($r['in']) . '</td><td class="num">' . dash_n($r['out']) . '</td></tr>';
+        }
+        echo '</tbody></table></div>';
+    }
+    echo '</div>';
+    ?>
+    <script>
+    (function () {
+        var card = document.getElementById('dashLive');
+        if (!card || card.dataset.active !== '1') return;
+        var status = document.querySelector('#dashLiveStatus span'), dot = document.getElementById('dashLiveStatus');
+        var body = document.getElementById('dashLiveBody'), md = card.dataset.md === '1', busy = false;
+        function fmt(n) { return Number(n).toLocaleString('en-US'); }
+        function set(k, v) { var e = card.querySelector('[data-live="' + k + '"]'); if (e) e.textContent = fmt(v); }
+        function cell(tr, text, cls) { var td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); }
+        function refresh() {
+            if (busy || document.hidden) return;
+            busy = true;
+            fetch(location.pathname + '?live=1&event_id=' + encodeURIComponent(card.dataset.event), { credentials: 'same-origin', cache: 'no-store' })
+                .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+                .then(function (d) {
+                    set('in', d.in); set('out', d.out); set('total', d.total); set('in_hh', d.in_hh);
+                    if (md && body) {
+                        body.textContent = '';
+                        if (!d.per.length) { var t = document.createElement('tr'), c = document.createElement('td'); c.colSpan = 3; c.className = 'empty'; c.textContent = 'No evacuees recorded for this event.'; t.appendChild(c); body.appendChild(t); }
+                        d.per.forEach(function (r) { var tr = document.createElement('tr'); cell(tr, r.barangay); cell(tr, fmt(r.in), 'num'); cell(tr, fmt(r.out), 'num'); body.appendChild(tr); });
+                    }
+                    status.textContent = 'Live · Updated ' + d.updated; dot.classList.add('is-live'); dot.classList.remove('is-stale');
+                })
+                .catch(function () { status.textContent = 'Reconnecting…'; dot.classList.add('is-stale'); })
+                .then(function () { busy = false; });
+        }
+        setInterval(refresh, 10000);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
+    })();
+    </script>
+    <?php
+}
+
 function dash_render(array $ctx, bool $isMd): void
 {
     echo '<div class="dash">';
@@ -756,6 +872,8 @@ function dash_render_md(array $ctx): void
         ['Total Casualties',      dash_n($m['cas']['total'])],
         ['Barangays Reporting',   dash_n(min($m['reporting'], count($names))) . ' / ' . dash_n(count($names))],
     ]);
+
+    dash_live_card($ctx, true);
 
     // Row 1: evacuees per barangay + casualty breakdown
     echo '<div class="dash-row r-2">';
@@ -866,6 +984,8 @@ function dash_render_sw(array $ctx): void
         ['Total PWD',            dash_n($m['pwd'])],
         ['Total Senior Citizens', dash_n($m['seniors'])],
     ]);
+
+    dash_live_card($ctx, false);
 
     // Row 1: damage assessments + casualties
     echo '<div class="dash-row r-2">';

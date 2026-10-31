@@ -7,6 +7,8 @@ require_once '../includes/dashboard.php';
 $currentUser = db_user_with_barangay($_SESSION['user']['id'] ?? null);
 $myBarangay  = trim((string) ($currentUser['address'] ?? ''));
 
+if ($myBarangay !== '') dash_live_endpoint($myBarangay);   // ?live=1 -> JSON for the Live Evacuee Count card
+
 page_start('Dashboard');
 
 if ($myBarangay === '') {
