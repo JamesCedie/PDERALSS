@@ -854,6 +854,129 @@ function dash_render(array $ctx, bool $isMd): void
     echo '</div>';
 }
 
+/**
+ * Vehicle schedule (MDRRMO dashboard): every non-rejected request in a window around today,
+ * grouped by date for the month calendar. Rendered by assets/vehicle-schedule.js.
+ */
+function dash_vehicle_schedule(): void
+{
+    $today = vr_today();
+    $from  = $today->modify('-62 days')->format('Y-m-d');
+    $to    = $today->modify('+120 days')->format('Y-m-d');
+    $rows  = dash_rows(
+        "SELECT v.request_code AS code, v.requested_date::text AS d, to_char(v.requested_time, 'HH24:MI') AS t,
+                v.purpose, v.passenger_name AS passenger, v.status, v.vehicle_number AS veh, v.assigned_vehicle AS legacy_veh,
+                b.name AS barangay, h.name AS hospital
+         FROM vehicle_requests v
+         JOIN barangays b ON b.barangay_id = v.barangay_id
+         LEFT JOIN hospitals h ON h.hospital_id = v.hospital_id
+         WHERE v.requested_date BETWEEN ? AND ? AND v.status NOT IN ('Rejected', 'Cancelled')
+         ORDER BY v.requested_date, v.requested_time NULLS LAST, v.request_id",
+        [$from, $to]
+    );
+
+    $days = [];
+    foreach ($rows as $r) {
+        $days[$r['d']][] = [
+            'code'      => (string) $r['code'],
+            'time'      => (string) ($r['t'] ?? ''),
+            'purpose'   => (string) $r['purpose'],
+            'passenger' => (string) ($r['passenger'] ?? ''),
+            'status'    => (string) $r['status'],
+            'vehicle'   => vr_vehicle_label(['vehicle_number' => $r['veh'], 'assigned_vehicle' => $r['legacy_veh']]),
+            'barangay'  => (string) $r['barangay'],
+            'hospital'  => (string) ($r['hospital'] ?? ''),
+        ];
+    }
+    $payload = ['today' => $today->format('Y-m-d'), 'from' => $from, 'to' => $to, 'days' => (object) $days];
+
+    echo '<div class="dash-table-head"><h2 class="dash-section">Vehicle Schedule</h2><a class="vr-link" href="vehicle-requests.php">Manage requests &rarr;</a></div>';
+    echo '<div class="card dash-card vs-card" id="vsRoot">'
+       . '<div class="vs-cal">'
+       .   '<div class="vs-head"><strong id="vsTitle"></strong><div class="vs-tools">'
+       .     '<span class="vs-key"><i class="vs-dot s-pending"></i>Pending</span>'
+       .     '<span class="vs-key"><i class="vs-dot s-approved"></i>Approved</span>'
+       .     '<span class="vs-key"><i class="vs-dot s-scheduled"></i>Scheduled</span>'
+       .     '<span class="vs-key"><i class="vs-dot s-completed"></i>Completed</span>'
+       .     '<button type="button" class="vr-nav" id="vsPrev" aria-label="Previous month">‹</button>'
+       .     '<button type="button" class="vr-nav" id="vsToday" aria-label="Go to today">Today</button>'
+       .     '<button type="button" class="vr-nav" id="vsNext" aria-label="Next month">›</button>'
+       .   '</div></div>'
+       .   '<div class="vs-grid vs-dow"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>'
+       .   '<div class="vs-grid" id="vsGrid"></div>'
+       . '</div>'
+       . '<div class="vs-day"><div class="vs-day-head" id="vsDayTitle"></div><div id="vsDayList"></div></div>'
+       . '</div>';
+    echo '<script type="application/json" id="vsData">' . json_encode($payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . '</script>';
+    echo '<script src="../assets/vehicle-schedule.js"></script>';
+}
+
+/** "Needs attention" strip: the live alerts, most urgent first. Hidden when everything is clear. */
+function dash_attention_strip(array $ctx): void
+{
+    $alerts = $ctx['alerts'] ?? dash_alerts($ctx);
+    $rank   = ['danger' => 0, 'warning' => 1, 'info' => 2, 'success' => 3];
+    usort($alerts, static fn($a, $b) => ($rank[$a[0]] ?? 4) <=> ($rank[$b[0]] ?? 4));
+    $alerts = array_filter($alerts, static fn($a) => $a[0] !== 'success');
+    if (!$alerts) return;
+
+    echo '<div class="dash-attn" role="region" aria-label="Needs attention">';
+    foreach (array_slice($alerts, 0, 4) as $a) {
+        $tag  = $a[3] !== '' ? 'a' : 'div';
+        $href = $a[3] !== '' ? ' href="' . md_h($a[3]) . '"' : '';
+        echo '<' . $tag . ' class="dash-attn-item is-' . md_h($a[0]) . '"' . $href . '><strong>' . md_h($a[1]) . '</strong><span>' . md_h($a[2]) . '</span></' . $tag . '>';
+    }
+    echo '</div>';
+}
+
+/**
+ * Vehicle availability calendar (Social Worker dashboard). Same availability the booking form uses,
+ * read-only: green day = at least one free slot, red = fully booked / closed. Clicking a day lists
+ * its time slots. The worker's own barangay bookings are marked; other barangays' details stay private.
+ */
+function dash_vehicle_availability(string $barangay): void
+{
+    try {
+        $avail = vr_availability();
+        $bid   = brgy_id($barangay);
+        $mine  = [];
+        if ($bid > 0) {
+            foreach (db_query(
+                "SELECT requested_date::text AS d, to_char(requested_time, 'HH24:MI') AS t, passenger_name AS passenger, status, request_code AS code
+                 FROM vehicle_requests
+                 WHERE barangay_id = ? AND requested_date >= ? AND requested_time IS NOT NULL AND status IN ('Pending','Approved','Scheduled')
+                 ORDER BY requested_date, requested_time",
+                [$bid, $avail['today']]
+            )->fetchAll() as $r) {
+                $mine[$r['d']][] = ['time' => (string) $r['t'], 'passenger' => (string) ($r['passenger'] ?? ''), 'status' => (string) $r['status'], 'code' => (string) $r['code']];
+            }
+        }
+    } catch (Throwable $e) {
+        error_log('vehicle availability card failed: ' . $e->getMessage());
+        return;
+    }
+    $avail['mine'] = (object) $mine;
+
+    echo '<div class="dash-table-head"><h2 class="dash-section">Vehicle Availability</h2><a class="vr-link" href="vehicle-requests.php">Request a vehicle &rarr;</a></div>';
+    echo '<div class="card dash-card vs-card" id="vaRoot">'
+       . '<div class="vs-cal">'
+       .   '<div class="vs-head"><strong id="vaTitle"></strong><div class="vs-tools">'
+       .     '<span class="vs-key"><i class="vs-dot s-approved"></i>Available</span>'
+       .     '<span class="vs-key"><i class="vs-dot s-full"></i>Fully booked</span>'
+       .     '<span class="vs-key"><i class="vs-dot s-scheduled"></i>Your barangay</span>'
+       .     '<button type="button" class="vr-nav" id="vaPrev" aria-label="Previous month">‹</button>'
+       .     '<button type="button" class="vr-nav" id="vaToday" aria-label="Go to today">Today</button>'
+       .     '<button type="button" class="vr-nav" id="vaNext" aria-label="Next month">›</button>'
+       .   '</div></div>'
+       .   '<div class="vs-grid vs-dow"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>'
+       .   '<div class="vs-grid" id="vaGrid"></div>'
+       . '</div>'
+       . '<div class="vs-day"><div class="vs-day-head" id="vaDayTitle"></div><div id="vaDayList"></div></div>'
+       . '</div>';
+    echo '<script type="application/json" id="vaData">' . json_encode($avail, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . '</script>';
+    echo '<script src="../assets/vehicle-availability.js"></script>';
+}
+
 function dash_render_md(array $ctx): void
 {
     $m     = $ctx['m'];
@@ -864,6 +987,7 @@ function dash_render_md(array $ctx): void
     $noEv  = 'No disaster event selected.';
 
     dash_event_bar($ctx);
+    dash_attention_strip($ctx);
 
     echo '<h2 class="dash-section">Municipality Overview</h2>';
     dash_kpi_row([
@@ -875,73 +999,96 @@ function dash_render_md(array $ctx): void
 
     dash_live_card($ctx, true);
 
-    // Row 1: evacuees per barangay + casualty breakdown
-    echo '<div class="dash-row r-2">';
-    echo '<div class="card dash-card"><h2>Evacuees per Barangay</h2>';
-    if (!$event) { echo '<div class="dash-empty">' . $noEv . '</div>'; }
-    else {
-        dash_chart_legend([['Evacuees', 'dc-b1']]);
-        $items = [];
-        foreach ($names as $n) $items[] = ['label' => md_short_barangay($n), 'segs' => [[$per[$n]['evac_people'] ?? 0, 'dc-b1', 'Evacuees']]];
-        dash_bar_chart($items, 'No evacuees recorded for this event.');
-    }
-    echo '</div>';
-
-    echo '<div class="card dash-card"><h2>Casualty Breakdown</h2>';
-    if (!$event) { echo '<div class="dash-empty">' . $noEv . '</div>'; }
-    else {
-        dash_donut([
-            ['Fatalities', $m['cas']['Fatality'], 'red'],
-            ['Missing',    $m['cas']['Missing'],  'amber'],
-            ['Injured',    $m['cas']['Injured'],  'blue'],
-        ], 'casualties', 'No casualties recorded for this event.', true);
-        if ($m['cas']['total'] > 0) {
-            echo '<div class="dash-note">Recorded reports · Updated ' . md_h(dash_time($m['cas_updated'])) . '</div>';
+    // Cards are defined once, then laid out most-urgent first:
+    //   life safety (casualties, centers) -> damage + vehicles -> schedule -> trends -> activity.
+    $cardCasualty = function () use ($m, $event, $noEv): void {
+        echo '<div class="card dash-card"><h2>Casualty Breakdown</h2>';
+        if (!$event) { echo '<div class="dash-empty">' . $noEv . '</div>'; }
+        else {
+            dash_donut([
+                ['Fatalities', $m['cas']['Fatality'], 'red'],
+                ['Missing',    $m['cas']['Missing'],  'amber'],
+                ['Injured',    $m['cas']['Injured'],  'blue'],
+            ], 'casualties', 'No casualties recorded for this event.', true);
+            if ($m['cas']['total'] > 0) {
+                echo '<div class="dash-note">Recorded reports · Updated ' . md_h(dash_time($m['cas_updated'])) . '</div>';
+            }
         }
-    }
-    echo '</div></div>';
+        echo '</div>';
+    };
 
-    // Row 2: evacuees over time + damage by barangay
-    echo '<div class="dash-row r-2">';
-    echo '<div class="card dash-card"><h2>Evacuees Over Time</h2>';
-    if (!$event) { echo '<div class="dash-empty">' . $noEv . '</div>'; }
-    else {
-        dash_chart_legend([['Total evacuees', 'dc-b1']]);
-        dash_line_chart($m['timeline']['labels'], $m['timeline']['values'], false);
-    }
-    echo '</div>';
+    $cardCenters = function () use ($ctx, $names, $per): void {
+        echo '<div class="card dash-card"><h2>Center Occupancy</h2><ul class="dash-centers">';
+        // Full centers first, then near capacity / occupied, then available.
+        $rank = ['Full' => 0, 'Near Capacity' => 1, 'Occupied' => 2, 'Available' => 3];
+        $sorted = $names;
+        usort($sorted, static fn($x, $y) => ($rank[dash_center_status($per, $x)] ?? 4) <=> ($rank[dash_center_status($per, $y)] ?? 4));
+        foreach ($sorted as $n) {
+            echo '<li><span>' . md_h($ctx['centers'][$n][0] ?? $n) . '</span>' . status_badge(dash_center_status($per, $n)) . '</li>';
+        }
+        echo '</ul></div>';
+    };
 
-    echo '<div class="card dash-card"><h2>Damage by Barangay</h2>';
-    dash_chart_legend([['Totally damaged', 'dc-totally'], ['Partially damaged', 'dc-partially']]);
-    $items = [];
-    foreach ($names as $n) {
-        $items[] = ['label' => md_short_barangay($n), 'segs' => [
-            [$per[$n]['totally'] ?? 0,   'dc-totally',   'Totally damaged'],
-            [$per[$n]['partially'] ?? 0, 'dc-partially', 'Partially damaged'],
-        ]];
-    }
-    dash_bar_chart($items, 'No damage assessments yet.');
-    echo '</div></div>';
+    $cardDamage = function () use ($names, $per): void {
+        echo '<div class="card dash-card"><h2>Damage by Barangay</h2>';
+        dash_chart_legend([['Totally damaged', 'dc-totally'], ['Partially damaged', 'dc-partially']]);
+        $items = [];
+        foreach ($names as $n) {
+            $items[] = ['label' => md_short_barangay($n), 'segs' => [
+                [$per[$n]['totally'] ?? 0,   'dc-totally',   'Totally damaged'],
+                [$per[$n]['partially'] ?? 0, 'dc-partially', 'Partially damaged'],
+            ]];
+        }
+        dash_bar_chart($items, 'No damage assessments yet.');
+        echo '</div>';
+    };
 
-    // Row 3: center occupancy + vehicle requests
-    echo '<div class="dash-row r-2">';
-    echo '<div class="card dash-card"><h2>Center Occupancy</h2><ul class="dash-centers">';
-    foreach ($names as $n) {
-        echo '<li><span>' . md_h($ctx['centers'][$n][0] ?? $n) . '</span>' . status_badge(dash_center_status($per, $n)) . '</li>';
-    }
-    echo '</ul></div>';
+    $cardVehicles = function () use ($m): void {
+        $v = $m['veh'];
+        echo '<div class="card dash-card dash-veh-card"><h2>Vehicle Requests</h2>';
+        echo '<div class="dash-tiles"><div class="dash-tile"><small>Active requests</small><strong>' . dash_n($v['pending'] + $v['transit']) . '</strong></div>'
+           . '<div class="dash-tile"><small>Completed</small><strong>' . dash_n($v['completed']) . '</strong></div></div>';
+        echo '<div class="dash-note dash-note-inline">' . dash_n($v['pending']) . ' pending request' . ($v['pending'] === 1 ? '' : 's') . ' awaiting municipal dispatch</div>';
+        dash_donut([
+            ['Pending',    $v['pending'],   'amber'],    // needs action first
+            ['In transit', $v['transit'],   'blue'],
+            ['Completed',  $v['completed'], 'purple'],
+        ], 'requests', 'No vehicle requests yet.');
+        echo '</div>';
+    };
 
-    $v = $m['veh'];
-    echo '<div class="card dash-card dash-veh-card"><h2>Vehicle Requests</h2>';
-    echo '<div class="dash-tiles"><div class="dash-tile"><small>Active requests</small><strong>' . dash_n($v['pending'] + $v['transit']) . '</strong></div>'
-       . '<div class="dash-tile"><small>Completed</small><strong>' . dash_n($v['completed']) . '</strong></div></div>';
-    echo '<div class="dash-note dash-note-inline">' . dash_n($v['pending']) . ' pending request' . ($v['pending'] === 1 ? '' : 's') . ' awaiting municipal dispatch</div>';
-    dash_donut([
-        ['Completed', $v['completed'], 'dc-b1'],
-        ['In transit', $v['transit'],  'dc-b2'],
-        ['Pending',   $v['pending'],   'dc-b3'],
-    ], 'requests', 'No vehicle requests yet.');
-    echo '</div></div>';
+    $cardEvacPerBrgy = function () use ($event, $noEv, $names, $per): void {
+        echo '<div class="card dash-card"><h2>Evacuees per Barangay</h2>';
+        if (!$event) { echo '<div class="dash-empty">' . $noEv . '</div>'; }
+        else {
+            dash_chart_legend([['Evacuees', 'dc-b1']]);
+            $items = [];
+            foreach ($names as $n) $items[] = ['label' => md_short_barangay($n), 'segs' => [[$per[$n]['evac_people'] ?? 0, 'dc-b1', 'Evacuees']]];
+            dash_bar_chart($items, 'No evacuees recorded for this event.');
+        }
+        echo '</div>';
+    };
+
+    $cardEvacTime = function () use ($m, $event, $noEv): void {
+        echo '<div class="card dash-card"><h2>Evacuees Over Time</h2>';
+        if (!$event) { echo '<div class="dash-empty">' . $noEv . '</div>'; }
+        else {
+            dash_chart_legend([['Total evacuees', 'dc-b1']]);
+            dash_line_chart($m['timeline']['labels'], $m['timeline']['values'], false);
+        }
+        echo '</div>';
+    };
+
+    // Row 1: casualties + center occupancy
+    echo '<div class="dash-row r-2">'; $cardCasualty(); $cardCenters(); echo '</div>';
+    // Row 2: damage + vehicle requests
+    echo '<div class="dash-row r-2">'; $cardDamage(); $cardVehicles(); echo '</div>';
+
+    // Vehicle schedule calendar
+    dash_vehicle_schedule();
+
+    // Row 3: trends
+    echo '<div class="dash-row r-2">'; $cardEvacPerBrgy(); $cardEvacTime(); echo '</div>';
 
     // Recent activity
     $nowLabel = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('j M Y');
@@ -987,19 +1134,9 @@ function dash_render_sw(array $ctx): void
 
     dash_live_card($ctx, false);
 
-    // Row 1: damage assessments + casualties
+    // Most urgent first: casualties + assigned center, then damage + trend, then sectors.
+    // Row 1: casualties + assigned center
     echo '<div class="dash-row r-2">';
-    $d = $m['dmg'];
-    echo '<div class="card dash-card"><h2>Damage Assessments</h2>';
-    echo '<div class="dash-bigstat">' . dash_n($d['total']) . '</div><div class="dash-card-sub" style="margin:0">Total assessments submitted</div>';
-    echo '<div class="dash-tiles"><div class="dash-tile"><small>Totally Damaged</small><strong>' . dash_n($d['totally']) . '</strong></div>'
-       . '<div class="dash-tile"><small>Partially Damaged</small><strong>' . dash_n($d['partially']) . '</strong></div></div>';
-    if ($m['households'] > 0 && $d['households'] > 0) {
-        $pct = round($d['households'] / $m['households'] * 100, 1);
-        echo '<div class="dash-note">' . md_h($pct . '% of ' . dash_n($m['households']) . ' registered households assessed') . '</div>';
-    }
-    echo '</div>';
-
     echo '<div class="card dash-card"><h2>Casualty Breakdown</h2>';
     if (!$event) { echo '<div class="dash-empty">' . $noEv . '</div>'; }
     else {
@@ -1012,10 +1149,32 @@ function dash_render_sw(array $ctx): void
             echo '<div class="dash-note">Included in the municipality’s ' . dash_n($m['cas_muni']) . ' reported casualties.</div>';
         }
     }
-    echo '</div></div>';
+    echo '</div>';
 
-    // Row 2: evacuees over time + assigned center
+    echo '<div class="card dash-card dash-center-card"><h2>Assigned Evacuation Center</h2><div class="dash-card-sub">' . md_h($b) . '</div>';
+    echo '<div class="dash-center-head"><h3>' . md_h($center[0]) . '</h3>' . status_badge(dash_center_status($per, $b)) . '</div>';
+    echo '<div class="dash-tiles"><div class="dash-tile"><small>Total Evacuees</small><strong>' . dash_n($people) . '</strong></div>'
+       . '<div class="dash-tile"><small>Households</small><strong>' . dash_n($hh) . '</strong></div></div>';
+    echo '<div class="dash-center-foot"><a class="dash-link" href="evacuation-centers.php' . md_h($q) . '">Open center records &rarr;</a></div>';
+    echo '</div>';
+    echo '</div>';
+
+    // Vehicle availability calendar (dates + time slots the worker can book)
+    dash_vehicle_availability($b);
+
+    // Row 2: damage assessments + evacuees over time
     echo '<div class="dash-row r-2">';
+    $d = $m['dmg'];
+    echo '<div class="card dash-card"><h2>Damage Assessments</h2>';
+    echo '<div class="dash-bigstat">' . dash_n($d['total']) . '</div><div class="dash-card-sub" style="margin:0">Total assessments submitted</div>';
+    echo '<div class="dash-tiles"><div class="dash-tile"><small>Totally Damaged</small><strong>' . dash_n($d['totally']) . '</strong></div>'
+       . '<div class="dash-tile"><small>Partially Damaged</small><strong>' . dash_n($d['partially']) . '</strong></div></div>';
+    if ($m['households'] > 0 && $d['households'] > 0) {
+        $pct = round($d['households'] / $m['households'] * 100, 1);
+        echo '<div class="dash-note">' . md_h($pct . '% of ' . dash_n($m['households']) . ' registered households assessed') . '</div>';
+    }
+    echo '</div>';
+
     echo '<div class="card dash-card"><h2>Evacuees Over Time</h2>';
     if (!$event) { echo '<div class="dash-empty">' . $noEv . '</div>'; }
     else {
@@ -1025,12 +1184,7 @@ function dash_render_sw(array $ctx): void
     }
     echo '</div>';
 
-    echo '<div class="card dash-card dash-center-card"><h2>Assigned Evacuation Center</h2><div class="dash-card-sub">' . md_h($b) . '</div>';
-    echo '<div class="dash-center-head"><h3>' . md_h($center[0]) . '</h3>' . status_badge(dash_center_status($per, $b)) . '</div>';
-    echo '<div class="dash-tiles"><div class="dash-tile"><small>Total Evacuees</small><strong>' . dash_n($people) . '</strong></div>'
-       . '<div class="dash-tile"><small>Households</small><strong>' . dash_n($hh) . '</strong></div></div>';
-    echo '<div class="dash-center-foot"><a class="dash-link" href="evacuation-centers.php' . md_h($q) . '">Open center records &rarr;</a></div>';
-    echo '</div></div>';
+    echo '</div>';
 
     // Row 3: vulnerable sectors
     $sectors = [
