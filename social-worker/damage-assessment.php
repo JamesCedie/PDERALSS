@@ -339,21 +339,32 @@ document.addEventListener('DOMContentLoaded', function () {
         stampEl.hidden = false;
     }
     function composeAddress(j) {
-        var a = (j && j.address) || {}, parts = [];
-        var street = [a.house_number, a.road].filter(Boolean).join(' ').trim();
-        var fields = [
-            ['Address Line 1', street],
-            ['Locality / City', a.city || a.town || a.municipality || a.village || ''],
-            ['Region / State', a.state || a.province || a.state_district || ''],
-            ['Postal Code', a.postcode || ''],
-            ['Country', a.country || '']
-        ];
-        fields.forEach(function (field) {
-            var value = String(field[1] || '').trim();
-            if (value) parts.push(field[0] + ': ' + value);
+        var a = (j && j.address) || {}, parts = [], line1 = [];
+        ['residential', 'neighbourhood'].forEach(function (key) {
+            var value = String(a[key] || '').trim();
+            if (value && line1.indexOf(value) === -1) line1.push(value);
         });
-        return parts.join(' | ');
-    }
+        var street = [a.house_number, a.road].filter(Boolean).join(' ').trim();
+        if (street) line1.push(street);
+        if (line1.length) parts.push(line1.join(', '));
+
+        var barangay = String(a.barangay || a.quarter || a.suburb || '').trim();
+        if (barangay) parts.push(/^(brgy\.?|barangay\b)/i.test(barangay) ? barangay : 'Brgy. ' + barangay);
+
+        var locality = String(a.city || a.town || a.municipality || a.village || '').trim();
+        var province = String(a.province || a.county || a.state_district || '').trim();
+        var postal = String(a.postcode || '').trim();
+        var country = String(a.country || '').trim();
+
+        if (locality) parts.push(locality);
+        if (province && province.toLowerCase() !== locality.toLowerCase()) {
+            parts.push(province + (postal ? ' ' + postal : ''));
+        } else if (postal) {
+            parts.push(postal);
+        }
+        if (country) parts.push(country);
+        return parts.join(', ');
+        }
     function lookupAddress(lat, lng, acc, id) {
         fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=en&lat=' + lat + '&lon=' + lng)
             .then(function (r) { return r.json(); })

@@ -173,29 +173,43 @@ function da_reverse_geocode(float $lat, float $lng): string
     if (!is_array($j)) return '';
     $a = is_array($j['address'] ?? null) ? $j['address'] : [];
 
-    // Keep the address components in predictable fields instead of mixing in
-    // neighbourhoods/districts that can make the displayed location misleading.
+    // Philippine-style display: subdivision/street, barangay, municipality,
+    // province + postal code, country.
+    $line1 = [];
+    foreach (['residential', 'neighbourhood'] as $key) {
+        $value = trim((string) ($a[$key] ?? ''));
+        if ($value !== '' && !in_array($value, $line1, true)) $line1[] = $value;
+    }
     $street = trim(implode(' ', array_filter([
         trim((string) ($a['house_number'] ?? '')),
         trim((string) ($a['road'] ?? '')),
     ], static fn($v) => $v !== '')));
+    if ($street !== '') $line1[] = $street;
+
+    $barangay = trim((string) ($a['barangay'] ?? $a['quarter'] ?? $a['suburb'] ?? ''));
     $locality = trim((string) ($a['city'] ?? $a['town'] ?? $a['municipality'] ?? $a['village'] ?? ''));
-    $region = trim((string) ($a['state'] ?? $a['province'] ?? $a['state_district'] ?? ''));
+    $province = trim((string) ($a['province'] ?? $a['county'] ?? $a['state_district'] ?? ''));
     $postal = trim((string) ($a['postcode'] ?? ''));
     $country = trim((string) ($a['country'] ?? ''));
 
     $parts = [];
-    foreach ([
-        'Address Line 1' => $street,
-        'Locality / City' => $locality,
-        'Region / State' => $region,
-        'Postal Code' => $postal,
-        'Country' => $country,
-    ] as $label => $value) {
-        if ($value !== '') $parts[] = $label . ': ' . $value;
+    if ($line1) $parts[] = implode(', ', array_unique($line1));
+    if ($barangay !== '') {
+        $parts[] = preg_match('/^(brgy\\.?|barangay\\b)/i', $barangay) ? $barangay : 'Brgy. ' . $barangay;
     }
-    $addr = mb_substr(implode(' | ', $parts), 0, 500);
-    return preg_replace('/[^\P{C}\n]+/u', '', $addr) ?? '';
+    if ($locality !== '') $parts[] = $locality;
+    if ($province !== '' && strcasecmp($province, $locality) !== 0) $parts[] = $province;
+    $provinceAndPostal = trim($province . ($postal !== '' ? ' ' . $postal : ''));
+    // Province was already added above; append postal code to it.
+    if ($province !== '' && $postal !== '') {
+        $parts[count($parts) - 1] = $provinceAndPostal;
+    } elseif ($postal !== '') {
+        $parts[] = $postal;
+    }
+    if ($country !== '') $parts[] = $country;
+
+    $addr = mb_substr(implode(', ', $parts), 0, 500);
+    return preg_replace('/[^\\P{C}\\n]+/u', '', $addr) ?? '';
 }
 
 function da_font(): ?string
