@@ -434,8 +434,9 @@ if ($selected !== null) {
         var capturedAt = null, fixId = 0;
 
         function fmtTime(d) {
-            return d.toLocaleString('en-GB', { timeZone: 'Asia/Manila', day: '2-digit', month: 'short', year: 'numeric',
-                                               hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(',', '') + ' PHT';
+            var date = d.toLocaleDateString('en-GB', { timeZone: 'Asia/Manila', day: '2-digit', month: 'short', year: 'numeric' });
+            var time = d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+            return date + ' at ' + time + ' PHT';
         }
         // On-screen preview of what gets stamped into the photo (the server burns in the final watermark).
         function renderStamp(lat, lng, acc, addr) {
@@ -447,38 +448,22 @@ if ($selected !== null) {
             });
             stampEl.hidden = false;
         }
+        // The assessment is opened from a specific barangay record. Use that
+        // official barangay for the photo label instead of Nominatim's often
+        // incomplete/inaccurate Philippine administrative hierarchy.
+        var expectedBarangay = <?= json_encode($reqBarangay, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         function composeAddress(j) {
-            var a = (j && j.address) || {}, parts = [], line1 = [];
-            ['residential', 'neighbourhood'].forEach(function (key) {
-                var value = String(a[key] || '').trim();
-                if (value && line1.indexOf(value) === -1) line1.push(value);
-            });
-            var street = [a.house_number, a.road].filter(Boolean).join(' ').trim();
-            if (street) line1.push(street);
-            if (line1.length) parts.push(line1.join(', '));
-
-            var barangay = String(a.barangay || a.quarter || a.suburb || '').trim();
-            if (barangay) parts.push(/^(brgy\.?|barangay\b)/i.test(barangay) ? barangay : 'Brgy. ' + barangay);
-
-            var locality = String(a.city || a.town || a.municipality || a.village || '').trim();
-            var province = String(a.province || a.county || a.state_district || '').trim();
-            var postal = String(a.postcode || '').trim();
-            var country = String(a.country || '').trim();
-
-            if (locality) parts.push(locality);
-            if (province && province.toLowerCase() !== locality.toLowerCase()) {
-                parts.push(province + (postal ? ' ' + postal : ''));
-            } else if (postal) {
-                parts.push(postal);
-            }
-            if (country) parts.push(country);
-            return parts.join(', ');
-        }
-        function lookupAddress(lat, lng, acc, id) {
+        // Oton's official barangay assignment is authoritative. Keep the address
+        // format consistent for photo evidence, independent of Nominatim's labels.
+        var barangay = String(expectedBarangay || '').trim();
+        if (!barangay) return '';
+        return 'Brgy. ' + barangay.replace(/^(brgy\.?|barangay\s+)/i, '').trim() + ', Oton, 5020, Philippines';
+    }
+    function lookupAddress(lat, lng, acc, id) {
             fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=en&lat=' + lat + '&lon=' + lng)
                 .then(function (r) { return r.json(); })
                 .then(function (j) { if (id === fixId) renderStamp(lat, lng, acc, composeAddress(j) || 'unavailable'); })
-                .catch(function () { if (id === fixId) renderStamp(lat, lng, acc, 'unavailable'); });
+                .catch(function () { if (id === fixId) renderStamp(lat, lng, acc, composeAddress(null) || 'unavailable'); });
         }
 
         function clearFix(msg) {
