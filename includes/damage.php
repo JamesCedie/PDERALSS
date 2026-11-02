@@ -149,14 +149,67 @@ function da_wrap(string $text, int $size, ?string $font, int $maxW): array
  * address printed on the photo is not taken from the browser). Returns '' when unavailable.
  * Optional env NOMINATIM_EMAIL is sent as contact info, as Nominatim's usage policy asks.
  */
-function da_reverse_geocode(float $lat, float $lng, string $officialBarangay = ''): string
+function da_reverse_geocode(float $lat, float $lng): string
 {
-    // The assessment's selected barangay is authoritative. PDERALSS is for Oton,
-    // so do not let a reverse-geocoder substitute a neighboring barangay name.
-    $barangay = trim($officialBarangay);
-    if ($barangay === '') return '';
-    $barangay = preg_replace('/^(brgy\.?|barangay\s+)/i', '', $barangay) ?? $barangay;
-    return 'Brgy. ' . trim($barangay) . ', Oton, 5020, Philippines';
+    if (!function_exists('curl_init')) return '';
+    $qs = http_build_query([
+        'format' => 'jsonv2', 'addressdetails' => 1, 'zoom' => 18, 'accept-language' => 'en',
+        'lat' => number_format($lat, 6, '.', ''), 'lon' => number_format($lng, 6, '.', ''),
+    ] + (getenv('NOMINATIM_EMAIL') ? ['email' => getenv('NOMINATIM_EMAIL')] : []));
+    $ch = curl_init('https://nominatim.openstreetmap.org/reverse?' . $qs);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 4,
+        CURLOPT_TIMEOUT        => 7,
+        CURLOPT_USERAGENT      => 'PDERALSS-DamageAssessment/1.0',
+        CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+    ]);
+    $body   = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+    if ($body === false || $status !== 200) return '';
+
+    $j = json_decode((string) $body, true);
+    if (!is_array($j)) return '';
+    $a = is_array($j['address'] ?? null) ? $j['address'] : [];
+
+    // Philippine-style display: subdivision/street, barangay, municipality,
+    // province + postal code, country.
+    $line1 = [];
+    foreach (['residential', 'neighbourhood'] as $key) {
+        $value = trim((string) ($a[$key] ?? ''));
+        if ($value !== '' && !in_array($value, $line1, true)) $line1[] = $value;
+    }
+    $street = trim(implode(' ', array_filter([
+        trim((string) ($a['house_number'] ?? '')),
+        trim((string) ($a['road'] ?? '')),
+    ], static fn($v) => $v !== '')));
+    if ($street !== '') $line1[] = $street;
+
+    $barangay = trim((string) ($a['barangay'] ?? $a['quarter'] ?? $a['suburb'] ?? ''));
+    $locality = trim((string) ($a['city'] ?? $a['town'] ?? $a['municipality'] ?? $a['village'] ?? ''));
+    $province = trim((string) ($a['province'] ?? $a['county'] ?? $a['state_district'] ?? ''));
+    $postal = trim((string) ($a['postcode'] ?? ''));
+    $country = trim((string) ($a['country'] ?? ''));
+
+    $parts = [];
+    if ($line1) $parts[] = implode(', ', array_unique($line1));
+    if ($barangay !== '') {
+        $parts[] = preg_match('/^(brgy\\.?|barangay\\b)/i', $barangay) ? $barangay : 'Brgy. ' . $barangay;
+    }
+    if ($locality !== '') $parts[] = $locality;
+    if ($province !== '' && strcasecmp($province, $locality) !== 0) $parts[] = $province;
+    $provinceAndPostal = trim($province . ($postal !== '' ? ' ' . $postal : ''));
+    // Province was already added above; append postal code to it.
+    if ($province !== '' && $postal !== '') {
+        $parts[count($parts) - 1] = $provinceAndPostal;
+    } elseif ($postal !== '') {
+        $parts[] = $postal;
+    }
+    if ($country !== '') $parts[] = $country;
+
+    $addr = mb_substr(implode(', ', $parts), 0, 500);
+    return preg_replace('/[^\\P{C}\\n]+/u', '', $addr) ?? '';
 }
 
 function da_font(): ?string
@@ -389,10 +442,10 @@ function da_submit(string $userId, string $userName, string $barangay, array $in
         if ($c <= $ts + 60 && $c >= $ts - 1800) $ts = $c;
     }
     $ref = 'DA-' . gmdate('ymd', $ts) . '-' . strtoupper(bin2hex(random_bytes(3)));
-    $local = (new DateTimeImmutable('@' . $ts))->setTimezone(new DateTimeZone('Asia/Manila'))->format('d M Y \\a\\t H:i:s');
+    $local = (new DateTimeImmutable('@' . $ts))->setTimezone(new DateTimeZone('Asia/Manila'))->format('d M Y H:i:s');
 
     // address (reverse geocoded server side)
-    $address = da_reverse_geocode($lat, $lng, $barangay);
+    $address = da_reverse_geocode($lat, $lng);
     if ($address !== '' && !da_font()) {
         $t = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $address);
         if ($t !== false) $address = $t;
