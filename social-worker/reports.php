@@ -46,7 +46,13 @@ $recent = [
             <div class="card report-type-card">
                 <h3><?=$t[0]?></h3>
                 <p class="mini"><?=$t[1]?></p>
-                <button class="btn btn-primary btn-block" onclick="showToast('Generating <?=$t[0]?>...', 'info')">Generate</button>
+                <?php if ($t[0] === 'Evacuation Report'): ?>
+                    <a class="btn btn-primary btn-block" href="evacuation-report.php">Generate</a>
+                <?php elseif ($t[0] === 'Casualty Report'): ?>
+                    <a class="btn btn-primary btn-block" href="casualty-report.php">Generate</a>
+                <?php else: ?>
+                    <button class="btn btn-primary btn-block" onclick="showToast('Generating <?=$t[0]?>...', 'info')">Generate</button>
+                <?php endif; ?>
             </div>
         <?php endforeach; ?>
     </div>

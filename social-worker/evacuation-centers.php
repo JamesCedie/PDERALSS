@@ -40,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evacuee']) && $ev
     $householdId   = (int) ($_POST['household_id'] ?? 0) ?: null;
     $compositionId = (int) ($_POST['composition_id'] ?? 0) ?: null;
     $peopleCount   = 1;   // every person added counts as exactly 1
+    $manAge = null; $manSex = null;   // only used for walk-ins that are not in the household registry
 
     if (!$myCenterId) {
         $errorMsg = 'Your account has no barangay assigned. Please contact an MDRRMO Officer.';
@@ -69,6 +70,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evacuee']) && $ev
         }
     } elseif ($name === '') {
         $errorMsg = 'Please enter a name.';
+    } else {
+        // Walk-in who is not registered: DROMIC Forms 4.2/4.3 need an age and a sex to place them.
+        $rawAge = trim((string) ($_POST['age'] ?? ''));
+        $manAge = (ctype_digit($rawAge) && (int) $rawAge <= 120) ? (int) $rawAge : null;
+        $manSex = match (strtolower(trim((string) ($_POST['sex'] ?? '')))) { 'male', 'm' => 'Male', 'female', 'f' => 'Female', default => null };
+        if ($manAge === null || $manSex === null) $errorMsg = 'Age (0-120) and sex are required for an evacuee who is not in the household registry.';
     }
 
     if ($errorMsg === null && $name !== '') {
@@ -83,6 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_evacuee']) && $ev
                     'composition_id' => $householdId ? $compositionId : null,
                     'name'           => $name,
                     'people_count'   => $peopleCount,
+                    'age'            => $householdId ? null : $manAge,
+                    'sex'            => $householdId ? null : $manSex,
                     'added_by'       => $_SESSION['user']['id'] ?? null,
                 ]);
                 $pdo->commit();
@@ -343,6 +352,10 @@ $eventIsActive = $currentEvent && ($currentEvent['status'] ?? 'Active') === 'Act
                 <input type="hidden" name="composition_id" id="selectedCompositionId" value="">
                 <div class="field mb"><label>Full Name</label><input name="name" id="evacueeNameInput" required placeholder="Enter full name"></div>
                 <div class="mini mb" id="evacueeFamilyNote" style="display:none;"></div>
+                <div class="form-grid mb" id="manualDemo">
+                    <div class="field"><label>Age</label><input type="number" name="age" id="evacueeAge" min="0" max="120" step="1" inputmode="numeric" placeholder="e.g. 35"></div>
+                    <div class="field"><label>Sex</label><select name="sex" id="evacueeSex"><option value="" selected disabled>Select sex</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                </div>
                 <div class="actions"><button type="button" class="btn btn-light" onclick="backToSearch()">Back</button><button class="btn btn-primary">Save Evacuee</button></div>
             </form>
         </div>
@@ -367,6 +380,9 @@ function setEvacuee(d) {
     document.getElementById('selectedCompositionId').value = (d && d.type === 'member') ? d.composition_id : '';
     nameInput.value = d ? d.name : '';
     nameInput.readOnly = !!d;               // a registered resident's name comes from the record
+    // Age/sex are only asked for walk-ins; a registered resident's come from the household record.
+    document.getElementById('manualDemo').style.display = d ? 'none' : '';
+    ['evacueeAge', 'evacueeSex'].forEach(function (id) { var el = document.getElementById(id); el.required = !d; if (d) el.value = ''; });
     note.style.display = (d && d.type === 'member') ? 'block' : 'none';
     note.textContent = (d && d.type === 'member') ? 'Family member of ' + d.head + (d.relationship ? ' (' + d.relationship + ')' : '') : '';
 }

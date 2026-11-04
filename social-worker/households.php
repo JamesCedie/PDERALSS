@@ -78,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['stage']) && $_POST['s
     $occupation    = trim($_POST['occupation'] ?? '');
     $dob           = trim((string) ($_POST['date_of_birth'] ?? '')) ?: null;
     $contact       = trim($_POST['contact_no'] ?? '');
+    $address       = trim($_POST['address'] ?? '');   // Sitio / Purok / Zone / Street (DROMIC Form 3)
     $is4ps         = $_POST['is_4ps_member'] ?? 'No';
     $totalMembers  = hh_int($_POST['total_family_members'] ?? '', 1, HH_MAX_MEMBERS);
     $pwdCount      = hh_int($_POST['pwd_count'] ?? '', 0, HH_MAX_MEMBERS);
@@ -108,6 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['stage']) && $_POST['s
             'educational_attainment'=> $education,
             'occupation'            => $occupation ?: null,
             'contact_no'            => $contact ?: null,
+            'address'               => $address ?: null,
             'total_family_members'  => $totalMembers,
             'is_4ps_member'         => $is4ps,
             'pwd_count'             => $pwdCount,
@@ -236,6 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_household'])) {
             'educational_attainment' => $_POST['educational_attainment'] ?? '',
             'occupation'             => trim($_POST['occupation'] ?? '') ?: null,
             'contact_no'             => trim($_POST['contact_no'] ?? '') ?: null,
+            'address'                => trim($_POST['address'] ?? '') ?: null,
             'total_family_members'   => max(1, (int) ($_POST['total_family_members'] ?? 1)),
             'is_4ps_member'          => $_POST['is_4ps_member'] ?? 'No',
             'pwd_count'              => (int) ($_POST['pwd_count'] ?? 0),
@@ -405,6 +408,8 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                     <select name="is_4ps_member" required><option value="" disabled selected>Select Yes / No</option><option value="No">No</option><option value="Yes">Yes</option></select>
                 </div>
 
+                <div class="field" style="grid-column:1/-1"><label>Address (Sitio / Purok / Zone / Street)</label><input name="address" maxlength="150" placeholder="e.g. Purok 3, Sitio Mabini" required></div>
+
                 <div class="field"><label>Total Family Members</label><input type="number" name="total_family_members" data-int min="1" max="<?= HH_MAX_MEMBERS ?>" step="1" inputmode="numeric" value="1" required><small class="field-hint">1–<?= HH_MAX_MEMBERS ?> including the head</small></div>
                 <div class="field"><label>PWDs in Household</label><input type="number" name="pwd_count" data-int min="0" max="<?= HH_MAX_MEMBERS ?>" step="1" inputmode="numeric" value="0" required><small class="field-hint">Cannot exceed total family members</small></div>
                 <div class="field"><label>Senior Citizens</label><input type="number" name="senior_citizens" data-int min="0" max="<?= HH_MAX_MEMBERS ?>" step="1" inputmode="numeric" value="0" required><small class="field-hint">Cannot exceed total family members</small></div>
@@ -495,6 +500,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
             <div class="sw-view-item"><label>Occupation</label><div><?= htmlspecialchars($h['occupation'] ?? '—') ?></div></div>
             <div class="sw-view-item"><label>Date of Birth</label><div><?= htmlspecialchars($h['date_of_birth'] ?? '—') ?></div></div>
             <div class="sw-view-item"><label>Contact No.</label><div><?= htmlspecialchars($h['contact_no'] ?? '—') ?></div></div>
+            <div class="sw-view-item"><label>Address</label><div><?= htmlspecialchars($h['address'] ?? '—') ?></div></div>
             <div class="sw-view-item"><label>4P's Member</label><div><?= htmlspecialchars($h['is_4ps_member']) ?></div></div>
             <div class="sw-view-item"><label>Civil Status</label><div><?= htmlspecialchars($h['civil_status'] ?? '—') ?></div></div>
         </div>
@@ -554,6 +560,7 @@ $totalSeniors    = array_sum(array_column($households, 'senior_citizens'));
                 <div class="field"><label>Occupation</label><input name="occupation" value="<?= htmlspecialchars($h['occupation'] ?? '') ?>"></div>
                 <div class="field"><label>Date of Birth</label><input type="date" name="date_of_birth" max="<?= htmlspecialchars(today_ph()) ?>" value="<?= htmlspecialchars($h['date_of_birth'] ?? '') ?>"></div>
                 <div class="field"><label>Contact No.</label><input name="contact_no" maxlength="11" pattern="\d{11}" value="<?= htmlspecialchars($h['contact_no'] ?? '') ?>"></div>
+                <div class="field" style="grid-column:1/-1"><label>Address (Sitio / Purok / Zone / Street)</label><input name="address" maxlength="150" value="<?= htmlspecialchars($h['address'] ?? '') ?>"></div>
                 <div class="field"><label>4P's Member</label><select name="is_4ps_member"><?php foreach(['No','Yes'] as $opt): ?><option <?= ($h['is_4ps_member']??'')===$opt?'selected':'' ?>><?= $opt ?></option><?php endforeach; ?></select></div>
             </div>
 
