@@ -231,18 +231,19 @@ function dromic_summary(int $eventId, ?int $barangayId = null): array
 }
 
 /**
- * DROMIC Form 3 rows for one casualty type ('Fatality' | 'Injured' | 'Missing').
+ * DROMIC Form 3 rows for one casualty type ('Fatality' | 'Injured' | 'Missing'), or all types when $type is null.
  * Old rows saved before last_name/first_name existed are split from the single `name` column.
  */
-function dromic_casualties(int $eventId, string $type, ?int $barangayId = null): array
+function dromic_casualties(int $eventId, ?string $type, ?int $barangayId = null): array
 {
     $sql = "SELECT c.casualty_id, c.name, c.last_name, c.first_name, c.middle_initial, c.age, c.sex, c.address,
-                   c.cause, c.notes, b.name AS barangay
+                   c.cause, c.notes, c.type, b.name AS barangay
             FROM casualties c JOIN barangays b ON b.barangay_id = c.barangay_id
-            WHERE c.event_id = ? AND c.type = ?";
-    $p = [$eventId, $type];
+            WHERE c.event_id = ?";
+    $p = [$eventId];
+    if ($type !== null) { $sql .= ' AND c.type = ?'; $p[] = $type; }
     if ($barangayId) { $sql .= ' AND c.barangay_id = ?'; $p[] = $barangayId; }
-    $sql .= ' ORDER BY b.name, COALESCE(c.last_name, c.name), c.casualty_id';
+    $sql .= ' ORDER BY b.name, ' . ($type === null ? "CASE c.type WHEN 'Fatality' THEN 1 WHEN 'Injured' THEN 2 ELSE 3 END, " : '') . 'COALESCE(c.last_name, c.name), c.casualty_id';
     try {
         $rows = db_query($sql, $p)->fetchAll();
     } catch (Throwable $e) {
