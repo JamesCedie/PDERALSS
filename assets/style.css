@@ -1122,7 +1122,12 @@ textarea {
     padding: 8px 14px;
     font-size: 13px;
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
 }
+.sw-top-back .ui-ico { width: 16px; height: 16px; flex: none; }
 .sw-top-back:hover { color: var(--btn-sec-hover-text); background: var(--btn-sec-hover); }
 
 .sw-brand {

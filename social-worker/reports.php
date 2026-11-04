@@ -3,7 +3,6 @@ require_once '../includes/access.php'; require_page_access(); require '../includ
 page_start('Reports');
 require_once '../includes/reports.php';
 $swUser = db_user_with_barangay($_SESSION['user']['id'] ?? null);
-$totals = report_totals(trim((string) ($swUser['address'] ?? '')) ?: null);
 
 $types = [
     ['Casualty Report',           'Comprehensive report of all casualties by barangay and severity'],
@@ -13,20 +12,6 @@ $types = [
 
 <div class="page-head">
     <h1 class="page-title">Reports & Summaries</h1>
-</div>
-
-<div class="grid g4">
-    <?php foreach([
-        ['Total Households',     $totals['households']],
-        ['Total Casualties',     $totals['casualties']],
-        ['Relief Distributions', $totals['relief']],
-        ['Vehicle Requests',     $totals['vehicles']],
-    ] as $s): ?>
-        <div class="card sw-summary-card">
-            <div class="stat-label"><?=$s[0]?></div>
-            <div class="stat-value"><?=number_format($s[1])?></div>
-        </div>
-    <?php endforeach; ?>
 </div>
 
 <div class="card mt">

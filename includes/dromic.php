@@ -19,36 +19,58 @@ function dromic_css(): string
 {
     return <<<'CSS'
 .dromic-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
-.dromic-toolbar select{min-width:220px}
+.dromic-toolbar select{min-width:240px}
 .dromic-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
 .dromic-tabs a{padding:6px 14px;border:1px solid #888;border-radius:6px;text-decoration:none;color:inherit;font-size:13px}
 .dromic-tabs a.on{background:#2563eb;color:#fff;border-color:#2563eb}
 .dromic-scroll{overflow-x:auto}
-.dromic-sheet{background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:11px;padding:18px 22px;min-width:1040px;margin-bottom:18px}
-.dromic-sheet .formno{font-size:11px}
-.dromic-sheet .center{text-align:center;line-height:1.5}
-.dromic-sheet .title{background:#ff0;font-weight:bold;font-size:14px;text-align:center;letter-spacing:.3px;padding:3px 0;margin:8px 0 4px}
-.dromic-sheet .title.plain{background:none;font-size:13px}
-.dromic-sheet .asof{text-align:center;margin-bottom:8px}
-.dromic-sheet .asof u{display:inline-block;min-width:170px;text-align:center}
-.dromic-meta{display:flex;justify-content:space-between;gap:24px;margin-bottom:8px}
+/* ---- paper form ---- */
+.dromic-sheet{background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:11px;padding:18px 22px 26px;min-width:1040px;margin-bottom:18px}
+.dromic-sheet .formno{font-size:11px;line-height:1.5}
+.dromic-sheet .center{text-align:center;line-height:1.55;margin-top:2px}
+.dromic-sheet .title{background:#ff0;font-weight:bold;font-size:14px;text-align:center;padding:2px 0;margin:14px 0 3px}
+.dromic-sheet .title.plain{background:none;font-size:14px;letter-spacing:1.4px;padding:0;margin:26px 0 22px}
+.dromic-sheet .asof{text-align:center;line-height:1.6;margin-bottom:2px}
+.dromic-sheet .asof u{display:inline-block;text-align:center;text-decoration:none;border-bottom:1px solid #000;min-width:120px;margin:0 3px}
+.dromic-sheet .asof u.l{min-width:270px}
+.dromic-meta{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin:16px 0 4px}
 .dromic-meta dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 6px;align-items:end}
 .dromic-meta dt{margin:0}
-.dromic-meta dd{margin:0;border-bottom:1px solid #000;min-width:190px;font-weight:bold;padding-left:4px;min-height:14px}
+.dromic-meta dd{margin:0;border-bottom:1px solid #000;min-width:185px;font-weight:bold;padding-left:4px;min-height:14px;line-height:1.35}
+.dromic-meta .l{flex:0 0 38%}
+.dromic-meta .l dd{min-width:200px}
+.dromic-meta .r{flex:0 0 42%}
+.dromic-meta .r dl.rp dd{min-width:150px;max-width:150px}
+.dromic-meta .r dl.tot{margin-top:8px}
+.dromic-meta .r dl.tot dd{min-width:120px;font-weight:normal;border-bottom:1px dotted #000}
+.dromic-meta dl.rt dt{text-align:right}
+.dromic-meta.m3 .r{flex:0 0 auto;margin-right:11%}
+.dromic-meta.m3 .l{flex:0 0 auto}
 .dromic-table{width:100%;border-collapse:collapse;border:2px solid #000;table-layout:fixed}
-.dromic-table th,.dromic-table td{border:1px solid #000;padding:3px 2px;text-align:center;font-size:10px;color:#000;background:#fff;word-wrap:break-word}
-.dromic-table th{font-weight:bold}
+.dromic-table th,.dromic-table td{border:1px solid #000;padding:2px 3px;text-align:center;font-size:10px;color:#000;background:#fff;word-wrap:break-word}
+.dromic-table th{font-weight:bold;font-size:10.5px}
 .dromic-table td.area,.dromic-table td.nm,.dromic-table th.nm{text-align:left;padding-left:5px}
+.dromic-table th.nm{text-align:center}
 .dromic-table td.area{font-weight:bold;width:11%}
 .dromic-table td.nm{width:19%}
 .dromic-table td.l{text-align:left;padding-left:5px}
+.dromic-table td.dep{padding-left:14px}
 .dromic-table td.n{font-variant-numeric:tabular-nums}
 .dromic-table tr{height:19px}
+.dromic-table tr.fh td{border-top:2px solid #000}
 .dromic-table tr.total td,.dromic-table tr.sub td{font-weight:bold}
-.dromic-table tr.total td{border-top:2px solid #000}
-.dromic-sign{display:flex;justify-content:space-between;margin-top:14px;font-size:11px}
-.dromic-sign .line{width:220px;border-top:1px solid #000;text-align:center;padding-top:3px;margin-top:34px;margin-left:140px}
-.dromic-sign .line.r{margin-left:90px}
+.dromic-table tr.sub td{border-top:2px solid #000}
+.dromic-table tr.sub td.nm{text-align:center}
+.dromic-table th.gt{text-align:left;font-weight:normal;vertical-align:middle;padding-left:5px}
+.dromic-table.f3 th{height:20px;vertical-align:middle}
+.dromic-table.f3 thead tr.h2 th{text-decoration:underline}
+.dromic-table.f3 tbody tr{height:19px}
+.dromic-table.f3 td{border-left:1px solid #000}
+.dromic-sign{display:flex;justify-content:space-between;margin-top:26px;font-size:11px}
+.dromic-sign .s1{width:52%}
+.dromic-sign .s2{width:36%}
+.dromic-sign .line{border-top:1px solid #000;text-align:center;padding-top:3px;margin-top:38px;width:280px;margin-left:180px}
+.dromic-sign .s2 .line{width:230px;margin-left:58px}
 .dromic-note{font-size:10px;margin-top:8px}
 @page{size:landscape;margin:8mm}
 @media print{
@@ -64,14 +86,14 @@ CSS;
 
 function dromic_css_excel(): string
 {
-    return 'table{border-collapse:collapse}td,th{border:1px solid #000;padding:3px;text-align:center}td.area,td.nm,td.l,th.nm{text-align:left}.title{background:#ff0;font-weight:bold}';
+    return 'table{border-collapse:collapse}td,th{border:1px solid #000;padding:3px;text-align:center}td.area,td.nm,td.l{text-align:left}.title{background:#ff0;font-weight:bold}.title.plain{background:none}';
 }
 
-/** <dl> of label/value pairs; an empty value leaves a blank underline. */
-function dromic_dl(array $pairs): string
+/** <dl> of label/value pairs; an empty value leaves a blank underline (the colon always prints, like the paper form). */
+function dromic_dl(array $pairs, string $cls = ''): string
 {
-    $o = '<dl>';
-    foreach ($pairs as [$k, $v]) $o .= '<dt>' . md_h($k) . '</dt><dd>' . ((string) $v === '' ? '&nbsp;' : ': ' . md_h($v)) . '</dd>';
+    $o = '<dl' . ($cls !== '' ? ' class="' . $cls . '"' : '') . '>';
+    foreach ($pairs as [$k, $v]) $o .= '<dt>' . md_h($k) . '</dt><dd>:' . ((string) $v === '' ? '&nbsp;' : ' ' . md_h($v)) . '</dd>';
     return $o . '</dl>';
 }
 
@@ -87,8 +109,10 @@ function dromic_head_html(string $formNo, string $title, bool $republic, bool $y
 function dromic_sign_html(array $ctx): string
 {
     $s = dromic_signatories($ctx['brgyId'] ?? null);
-    return '<div class="dromic-sign"><div>Prepared and Submitted by:<div class="line">' . ($s['secretary'] !== '' ? md_h($s['secretary']) . '<br>' : '') . 'Barangay Secretary</div></div>'
-         . '<div>Noted by:<div class="line r">' . ($s['chairman'] !== '' ? md_h($s['chairman']) . '<br>' : '') . 'BDRRM Chairman</div></div></div>';
+    return '<div class="dromic-sign">'
+        . '<div class="s1">Prepared and Submitted by:<div class="line">' . ($s['secretary'] !== '' ? '<b>' . md_h($s['secretary']) . '</b><br>' : '') . 'Barangay Secretary</div></div>'
+        . '<div class="s2">Noted by:<div class="line">' . ($s['chairman'] !== '' ? '<b>' . md_h($s['chairman']) . '</b><br>' : '') . 'BDRRM Chairman</div></div>'
+        . '</div>';
 }
 
 /** 12 age/sex cells + male total + female total + grand total. $blankZero hides zeros (used on person rows). */
@@ -124,8 +148,16 @@ function dromic_render_family_forms(string $formNo, string $title, array $famili
 {
     $grand  = dromic_tally($families);
     $cnt    = dromic_family_counts($families);
-    $chunks = $families ? array_chunk($families, 5) : [[]];
+    // Only rows with real data are printed (no blank family / dependent rows). Families are packed onto pages of up to ~22 rows.
+    $chunks = []; $cur = []; $curRows = 0;
+    foreach ($families as $f) {
+        $need = 1 + count($f['deps']);
+        if ($cur && $curRows + $need > 22) { $chunks[] = $cur; $cur = []; $curRows = 0; }
+        $cur[] = $f; $curRows += $need;
+    }
+    $chunks[] = $cur;   // an empty list still gives one (empty) page
     $pages  = count($chunks);
+    // Header ends at the Male/Female row (no GRAND TOTAL figures row beneath it); the name cell spans all four header rows.
     $thead  = dromic_age_header('<th rowspan="4" class="nm" style="width:19%">NAME OF FAMILY<br>HEADS /DEPENDENTS</th>');
     $html = '';
     $n = 0;
@@ -135,12 +167,13 @@ function dromic_render_family_forms(string $formNo, string $title, array $famili
         foreach ($chunk as $f) {
             $n++;
             $ht = $f['head'] ? dromic_person_tally($f['head']) : dromic_blank_row();
-            $rows .= '<tr><td class="nm">' . $n . '. ' . md_h($f['head_name']) . ' <i>(Family Head' . ($f['head'] ? '' : ($scope === 'inside' ? ' - not in center' : '')) . ')</i></td>' . dromic_cells($ht, true) . '</tr>';
+            // A family whose head is not in the center (only dependents are) keeps its head row, marked "not in center".
+            $rows .= '<tr class="fh"><td class="nm">' . $n . '. ' . md_h($f['head_name']) . ' <i>(Family Head' . ($f['head'] ? '' : ($scope === 'inside' ? ' - not in center' : '')) . ')</i></td>' . dromic_cells($ht, true) . '</tr>';
             $ft = dromic_blank_row();
             if ($f['head']) dromic_add($ft, $ht);
             foreach ($f['deps'] as $i => $d) {
                 $dt = dromic_person_tally($d);
-                $rows .= '<tr><td class="nm">&nbsp;&nbsp;' . chr(97 + ($i % 26)) . '. ' . md_h($d['name']) . '</td>' . dromic_cells($dt, true) . '</tr>';
+                $rows .= '<tr><td class="nm dep">' . chr(97 + ($i % 26)) . '. ' . md_h($d['name']) . '</td>' . dromic_cells($dt, true) . '</tr>';
                 dromic_add($ft, $dt);
             }
             dromic_add($sub, $ft);
@@ -148,16 +181,18 @@ function dromic_render_family_forms(string $formNo, string $title, array $famili
         if (!$chunk) $rows = '<tr><td class="nm" colspan="16" style="text-align:center">' . ($scope === 'inside' ? 'No evacuees recorded inside the evacuation center.' : 'No families outside the evacuation center.') . '</td></tr>';
         $html .= '<div class="dromic-sheet">'
             . dromic_head_html($formNo, $title, false, false, $ctx['province'])
-            . '<div class="dromic-meta">'
+            . '<div class="dromic-meta"><div class="l">'
             .   dromic_dl([['Municipality', strtoupper($ctx['municipality'])], ['Barangay', $ctx['barangay']], ['Disaster', $ctx['disaster']], ['Occurrence', $ctx['occurrence']], ['Evacuation Center', $scope === 'inside' ? $ctx['center'] : '']])
-            .   dromic_dl([['Region', $ctx['region']], ['Province', strtoupper($ctx['province'])], ['Total Number of Families with Less than 5 Members', (string) $cnt['lt5']], ['Total Number of Families with 5 or More Members', (string) $cnt['ge5']]])
-            . '</div>'
+            . '</div><div class="r">'
+            .   dromic_dl([['Region', $ctx['region']], ['Province', strtoupper($ctx['province'])]], 'rp')
+            .   dromic_dl([['Total Number of Families with Less than 5 Members', (string) $cnt['lt5']], ['Total Number of Families with 5 or More Members', (string) $cnt['ge5']]], 'tot')
+            . '</div></div>'
             . '<table class="dromic-table"><thead>' . $thead . '</thead><tbody>'
-            . '<tr class="total"><td class="nm">GRAND TOTAL</td>' . dromic_cells($grand, false) . '</tr>'
             . $rows
             . '<tr class="sub"><td class="nm">SUB-TOTAL</td>' . dromic_cells($sub, false) . '</tr>'
             . '</tbody></table>'
             . '<div class="dromic-note">Page ' . ($ci + 1) . ' of ' . $pages . ($grand['unspecified'] > 0 ? ' &middot; ' . (int) $grand['unspecified'] . ' person(s) have no age or sex on record and appear only in the Grand Total column.' : '') . '</div>'
+            . dromic_sign_html($ctx)
             . '</div>';
     }
     return $html;
@@ -197,31 +232,37 @@ function dromic_render_form3(array $rows, array $ctx): string
     foreach ($rows as $r) {
         $addr = trim((string) ($r['address'] ?? ''));
         if ($ctx['showBrgy']) $addr = trim($addr . ($addr !== '' ? ', ' : '') . md_short_barangay((string) $r['barangay']));
-$body .= '<tr><td class="l">' . md_h($r['last_name']) . '</td><td class="l">' . md_h($r['first_name']) . '</td><td>' . md_h(mb_strtoupper(mb_substr((string) ($r['middle_initial'] ?? ''), 0, 1))) . '</td>'
+        // One combined list: the Dead / Injured / Missing status is shown first in REMARKS (the paper form has no separate column).
+        $status  = DROMIC_CASUALTY_TYPES[$r['type'] ?? ''] ?? '';
+        $remarks = ($status !== '' ? '<b>' . md_h($status) . '</b>' : '') . (trim((string) ($r['notes'] ?? '')) !== '' ? ($status !== '' ? ' - ' : '') . md_h($r['notes']) : '');
+        $body .= '<tr><td class="l">' . md_h($r['last_name']) . '</td><td class="l">' . md_h($r['first_name']) . '</td><td>' . md_h(mb_strtoupper(mb_substr((string) ($r['middle_initial'] ?? ''), 0, 1))) . '</td>'
               . '<td>' . md_h($r['age'] ?? '') . '</td><td>' . md_h($r['sex'] ?? '') . '</td><td class="l">' . md_h($addr) . '</td>'
-              . '<td class="l">' . md_h($r['cause'] ?? '') . '</td>' . ($ctx['typeLabel'] === '' ? '<td>' . md_h(DROMIC_CASUALTY_TYPES[$r['type'] ?? ''] ?? '') . '</td>' : '') . '<td class="l">' . md_h($r['notes'] ?? '') . '</td></tr>';
+              . '<td class="l">' . md_h($r['cause'] ?? '') . '</td><td class="l">' . $remarks . '</td></tr>';
     }
-    for ($i = count($rows); $i < 15; $i++) $body .= '<tr><td>&nbsp;</td>' . str_repeat('<td></td>', $ctx['typeLabel'] === '' ? 8 : 7) . '</tr>';
+    if (!$rows) $body = '<tr><td colspan="8" style="text-align:center">No casualties recorded.</td></tr>';
 
     return '<div class="dromic-sheet">'
         . '<div class="formno">DROMIC FORM # 3<br>(Annex D)</div>'
         . '<div class="center">Republic of the Philippines<br>Province of ' . md_h($ctx['province']) . '<br><b>Barangay Disaster Risk Reduction and Management</b><br><b>DISASTER RESPONSE, OPERATIONS, MONITORING AND INFORMATION CENTER</b></div>'
         . '<div class="title">MASTERLIST OF CASUALTIES</div>'
-        . '<div class="asof">' . ($ctx['typeLabel'] === '' ? '(Dead/Injured/Missing)' : '<u>' . md_h($ctx['typeLabel']) . '</u> (Dead/Injured/Missing)') . '<br>As of <u>' . md_h($asOf->format('F j, Y, g:i A')) . '</u> (Date &amp; Time)</div>'
-        . '<div class="dromic-meta">'
+        . '<div class="asof"><u>' . ($ctx['typeLabel'] === '' ? 'All' : md_h($ctx['typeLabel'])) . '</u>(Dead/Injured/Missing)</div>'
+        . '<div class="asof">As of <u class="l">' . md_h($asOf->format('F j, Y, g:i A')) . '</u>(Date &amp; Time)</div>'
+        . '<div class="dromic-meta m3"><div class="l">'
         .   dromic_dl([['Region', $ctx['region']], ['Type of Disaster', $ctx['disaster']], ['Date of Occurrence', $ctx['occurrence']]])
-        .   dromic_dl([['Province', strtoupper($ctx['province'])], ['Municipality', strtoupper($ctx['municipality'])], ['Barangay', $ctx['barangay']]])
-        . '</div>'
-        . '<table class="dromic-table"><thead>'
-        . '<tr><th colspan="3">NAME</th><th rowspan="2" style="width:5%">AGE</th><th rowspan="2" style="width:5%">SEX</th><th rowspan="2" style="width:22%">ADDRESS<br>(Sitio/Purok/Zone/Street)</th><th rowspan="2" style="width:17%">CAUSE OF<br>DEATH/ INJURY</th>' . ($ctx['typeLabel'] === '' ? '<th rowspan="2" style="width:8%">STATUS<br>(Dead/Injured/Missing)</th>' : '') . '<th rowspan="2">REMARKS</th></tr>'
-        . '<tr><th style="width:14%">(Last Name)</th><th style="width:14%">(First Name)</th><th style="width:5%">(MI)</th></tr>'
+        . '</div><div class="r">'
+        .   dromic_dl([['Province', strtoupper($ctx['province'])], ['Municipality', strtoupper($ctx['municipality'])], ['Barangay', $ctx['barangay']]], 'rt')
+        . '</div></div>'
+        . '<table class="dromic-table f3"><thead>'
+        . '<tr><th colspan="3">NAME</th><th rowspan="2" style="width:5%">AGE</th><th rowspan="2" style="width:5%">SEX</th><th rowspan="2" style="width:22%">ADDRESS<br>(Sitio/Purok/Zone/Street)</th><th rowspan="2" style="width:17%">CAUSE OF<br>DEATH/ INJURY</th><th rowspan="2" style="width:17%">REMARKS</th></tr>'
+        . '<tr class="h2"><th style="width:14%">(Last Name)</th><th style="width:14%">(First Name)</th><th style="width:5%">(MI)</th></tr>'
         . '</thead><tbody>' . $body . '</tbody></table>'
         . dromic_sign_html($ctx)
         . '</div>';
 }
 
 /**
- * Full page: event / barangay pickers, form tabs, print + Excel export.
+ * Full page: event / barangay pickers, print + Excel export. The Social Worker prepares their barangay's form;
+ * the MDRRMO Officer picks a barangay and reviews / prints what that barangay would submit.
  *   $mode 'evac'     -> Forms 4.1, 4.2, 4.3
  *   $mode 'casualty' -> Form 3
  *   $fixedBarangayId null = the user may pick a barangay or "All" (MDRRMO Officer);
@@ -239,7 +280,9 @@ function dromic_report_page(string $mode, ?int $fixedBarangayId = null): void
 
     $selectable = $fixedBarangayId === null;
     $brgyId     = $selectable ? (int) ($_GET['barangay_id'] ?? 0) : (int) $fixedBarangayId;
-    $noBrgy     = !$selectable && $brgyId <= 0;
+    // These are barangay forms (signed by the Barangay Secretary / BDRRM Chairman): the Social Worker prepares their own
+    // barangay's form; the MDRRMO Officer REVIEWS one barangay's form at a time (no "All barangays").
+    $noBrgy     = $brgyId <= 0;
     $brgyName   = $brgyId ? md_short_barangay(brgy_name($brgyId)) : '';
     $centerName = $brgyId ? (string) db_query('SELECT center_name FROM evacuation_centers WHERE barangay_id = ?', [$brgyId])->fetchColumn() : '';
 
@@ -257,7 +300,7 @@ function dromic_report_page(string $mode, ?int $fixedBarangayId = null): void
         'brgyId'     => $brgyId ?: null,
         'showBrgy'   => !$brgyId,
         'typeLabel'  => $type === null ? '' : DROMIC_CASUALTY_TYPES[$type],
-        'region'       => $sw && $mode === 'evac' ? 'Region 6' : DROMIC_REGION,
+        'region'       => $sw ? 'Region 6' : DROMIC_REGION,
         'province'     => $sw ? 'Iloilo' : DROMIC_PROVINCE,
         'municipality' => $sw ? 'Oton' : DROMIC_MUNICIPALITY,
     ];
@@ -288,22 +331,19 @@ function dromic_report_page(string $mode, ?int $fixedBarangayId = null): void
         ['event_id' => $eventId, 'barangay_id' => $selectable ? $brgyId : null, 'form' => $mode === 'evac' ? $form : null, 'type' => $mode === 'casualty' ? $type : null], $o),
         static fn($v) => $v !== null && $v !== '' && $v !== 0));
 
-    page_start($mode === 'casualty' ? 'Casualty Report' : 'Evacuation Report');
+    page_start($mode === 'casualty' ? 'Casualty Report' : 'Evacuation Report', null, ['reports.php' . ($eventId ? '?event_id=' . (int) $eventId : ''), 'Reports']);
     echo '<style>' . dromic_css() . '</style>';
-    echo '<div class="page-head"><h1 class="page-title">' . ($mode === 'casualty' ? 'Casualty Report (DROMIC Form 3)' : ($sw ? 'Evacuation Report (DROMIC Form 4.2)' : 'Evacuation Report (DROMIC Forms 4.1 - 4.3)')) . '</h1></div>';
+    echo '<div class="page-head"><h1 class="page-title">' . ($mode === 'casualty' ? 'Casualty Report (DROMIC Form 3)' : 'Evacuation Report (DROMIC Form 4.2)') . ($selectable ? ' - Barangay Review' : '') . '</h1></div>';
 
-    echo '<div class="dromic-toolbar"><a class="btn btn-light" href="reports.php">&larr; Back to Reports</a>'
-       . '<form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-       . ($sw ? '' : ($mode === 'evac' ? '<input type="hidden" name="form" value="' . md_h($form) . '">' : '<input type="hidden" name="type" value="' . md_h($type) . '">'))
-       . '<select name="event_id" aria-label="Disaster event" onchange="this.form.submit()">';
-    foreach ($events as $e) echo '<option value="' . (int) $e['event_id'] . '"' . ((int) $e['event_id'] === $eventId ? ' selected' : '') . '>' . md_h($e['event_name']) . ' (' . md_h(md_date($e['date'])) . ')</option>';
-    echo '</select>';
-    if ($selectable) {
-        echo '<select name="barangay_id" aria-label="Barangay" onchange="this.form.submit()"><option value="0">All barangays</option>';
-        foreach (brgy_all() as $b) echo '<option value="' . (int) $b['barangay_id'] . '"' . ((int) $b['barangay_id'] === $brgyId ? ' selected' : '') . '>' . md_h($b['name']) . '</option>';
-        echo '</select>';
+    echo '<div class="dromic-toolbar">';
+    // MDRRMO Officer: the disaster event and barangay come from Reports > Barangay Reports, so no pickers here.
+    // Social Worker: keeps the disaster event picker (barangay is locked to their own).
+    if (!$selectable) {
+        echo '<form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+           . '<select class="dash-select" name="event_id" aria-label="Disaster event" onchange="this.form.submit()">';
+        foreach ($events as $e) echo '<option value="' . (int) $e['event_id'] . '"' . ((int) $e['event_id'] === $eventId ? ' selected' : '') . '>' . md_h($e['event_name']) . ' (' . md_h(md_date($e['date'])) . ')</option>';
+        echo '</select></form>';
     }
-    echo '</form>';
     if ($sheet !== '') echo '<button class="btn btn-primary" onclick="window.print()">Print / Save as PDF</button><a class="btn btn-success" href="' . md_h($url(['export' => 'xls'])) . '">Export Excel</a>';
     echo '</div>';
 
@@ -320,6 +360,7 @@ function dromic_report_page(string $mode, ?int $fixedBarangayId = null): void
     if (!$sw) echo '</div>';
 
     if (!$event)       echo '<div class="card empty">No disaster event found. These reports are generated per disaster event.</div>';
+    elseif ($noBrgy && $selectable) echo '<div class="card empty">Open a barangay from Reports &gt; Barangay Reports to review its ' . ($mode === 'casualty' ? 'Masterlist of Casualties (Form 3)' : 'Profile of Evacuees Inside Evacuation Center (Form 4.2)') . '.</div>';
     elseif ($noBrgy)   echo '<div class="card empty">Your account has no barangay assigned. Please contact an MDRRMO Officer.</div>';
     else               echo '<div class="dromic-scroll"><div class="dromic-area">' . $sheet . '</div></div>';
 

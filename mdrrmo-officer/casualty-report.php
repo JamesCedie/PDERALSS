@@ -4,4 +4,5 @@ require_once '../includes/db.php';
 require_once '../includes/dromic.php';
 require '../includes/layout.php';
 
+// MDRRMO Officer: reviews / prints ONE barangay's form (opened from Reports > Barangay Reports). The Social Worker prepares it.
 dromic_report_page('casualty', null);
