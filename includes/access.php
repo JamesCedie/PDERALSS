@@ -16,6 +16,7 @@ const ROLE_ACCESS = [
         'casualties.php',
         'evacuation-centers.php',
         'vehicle-requests.php',
+        'relief-goods.php',
         'reports.php',
         'evacuation-report.php',
         'casualty-report.php',

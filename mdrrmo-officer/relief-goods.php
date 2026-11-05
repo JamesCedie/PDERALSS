@@ -3,16 +3,28 @@ require_once '../includes/access.php'; require_page_access(); require '../includ
 require_once '../includes/relief.php';
 rg_ensure_tables();
 
-// ── Record a distribution (POST → redirect → GET) ──────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'distribute') {
+// ── POST actions (POST → redirect → GET) ───────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action  = (string) ($_POST['action'] ?? '');
+    $backTo  = rg_url(max(1, (int) ($_POST['page'] ?? 1)));
+
     if (!md_csrf_valid()) {
         $_SESSION['flash_error'] = 'Your session expired. Please try again.';
-    } else {
+    } elseif ($action === 'distribute') {
         [$ok, $msg] = rg_record_distribution($_POST, (string) ($_SESSION['user']['id'] ?? ''));
         $_SESSION[$ok ? 'flash_success' : 'flash_error'] = $msg;
-        if (!$ok) $_SESSION['rg_old'] = array_intersect_key($_POST, array_flip(['barangay', 'item', 'quantity', 'date_released', 'received_by']));
+        if (!$ok) $_SESSION['rg_old'] = array_intersect_key($_POST, array_flip(['barangay', 'item', 'recipients', 'quantity', 'amount', 'material_name', 'date_released', 'distribution_time', 'description', 'received_by']));
+        $backTo = 'relief-goods.php';
+    } elseif ($action === 'update') {
+        $editId = (int) ($_POST['distribution_id'] ?? 0);
+        [$ok, $msg] = rg_update_distribution($editId, $_POST);
+        $_SESSION[$ok ? 'flash_success' : 'flash_error'] = $msg;
+        if (!$ok) $_SESSION['rg_old'] = array_intersect_key($_POST, array_flip(['distribution_id', 'barangay', 'item', 'recipients', 'quantity', 'amount', 'material_name', 'date_released', 'distribution_time', 'description', 'received_by']));
+    } elseif ($action === 'set_status') {
+        [$ok, $msg] = rg_set_status((int) ($_POST['distribution_id'] ?? 0), (string) ($_POST['status'] ?? ''));
+        $_SESSION[$ok ? 'flash_success' : 'flash_error'] = $msg;
     }
-    header('Location: relief-goods.php');
+    header('Location: ' . $backTo);
     exit;
 }
 
@@ -24,12 +36,9 @@ $errorMsg   = $_SESSION['flash_error'] ?? null;
 $old        = $_SESSION['rg_old'] ?? [];
 unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['rg_old']);
 
-$stock   = rg_totals();
-$f = rg_filters($_GET);
-[$rows, $total, $page, $totalPages] = rg_search($f);
-$totalAll  = (int) db_query('SELECT COUNT(*) FROM relief_distributions WHERE item = ?', [array_key_first(RG_ITEMS)])->fetchColumn();
-$filtering = $f['q'] !== '' || $f['status'] !== '' || $f['date'] !== '';
-$today   = (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))->format('Y-m-d');
+$totals = rg_totals();
+[$rows, $total, $page, $totalPages] = rg_list(max(1, (int) ($_GET['page'] ?? 1)));
+$today   = today_ph();
 $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup with what was typed
 ?>
 
@@ -40,118 +49,211 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
 
     <div class="page-head rg-head">
         <h2 class="rg-title">Relief Goods &amp; Resource Allocation</h2>
-        <button type="button" class="btn btn-primary rg-add" onclick="openModal('reliefModal')">
+        <button type="button" class="btn btn-primary rg-add" onclick="rgNew()">
+            <svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
             Distribute Goods
         </button>
     </div>
 
-    <div class="grid g4 md-stats">
-        <?php foreach ($stock as $item => $st): ?>
-            <div class="card sw-summary-card">
-                <div class="stat-label"><?= md_h($item) ?> &middot; <?= md_h($st['unit']) ?></div>
-                <div class="stat-value"><?= number_format($st['quantity']) ?></div>
+    <div class="rg-sums">
+        <?php foreach ($totals as $item => $t): ?>
+            <div class="rg-sum">
+                <div class="rg-sum-value"><?= md_h(rg_total_label($item, $t['value'])) ?></div>
+                <div class="rg-sum-label"><?= md_h($item) ?></div>
+                <div class="rg-sum-unit"><?= $item === 'Cash Assistance' ? number_format($t['recipients']) . ' ' : '' ?><?= md_h($t['unit']) ?></div>
             </div>
         <?php endforeach; ?>
     </div>
 
-    <div class="vr-table-head">
-        <div class="vr-section-title" style="margin-bottom:0">Distribution Tracking</div>
-        <div class="mini">Showing <?= count($rows) ?> of <?= $total ?><?= $filtering ? ' matching' : '' ?> distributions</div>
-    </div>
-
-    <form method="get" class="vr-filters" id="rgFilters">
-        <label class="sw-search vr-search">
-            <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
-            <input type="search" name="q" value="<?= md_h($f['q']) ?>" placeholder="Search barangay or recipient" maxlength="100">
-            <input type="search" name="q" value="<?= md_h($f['q']) ?>" placeholder="Search barangay, or item" maxlength="100">
-        </label>
-        <select name="status" onchange="this.form.submit()" aria-label="Filter by status">
-            <option value="">All statuses</option>
-            <?php foreach (RG_STATUSES as $s): ?><option <?= $f['status'] === $s ? 'selected' : '' ?>><?= md_h($s) ?></option><?php endforeach; ?>
-        </select>
-        <input type="date" name="date" max="<?= $today ?>" value="<?= md_h($f['date']) ?>" onchange="this.form.submit()" aria-label="Filter by date released">
-        <?php if ($filtering): ?><a class="vr-link" href="relief-goods.php">Clear</a><?php endif; ?>
-    </form>
-
-    <div class="sw-data-table">
-        <div class="table-wrap">
-            <table class="table">
+    <div class="rg-panel">
+        <h3 class="rg-panel-title">Distribution Tracking</h3>
+        <div class="rg-table-wrap">
+            <table class="rg-table">
                 <thead>
                     <tr>
-                        <th>Barangay</th>
+                        <th>Brgy</th>
                         <th>Item</th>
-                        <th>Quantity</th>
-                        <th>Date Released</th>
-                        <th>Status</th>
+                        <th>No. of Recipients</th>
+                        <th>Date</th>
+                        <th>Time of Day</th>
                         <th>Received By</th>
+                        <th>Status</th>
+                        <th class="rg-act-col">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (!$rows): ?>
-                        <tr><td colspan="7" class="empty"><?= $totalAll === 0 ? 'No distributions recorded yet. Click “Distribute Goods” to add the first one.' : 'No distributions match your filters.' ?></td></tr>
+                        <tr><td colspan="8" class="rg-empty">No distributions recorded yet. Click “Distribute Goods” to add the first one.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($rows as $r): ?>
                         <tr>
-                            <td><strong><?= md_h($r['distribution_code'] ?: 'RD-' . str_pad((string) $r['distribution_id'], 3, '0', STR_PAD_LEFT)) ?></strong></td>
-                            <td><?= md_h($r['barangay']) ?></td>
-                            <td><?= md_h($r['item']) ?></td>
-                            <td><?= number_format((int) $r['quantity']) ?></td>
-                            <td><?= md_h(date('j M Y', strtotime(substr((string) $r['date_released'], 0, 10)))) ?></td>
-                            <td><?= status_badge($r['status']) ?></td>
-                            <td><?= $r['received_by'] ? md_h($r['received_by']) : '<span class="vr-muted">—</span>' ?></td>
+                            <td><?= md_h(rg_brgy_label($r['barangay'])) ?></td>
+                            <td><?= md_h($r['item']) ?><div class="rg-by-role"><?= md_h(rg_detail($r)) ?></div></td>
+                            <td><?= number_format((int) $r['recipients']) ?></td>
+                            <td><?= md_h(rg_date_label($r['date_released'])) ?></td>
+                            <td><?= md_h(rg_time_label($r['distribution_time'] ?? '')) ?></td>
+                            <td><?= $r['received_by'] ? md_h($r['received_by']) : '<span class="vr-muted">-</span>' ?></td>
+                            <td>
+                                <form method="post" action="relief-goods.php" class="rg-status-form">
+                                    <?= md_csrf_field() ?>
+                                    <input type="hidden" name="action" value="set_status">
+                                    <input type="hidden" name="distribution_id" value="<?= (int) $r['distribution_id'] ?>">
+                                    <input type="hidden" name="page" value="<?= $page ?>">
+                                    <select name="status" class="rg-status" onchange="this.form.submit()" aria-label="Status for <?= md_h(rg_brgy_label($r['barangay'])) ?>, <?= md_h($r['item']) ?>">
+                                        <?php foreach (RG_STATUSES as $s): ?>
+                                            <option value="<?= md_h($s) ?>" <?= $r['status'] === $s ? 'selected' : '' ?>><?= md_h($s) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <noscript><button class="btn btn-light">Save</button></noscript>
+                                </form>
+                            </td>
+                            <td class="rg-act-col">
+                                <button type="button" class="btn btn-light rg-edit" onclick="rgEdit(this)" data-row="<?= md_h(json_encode([
+                                    'distribution_id'   => (int) $r['distribution_id'],
+                                    'barangay'          => $r['barangay'],
+                                    'item'              => $r['item'],
+                                    'recipients'        => (int) $r['recipients'],
+                                    'quantity'          => $r['quantity'],
+                                    'amount'            => $r['amount'] !== null ? rtrim(rtrim((string) $r['amount'], '0'), '.') : '',
+                                    'material_name'     => $r['material_name'],
+                                    'date_released'     => substr((string) $r['date_released'], 0, 10),
+                                    'distribution_time' => $r['distribution_time'] ? substr((string) $r['distribution_time'], 0, 5) : '',
+                                    'description'       => $r['description'],
+                                    'received_by'       => $r['received_by'],
+                                ], JSON_UNESCAPED_UNICODE)) ?>" aria-label="Edit distribution for <?= md_h(rg_brgy_label($r['barangay'])) ?>, <?= md_h($r['item']) ?>">Edit</button>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
+        <?php if ($total > 0): ?>
+            <div class="rg-foot">Showing <?= count($rows) ?> of <?= $total ?> distribution<?= $total === 1 ? '' : 's' ?></div>
+        <?php endif; ?>
     </div>
 
     <?php if ($totalPages > 1): ?>
         <div class="vr-pager">
-            <?php if ($page > 1): ?><a class="btn btn-light" href="<?= md_h(rg_url($f, ['page' => $page - 1])) ?>">Previous</a><?php endif; ?>
+            <?php if ($page > 1): ?><a class="btn btn-light" href="<?= md_h(rg_url($page - 1)) ?>">Previous</a><?php endif; ?>
             <span class="mini">Page <?= $page ?> of <?= $totalPages ?></span>
-            <?php if ($page < $totalPages): ?><a class="btn btn-light" href="<?= md_h(rg_url($f, ['page' => $page + 1])) ?>">Next</a><?php endif; ?>
+            <?php if ($page < $totalPages): ?><a class="btn btn-light" href="<?= md_h(rg_url($page + 1)) ?>">Next</a><?php endif; ?>
         </div>
     <?php endif; ?>
 
-        <div id="reliefModal" class="modal rg-modal-overlay<?= $oldDist ? ' show' : '' ?>" onclick="if(event.target===this)closeModal('reliefModal')">
-        <div class="modal-box rg-modal" role="dialog" aria-modal="true" aria-labelledby="reliefModalTitle">
+    <div id="reliefModal" class="modal rg-modal-overlay<?= $oldDist ? ' show' : '' ?>" onclick="if(event.target===this)closeModal('reliefModal')">
+        <div class="modal-box rg-modal rg-modal-wide" role="dialog" aria-modal="true" aria-labelledby="reliefModalTitle">
             <div class="rg-modal-head">
-                <h3 id="reliefModalTitle">Distribute Relief Goods</h3>
-                <button type="button" class="rg-close" onclick="closeModal('reliefModal')" aria-label="Close">Close</button>
+                <h3 id="reliefModalTitle" data-new="Distribute Relief Goods" data-edit="Edit Distribution">Distribute Relief Goods</h3>
+                <button type="button" class="rg-close" onclick="closeModal('reliefModal')" aria-label="Close">
+                    <svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
             </div>
             <form method="post" action="relief-goods.php">
                 <?= md_csrf_field() ?>
-                <input type="hidden" name="action" value="distribute">
+                <input type="hidden" name="action" id="rgAction" value="distribute">
+                <input type="hidden" name="distribution_id" id="rgId" value="<?= md_h($oldDist['distribution_id'] ?? '') ?>">
+                <input type="hidden" name="page" value="<?= $page ?>">
                 <div class="rg-form">
                     <div class="rg-field">
-                        <label for="rgBrgy">Barangay</label>
+                        <label for="rgBrgy">Brgy</label>
                         <input id="rgBrgy" name="barangay" list="rgBrgyList" maxlength="100" required autocomplete="off" value="<?= md_h($oldDist['barangay'] ?? '') ?>">
                         <datalist id="rgBrgyList"><?php foreach (brgy_names() as $b): ?><option value="<?= md_h($b) ?>"><?php endforeach; ?></datalist>
                     </div>
                     <div class="rg-field">
                         <label for="rgItem">Item</label>
-                        <input type="hidden" name="item" value="Food Packs">
-                        <input id="rgItem" type="text" value="Food Packs" readonly aria-readonly="true">
+                        <select id="rgItem" name="item" required>
+                            <?php foreach (array_keys(RG_ITEMS) as $it): ?>
+                                <option value="<?= md_h($it) ?>" <?= ($oldDist['item'] ?? 'Food Packs') === $it ? 'selected' : '' ?>><?= md_h($it) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="rg-field">
-                        <label for="rgQty">Quantity</label>
-                        <input id="rgQty" name="quantity" type="number" min="1" max="<?= RG_MAX_QTY ?>" step="1" required value="<?= md_h($oldDist['quantity'] ?? '') ?>">
+                        <label for="rgQty">No. of Recipients</label>
+                        <input id="rgQty" name="recipients" type="number" inputmode="numeric" min="1" max="<?= RG_MAX_QTY ?>" step="1" required value="<?= md_h($oldDist['recipients'] ?? '') ?>">
                     </div>
                     <div class="rg-field">
-                        <label for="rgDate">Date Released</label>
+                        <label for="rgDate">Distribution Date</label>
                         <input id="rgDate" name="date_released" type="date" required max="<?= $today ?>" value="<?= md_h($oldDist['date_released'] ?? '') ?>">
                     </div>
-                    <div class="rg-field">
+                    <div class="rg-field rg-full">
+                        <label for="rgTime">Distribution Time</label>
+                        <input id="rgTime" name="distribution_time" type="time" required value="<?= md_h($oldDist['distribution_time'] ?? '') ?>">
+                    </div>
+                    <div class="rg-field rg-full rg-item-fields" data-for="Food Packs">
+                        <label for="rgPacks">Quantity <span class="rg-unit">(food packs)</span></label>
+                        <input id="rgPacks" name="quantity" type="number" inputmode="numeric" min="1" max="<?= RG_MAX_QTY ?>" step="1" value="<?= md_h(($oldDist['item'] ?? 'Food Packs') === 'Food Packs' ? ($oldDist['quantity'] ?? '') : '') ?>">
+                    </div>
+                    <div class="rg-field rg-full rg-item-fields" data-for="Materials" hidden>
+                        <label for="rgMaterial">Material</label>
+                        <input id="rgMaterial" name="material_name" maxlength="100" placeholder="e.g. Tarpaulin, blankets, hygiene kits" autocomplete="off" value="<?= md_h($oldDist['material_name'] ?? '') ?>">
+                    </div>
+                    <div class="rg-field rg-full rg-item-fields" data-for="Materials" hidden>
+                        <label for="rgUnits">Quantity <span class="rg-unit">(units)</span></label>
+                        <input id="rgUnits" name="quantity" type="number" inputmode="numeric" min="1" max="<?= RG_MAX_QTY ?>" step="1" value="<?= md_h(($oldDist['item'] ?? '') === 'Materials' ? ($oldDist['quantity'] ?? '') : '') ?>">
+                    </div>
+                    <div class="rg-field rg-full rg-item-fields" data-for="Cash Assistance" hidden>
+                        <label for="rgAmount">Amount <span class="rg-unit">(₱ pesos)</span></label>
+                        <input id="rgAmount" name="amount" type="text" inputmode="decimal" pattern="\d{1,9}(\.\d{1,2})?" placeholder="0.00" value="<?= md_h($oldDist['amount'] ?? '') ?>">
+                    </div>
+                    <div class="rg-field rg-full">
+                        <label for="rgDesc">Description</label>
+                        <input id="rgDesc" name="description" maxlength="255" value="<?= md_h($oldDist['description'] ?? '') ?>">
+                    </div>
+                    <div class="rg-field rg-full">
                         <label for="rgBy">Received By</label>
                         <input id="rgBy" name="received_by" maxlength="150" value="<?= md_h($oldDist['received_by'] ?? '') ?>">
                     </div>
                 </div>
-                <button class="btn btn-primary rg-submit">Record Distribution</button>
+                <button class="btn btn-primary rg-submit" id="rgSubmit" data-new="Record Distribution" data-edit="Save Changes">Record Distribution</button>
             </form>
         </div>
     </div>
 
 </div>
+
+<script>
+// The fields under "Item" change with the chosen item (hidden ones are disabled so they are not submitted).
+(function () {
+    var sel = document.getElementById('rgItem');
+    if (!sel) return;
+    var groups = document.querySelectorAll('.rg-item-fields');
+    function sync() {
+        groups.forEach(function (g) {
+            var on = g.getAttribute('data-for') === sel.value;
+            g.hidden = !on;
+            g.querySelectorAll('input').forEach(function (i) { i.disabled = !on; i.required = on; });
+        });
+    }
+    sel.addEventListener('change', sync);
+    sync();
+
+    var form = document.querySelector('#reliefModal form');
+    var title = document.getElementById('reliefModalTitle');
+    var submit = document.getElementById('rgSubmit');
+    function mode(edit) {
+        document.getElementById('rgAction').value = edit ? 'update' : 'distribute';
+        title.textContent = title.getAttribute(edit ? 'data-edit' : 'data-new');
+        submit.textContent = submit.getAttribute(edit ? 'data-edit' : 'data-new');
+    }
+    function fill(d) {
+        document.getElementById('rgId').value = d.distribution_id || '';
+        document.getElementById('rgBrgy').value = d.barangay || '';
+        sel.value = d.item || 'Food Packs';
+        document.getElementById('rgQty').value = d.recipients || '';
+        document.getElementById('rgDate').value = d.date_released || '';
+        document.getElementById('rgTime').value = d.distribution_time || '';
+        document.getElementById('rgPacks').value = d.item === 'Food Packs' ? (d.quantity || '') : '';
+        document.getElementById('rgMaterial').value = d.material_name || '';
+        document.getElementById('rgUnits').value = d.item === 'Materials' ? (d.quantity || '') : '';
+        document.getElementById('rgAmount').value = d.amount || '';
+        document.getElementById('rgDesc').value = d.description || '';
+        document.getElementById('rgBy').value = d.received_by || '';
+        sync();
+    }
+    window.rgNew = function () { form.reset(); fill({}); mode(false); openModal('reliefModal'); };
+    window.rgEdit = function (btn) { fill(JSON.parse(btn.getAttribute('data-row'))); mode(true); openModal('reliefModal'); };
+    <?php if ($oldDist && !empty($oldDist['distribution_id'])): ?>mode(true);<?php endif; ?>
+})();
+</script>
 
 <?php page_end(); ?>

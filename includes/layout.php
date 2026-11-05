@@ -29,6 +29,7 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
         ['households.php', 'Household'],
         ['disasters.php', 'Disaster Events'],
         ['vehicle-requests.php', 'Vehicle Requests'],
+        ['relief-goods.php', 'Relief Goods'],
         ['reports.php', 'Reports'],
     ];
     $activeNav = $isSocialWorker ? $swNav : $nav;
@@ -165,6 +166,8 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
                             <span class="live-status-line"><i class="live-dot" aria-hidden="true"></i>Municipality monitoring active</span>
                             <small>Updated <?= date('d M Y · h:i A') ?></small>
                         </div>
+                    <?php elseif (!empty($GLOBALS['page_updated_only'])): ?>
+                        <div class="live-status"><small>Updated <?= date('d M Y · h:i A') ?></small></div>
                     <?php endif; ?>
                     <?php if ($back): ?>
                         <a class="sw-top-back" href="<?= htmlspecialchars($back[0]) ?>"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg><span>Back to <?= htmlspecialchars($back[1]) ?></span></a>

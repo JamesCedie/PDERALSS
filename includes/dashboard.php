@@ -20,6 +20,7 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/md.php';
 require_once __DIR__ . '/vehicle.php';
+require_once __DIR__ . '/relief.php';
 
 // ── Small helpers ───────────────────────────────────────────────────────────
 function dash_rows(string $sql, array $params = []): array
@@ -851,6 +852,109 @@ function dash_render(array $ctx, bool $isMd): void
 {
     echo '<div class="dash">';
     if ($isMd) dash_render_md($ctx); else dash_render_sw($ctx);
+    if ($isMd) dash_render_resources(null);   // MD: bottom of the dashboard (SW shows it beside Vulnerable Sectors)
+    echo '</div>';
+}
+
+/** Items shown in the Resource Allocation charts: item => colour tone. */
+const DASH_RELIEF_ITEMS = ['Food Packs' => 'blue', 'Materials' => 'amber', 'Cash Assistance' => 'green'];
+
+/**
+ * Live relief figures for the dashboard charts. $barangay = null -> every barangay (MD).
+ * Returns [barangayId|null, recipients by item, barangay => item => recipients, status => count].
+ * Every item is counted in recipients so the three items can share one axis.
+ */
+function dash_resource_data(?string $barangay): array
+{
+    $bid   = $barangay !== null ? brgy_id($barangay) : null;
+    $where = $bid !== null ? ' WHERE d.barangay_id = ' . (int) $bid : '';   // an unknown barangay name matches nothing (id 0)
+
+    $perBrgy = dash_rows('SELECT b.name AS barangay, d.item, SUM(d.recipients)::bigint AS n
+                          FROM relief_distributions d JOIN barangays b ON b.barangay_id = d.barangay_id' . $where . '
+                          GROUP BY b.name, d.item ORDER BY b.name');
+    $status  = dash_rows('SELECT d.status, COUNT(*)::bigint AS n FROM relief_distributions d' . $where . ' GROUP BY d.status');
+
+    $byItem = array_fill_keys(array_keys(DASH_RELIEF_ITEMS), 0);
+    $grid   = [];
+    foreach ($perBrgy as $r) {
+        if (!isset($byItem[$r['item']])) continue;
+        $byItem[$r['item']] += (int) $r['n'];
+        $grid[$r['barangay']][$r['item']] = (int) $r['n'];
+    }
+    $st = ['Pending' => 0, 'In Transit' => 0, 'Completed' => 0];
+    foreach ($status as $r) if (isset($st[$r['status']])) $st[$r['status']] = (int) $r['n'];
+    return [$bid, $byItem, $grid, $st];
+}
+
+/**
+ * Social Worker: ONE card placed beside Vulnerable Sectors - recipients per item for the
+ * assigned barangay, with the live totals and the status counts under the chart.
+ */
+function dash_resource_card_sw(string $barangay): void
+{
+    [$bid, $byItem, , $st] = dash_resource_data($barangay);
+    echo '<div class="card dash-card"><h2>Resource Allocation</h2>';
+    $legend = [];
+    foreach (DASH_RELIEF_ITEMS as $name => $tone) $legend[] = [$name, $tone];
+    dash_chart_legend($legend);
+    $bars = [];
+    foreach (DASH_RELIEF_ITEMS as $it => $tone) $bars[] = ['label' => $it, 'segs' => [[$byItem[$it], $tone, $it]]];
+    dash_bar_chart($bars, 'No relief goods received yet.');
+    echo '<div class="dash-tiles dash-tiles-3">';
+    foreach (rg_totals($bid) as $item => $x) {
+        echo '<div class="dash-tile"><small>' . md_h($item) . '</small><strong>' . md_h(rg_total_label($item, $x['value'])) . '</strong></div>';
+    }
+    echo '</div>';
+    echo '<div class="dash-note">' . dash_n($st['Pending']) . ' pending &middot; ' . dash_n($st['In Transit']) . ' in transit &middot; '
+       . dash_n($st['Completed']) . ' completed &middot; <a href="relief-goods.php">View relief goods &rarr;</a></div>';
+    echo '</div>';
+}
+
+/**
+ * MD: Resource Allocation at the bottom of the dashboard - recipients per barangay, stacked by item,
+ * plus distributions by status.
+ */
+function dash_render_resources(?string $barangay): void
+{
+    $items = DASH_RELIEF_ITEMS;
+    [$bid, $byItem, $grid, $st] = dash_resource_data($barangay);
+
+    $link = 'relief-goods.php';
+    echo '<div class="dash-table-head"><h2 class="dash-section">Resource Allocation</h2><a href="' . $link . '">View relief goods &rarr;</a></div>';
+    echo '<div class="dash-row r-2">';
+
+    // Card 1 - bar chart
+    echo '<div class="card dash-card"><h2>' . ($barangay === null ? 'Recipients per Barangay' : 'Recipients per Item') . '</h2>';
+    $legend = [];
+    foreach ($items as $name => $tone) $legend[] = [$name, $tone];
+    dash_chart_legend($legend);
+    $bars = [];
+    if ($barangay === null) {
+        foreach ($grid as $name => $per) {
+            $segs = [];
+            foreach ($items as $it => $tone) $segs[] = [$per[$it] ?? 0, $tone, $it];
+            $bars[] = ['label' => md_short_barangay($name), 'segs' => $segs];
+        }
+    } else {
+        foreach ($items as $it => $tone) $bars[] = ['label' => $it, 'segs' => [[$byItem[$it], $tone, $it]]];
+    }
+    dash_bar_chart($bars, 'No relief goods distributed yet.');
+    echo '</div>';
+
+    // Card 2 - status donut + totals by item
+    echo '<div class="card dash-card"><h2>Distribution Status</h2>';
+    dash_donut([
+        ['Pending',    $st['Pending'],    'amber'],
+        ['In transit', $st['In Transit'], 'blue'],
+        ['Completed',  $st['Completed'],  'purple'],
+    ], 'distributions', 'No relief goods distributed yet.');
+    $t = rg_totals($bid);
+    echo '<div class="dash-tiles dash-tiles-3">';
+    foreach ($t as $item => $x) {
+        echo '<div class="dash-tile"><small>' . md_h($item) . '</small><strong>' . md_h(rg_total_label($item, $x['value'])) . '</strong></div>';
+    }
+    echo '</div></div>';
+
     echo '</div>';
 }
 
@@ -1089,7 +1193,9 @@ function dash_render_sw(array $ctx): void
     ];
     echo '<div class="dash-row r-2"><div class="card dash-card"><h2>Vulnerable Sectors</h2>';
     dash_donut($sectors, 'memberships', 'No registered households yet.');
-    echo '<div class="dash-note">A household member may belong to more than one sector.</div></div></div>';
+    echo '<div class="dash-note">A household member may belong to more than one sector.</div></div>';
+    dash_resource_card_sw($b);   // Resource Allocation beside Vulnerable Sectors
+    echo '</div>';
 
     // Recent records
     $nowLabel = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('j M Y');

@@ -2815,3 +2815,69 @@ a.dash-attn-item:hover { background:var(--hover-row); }
 
 /* Dashboard event state: shared status badge + label (replaces the old .dash-pill). */
 .dash-event-state { display:inline-flex; align-items:center; gap:8px; font-size:12px; color:var(--sw-muted); }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Relief Goods redesign (MD + Social Worker): 3 summary tiles, tracking table,
+   inline status dropdown, wide Distribute modal, read-only SW view.
+   ─────────────────────────────────────────────────────────────────────────── */
+.rg-sums { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-bottom:20px; }
+.rg-sum {
+    padding:18px 20px; background:var(--surface-raised);
+    border:1px solid var(--border-soft); border-radius:10px;
+}
+.rg-sum-value { font-size:26px; font-weight:700; line-height:1.1; color:var(--text); }
+.rg-sum-label { margin-top:6px; font-size:12px; color:var(--text-body); }
+.rg-sum-unit  { margin-top:2px; font-size:10px; color:var(--sw-soft); }
+
+.rg-section-title { margin:0 0 12px; font-size:15px; font-weight:700; color:var(--sw-text); }
+.rg-panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.rg-panel-head .rg-panel-title { margin:0 0 4px; }
+.rg-panel-sub { margin:0; font-size:11px; color:var(--sw-soft); }
+.rg-foot { margin-top:12px; font-size:10px; color:var(--sw-soft); }
+.rg-readonly {
+    flex:none; padding:4px 10px; font-size:10px; font-weight:600; border-radius:5px;
+    background:var(--icon-tile); color:var(--si-blue-fg);
+}
+.rg-by-name { color:var(--text); }
+.rg-by-role { font-size:10px; color:var(--sw-soft); margin-top:1px; }
+
+.rg-sw-meta { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:0 0 18px; font-size:13px; color:var(--text-body); }
+.rg-sw-meta strong { color:var(--text); }
+.rg-sw-source { font-size:11px; color:var(--sw-soft); }
+
+/* Status dropdown inside the MD table */
+.rg-status-form { margin:0; }
+.rg-status {
+    min-width:128px; height:32px; padding:0 30px 0 10px; font-size:11px; font-family:inherit;
+    color:var(--text); background-color:var(--input-bg); border:1px solid var(--border-soft); border-radius:5px;
+    appearance:none; -webkit-appearance:none; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 9px center;
+}
+.rg-status:focus { outline:0; border-color:var(--focus); box-shadow:0 0 0 2px var(--focus-ring); }
+
+/* Wide Distribute modal */
+.sw-ui .modal-box.rg-modal.rg-modal-wide { width:min(640px, calc(100vw - 32px)); padding:22px 24px 24px; }
+.rg-modal-wide .rg-modal-head h3 { font-size:17px; }
+.rg-modal-wide .rg-form { gap:16px 18px; }
+.rg-modal-wide .rg-field label { font-size:11px; }
+.rg-modal-wide .rg-field input, .rg-modal-wide .rg-field select { height:40px; font-size:12px; }
+.rg-modal-wide .rg-full { grid-column:1 / -1; }
+.rg-modal-wide .rg-submit { margin-top:22px; padding:10px 16px !important; font-size:12px !important; }
+html[data-theme="dark"] .rg-field input[type="date"], html[data-theme="dark"] .rg-field input[type="time"] { color-scheme:dark; }
+.rg-close { display:grid; place-items:center; }
+
+@media (max-width:760px) { .rg-sums { grid-template-columns:1fr; } }
+@media (max-width:520px) { .rg-modal-wide .rg-full { grid-column:auto; } }
+
+.rg-item-fields[hidden] { display:none; }
+
+.rg-act-col { width:1%; white-space:nowrap; }
+.rg-edit { padding:6px 14px !important; font-size:11px !important; min-width:0 !important; }
+
+/* Dashboard: Resource Allocation */
+.dash-tiles-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dash-tiles-3 .dash-tile strong { font-size: 20px; }
+.dash-table-head a { font-size: 12px; color: var(--sw-muted); text-decoration: none; }
+.dash-table-head a:hover { color: var(--sw-text); text-decoration: underline; }
+@media (max-width: 520px) { .dash-tiles-3 { grid-template-columns: 1fr; } }
