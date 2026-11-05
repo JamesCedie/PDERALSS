@@ -32,12 +32,11 @@ if ($barangayId > 0) {
     <?php else: ?>
 
         <h2 class="rg-section-title">Received Goods Summary</h2>
-        <div class="rg-sums">
+        <div class="grid g3 mb">
             <?php foreach ($totals as $item => $t): ?>
-                <div class="rg-sum">
-                    <div class="rg-sum-value"><?= md_h(rg_total_label($item, $t['value'])) ?></div>
-                    <div class="rg-sum-label"><?= md_h($item) ?></div>
-                    <div class="rg-sum-unit"><?= number_format($t['recipients']) ?> recipients</div>
+                <div class="card sw-summary-card">
+                    <div class="stat-label"><?= md_h($item) ?></div>
+                    <div class="stat-value"><?= md_h(rg_total_label($item, $t['value'])) ?></div>
                 </div>
             <?php endforeach; ?>
         </div>

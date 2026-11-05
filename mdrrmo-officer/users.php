@@ -239,8 +239,8 @@ foreach ($users as $u) {
                             <?php if ($protected): ?>
                                 <span class="badge b-gray">Protected</span>
                             <?php else: ?>
-                                <button class="btn btn-light" onclick="openModal('editModal-<?= $u['user_id'] ?>')">Edit</button>
-                                <button class="btn btn-danger"
+                                <button class="btn btn-dark-sm" onclick="openModal('editModal-<?= $u['user_id'] ?>')">Edit</button>
+                                <button class="btn btn-dark-sm btn-reject"
                                         onclick="if(confirmAction('Delete this user?')) window.location='users.php?delete=<?= urlencode($u['user_id']) ?>'">
                                     Delete
                                 </button>
@@ -277,10 +277,10 @@ foreach ($users as $u) {
                 <div class="field">
                     <label>Email</label>
                     <input type="email" name="email" id="addEmail" required>
-                    <button type="button" class="btn btn-light" id="sendEmailOtpBtn" onclick="sendEmailOtp()" style="margin-top:6px">Send OTP</button>
+                    <button type="button" class="btn btn-dark-sm" id="sendEmailOtpBtn" onclick="sendEmailOtp()" style="margin-top:6px">Send OTP</button>
                     <div id="emailOtpBox" style="display:none;margin-top:6px">
                         <input type="text" id="addEmailOtp" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="6-digit code">
-                        <button type="button" class="btn btn-light" onclick="verifyEmailOtp()" style="margin-top:6px">Verify</button>
+                        <button type="button" class="btn btn-dark-sm" onclick="verifyEmailOtp()" style="margin-top:6px">Verify</button>
                     </div>
                     <span class="mini" id="emailOtpStatus"></span>
                 </div>

@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-$GLOBALS['page_live_status'] = true;
+$GLOBALS['page_updated_only'] = true;
 page_start('Relief Goods & Resource Allocation');
 
 $successMsg = $_SESSION['flash_success'] ?? null;
@@ -53,17 +53,15 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
     <div class="page-head rg-head">
         <h2 class="rg-title">Relief Goods &amp; Resource Allocation</h2>
         <button type="button" class="btn btn-primary rg-add" onclick="rgNew()">
-            <svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
             Distribute Goods
         </button>
     </div>
 
-    <div class="rg-sums">
+    <div class="grid g3 mb">
         <?php foreach ($totals as $item => $t): ?>
-            <div class="rg-sum">
-                <div class="rg-sum-value"><?= md_h(rg_total_label($item, $t['value'])) ?></div>
-                <div class="rg-sum-label"><?= md_h($item) ?></div>
-                <div class="rg-sum-unit"><?= $item === 'Cash Assistance' ? number_format($t['recipients']) . ' ' : '' ?><?= md_h($t['unit']) ?></div>
+            <div class="card sw-summary-card">
+                <div class="stat-label"><?= md_h($item) ?></div>
+                <div class="stat-value"><?= md_h(rg_total_label($item, $t['value'])) ?></div>
             </div>
         <?php endforeach; ?>
     </div>

@@ -21,57 +21,57 @@ function dromic_css(): string
 .dromic-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
 .dromic-toolbar select{min-width:240px}
 .dromic-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
-.dromic-tabs a{padding:6px 14px;border:1px solid #888;border-radius:6px;text-decoration:none;color:inherit;font-size:13px}
+.dromic-tabs a{padding:6px 14px;border:1px solid #888;border-radius:6px;text-decoration:none;color:inherit;font-size:var(--fs-sm)}
 .dromic-tabs a.on{background:#2563eb;color:#fff;border-color:#2563eb}
 .dromic-scroll{overflow-x:auto}
 /* ---- paper form ---- */
-.dromic-sheet{background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:11px;padding:18px 22px 26px;min-width:1040px;margin-bottom:18px}
-.dromic-sheet .formno{font-size:11px;line-height:1.5}
+.dromic-sheet{background:#fff;color:#000;font-family:var(--font-sans);font-size:var(--fs-2xs);padding:18px 22px 26px;min-width:1040px;margin-bottom:18px}
+.dromic-sheet .formno{font-size:var(--fs-2xs);line-height:1.5}
 .dromic-sheet .center{text-align:center;line-height:1.55;margin-top:2px}
-.dromic-sheet .title{background:#ff0;font-weight:bold;font-size:14px;text-align:center;padding:2px 0;margin:14px 0 3px}
-.dromic-sheet .title.plain{background:none;font-size:14px;letter-spacing:1.4px;padding:0;margin:26px 0 22px}
+.dromic-sheet .title{background:#ff0;font-weight:700;font-size:var(--fs-base);text-align:center;padding:2px 0;margin:14px 0 3px}
+.dromic-sheet .title.plain{background:none;font-size:var(--fs-base);letter-spacing:1.4px;padding:0;margin:26px 0 22px}
 .dromic-sheet .asof{text-align:center;line-height:1.6;margin-bottom:2px}
 .dromic-sheet .asof u{display:inline-block;text-align:center;text-decoration:none;border-bottom:1px solid #000;min-width:120px;margin:0 3px}
 .dromic-sheet .asof u.l{min-width:270px}
 .dromic-meta{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin:16px 0 4px}
 .dromic-meta dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 6px;align-items:end}
 .dromic-meta dt{margin:0}
-.dromic-meta dd{margin:0;border-bottom:1px solid #000;min-width:185px;font-weight:bold;padding-left:4px;min-height:14px;line-height:1.35}
+.dromic-meta dd{margin:0;border-bottom:1px solid #000;min-width:185px;font-weight:700;padding-left:4px;min-height:14px;line-height:1.35}
 .dromic-meta .l{flex:0 0 38%}
 .dromic-meta .l dd{min-width:200px}
 .dromic-meta .r{flex:0 0 42%}
 .dromic-meta .r dl.rp dd{min-width:150px;max-width:150px}
 .dromic-meta .r dl.tot{margin-top:8px}
-.dromic-meta .r dl.tot dd{min-width:120px;font-weight:normal;border-bottom:1px dotted #000}
+.dromic-meta .r dl.tot dd{min-width:120px;font-weight:400;border-bottom:1px dotted #000}
 .dromic-meta dl.rt dt{text-align:right}
 .dromic-meta.m3 .r{flex:0 0 auto;margin-right:11%}
 .dromic-meta.m3 .l{flex:0 0 auto}
 .dromic-table{width:100%;border-collapse:collapse;border:2px solid #000;table-layout:fixed}
-.dromic-table th,.dromic-table td{border:1px solid #000;padding:2px 3px;text-align:center;font-size:10px;color:#000;background:#fff;word-wrap:break-word}
-.dromic-table th{font-weight:bold;font-size:10.5px}
+.dromic-table th,.dromic-table td{border:1px solid #000;padding:2px 3px;text-align:center;font-size:var(--fs-2xs);color:#000;background:#fff;word-wrap:break-word}
+.dromic-table th{font-weight:700;font-size:var(--fs-2xs)}
 .dromic-table td.area,.dromic-table td.nm,.dromic-table th.nm{text-align:left;padding-left:5px}
 .dromic-table th.nm{text-align:center}
-.dromic-table td.area{font-weight:bold;width:11%}
+.dromic-table td.area{font-weight:700;width:11%}
 .dromic-table td.nm{width:19%}
 .dromic-table td.l{text-align:left;padding-left:5px}
 .dromic-table td.dep{padding-left:14px}
 .dromic-table td.n{font-variant-numeric:tabular-nums}
 .dromic-table tr{height:19px}
 .dromic-table tr.fh td{border-top:2px solid #000}
-.dromic-table tr.total td,.dromic-table tr.sub td{font-weight:bold}
+.dromic-table tr.total td,.dromic-table tr.sub td{font-weight:700}
 .dromic-table tr.sub td{border-top:2px solid #000}
 .dromic-table tr.sub td.nm{text-align:center}
-.dromic-table th.gt{text-align:left;font-weight:normal;vertical-align:middle;padding-left:5px}
+.dromic-table th.gt{text-align:left;font-weight:400;vertical-align:middle;padding-left:5px}
 .dromic-table.f3 th{height:20px;vertical-align:middle}
 .dromic-table.f3 thead tr.h2 th{text-decoration:underline}
 .dromic-table.f3 tbody tr{height:19px}
 .dromic-table.f3 td{border-left:1px solid #000}
-.dromic-sign{display:flex;justify-content:space-between;margin-top:26px;font-size:11px}
+.dromic-sign{display:flex;justify-content:space-between;margin-top:26px;font-size:var(--fs-2xs)}
 .dromic-sign .s1{width:52%}
 .dromic-sign .s2{width:36%}
 .dromic-sign .line{border-top:1px solid #000;text-align:center;padding-top:3px;margin-top:38px;width:280px;margin-left:180px}
 .dromic-sign .s2 .line{width:230px;margin-left:58px}
-.dromic-note{font-size:10px;margin-top:8px}
+.dromic-note{font-size:var(--fs-2xs);margin-top:8px}
 @page{size:landscape;margin:8mm}
 @media print{
   body *{visibility:hidden}
@@ -86,7 +86,7 @@ CSS;
 
 function dromic_css_excel(): string
 {
-    return 'table{border-collapse:collapse}td,th{border:1px solid #000;padding:3px;text-align:center}td.area,td.nm,td.l{text-align:left}.title{background:#ff0;font-weight:bold}.title.plain{background:none}';
+    return 'table{border-collapse:collapse}td,th{border:1px solid #000;padding:3px;text-align:center}td.area,td.nm,td.l{text-align:left}.title{background:#ff0;font-weight:700}.title.plain{background:none}';
 }
 
 /** <dl> of label/value pairs; an empty value leaves a blank underline (the colon always prints, like the paper form). */

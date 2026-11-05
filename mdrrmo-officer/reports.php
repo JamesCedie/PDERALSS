@@ -38,9 +38,8 @@ $q = static fn(int $b): string => '?event_id=' . $eventId . '&barangay_id=' . $b
         <div class="empty">No disaster event found. These reports are generated per disaster event.</div>
     <?php else: ?>
         <div class="dash-top-main" style="margin:14px 0">
-            <label class="dash-label" for="reportEvent">Reports for:</label>
             <form method="get" class="dash-event-form">
-                <select id="reportEvent" name="event_id" class="dash-select" onchange="this.form.submit()">
+                <select id="reportEvent" name="event_id" class="dash-select" aria-label="Disaster event" onchange="this.form.submit()">
                     <?php foreach ($events as $e): ?>
                         <option value="<?= (int) $e['event_id'] ?>" <?= (int) $e['event_id'] === $eventId ? 'selected' : '' ?>><?= md_h($e['event_name']) ?> (<?= md_h(md_date($e['date'])) ?>)</option>
                     <?php endforeach; ?>

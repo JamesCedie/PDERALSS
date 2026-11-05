@@ -59,21 +59,6 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
     // Optional back button for the top bar: [href, label]. Pages can pass their own.
     if (!$back && $backPage) $back = [$backPage, 'Disaster Events'];
 
-    // Breadcrumb trail (both portals): Dashboard / [Disaster Events /] Current page
-    $crumbs = [];
-    $navLabels = [];
-    foreach ($activeNav as $n) $navLabels[$n[0]] = $n[1];
-    if ($current === 'dashboard.php') {
-        $crumbs = [[null, 'Dashboard']];
-    } else {
-        $crumbs[] = ['dashboard.php', 'Dashboard'];
-        if ($inEventTree) {
-            $crumbs[] = ['disasters.php' . $treeQuery, 'Disaster Events'];
-            $crumbs[] = [null, $eventSubPages[$current]];
-        } else {
-            $crumbs[] = [null, $navLabels[$current] ?? $title];
-        }
-    }
 ?>
 <!doctype html>
 <html lang="en">
@@ -90,6 +75,10 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
             document.documentElement.setAttribute('data-theme', t);
         })();
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
     <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body class="sw-ui <?= $isMd ? 'md-ui' : '' ?>">
@@ -98,10 +87,9 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
         <aside id="sidebar" class="sidebar">
             <?php if ($modern): ?>
                 <div class="brand sw-brand">
-                    <span class="brand-shield" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 3l7 3v5c0 4.7-3 8.1-7 10-4-1.9-7-5.3-7-10V6l7-3z"/>
-                        </svg>
+                    <span class="brand-logo" aria-hidden="true">
+                        <img class="logo-light" src="../assets/logo.svg" alt="" width="36" height="41">
+                        <img class="logo-dark" src="../assets/logo-white.svg" alt="" width="36" height="41">
                     </span>
                     <span><strong>PDERALSS</strong><small><?= $isMd ? 'MUNICIPAL PORTAL' : 'PORTAL' ?></small></span>
                 </div>
@@ -183,19 +171,6 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
 
             <main class="content">
                 <?php if ($modern): ?><div id="swToastContainer" class="sw-toast-container" aria-live="polite" aria-atomic="true"></div><?php endif; ?>
-                <?php if ($crumbs): ?>
-                    <nav class="md-breadcrumb" aria-label="Breadcrumb">
-                        <ol>
-                            <?php foreach ($crumbs as $c): ?>
-                                <?php if ($c[0] !== null): ?>
-                                    <li><a href="<?= htmlspecialchars($c[0]) ?>"><?= htmlspecialchars($c[1]) ?></a></li>
-                                <?php else: ?>
-                                    <li><span aria-current="page"><?= htmlspecialchars($c[1]) ?></span></li>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </ol>
-                    </nav>
-                <?php endif; ?>
 <?php
 }
 

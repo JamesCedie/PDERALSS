@@ -625,7 +625,7 @@ function dash_bar_chart(array $items, string $empty = 'No records yet.'): void
         $t = 0; foreach ($it['segs'] as $sg) $t += max(0, (int) $sg[0]);
         $desc[] = $it['label'] . ' ' . $t;
     }
-    if ($scroll) echo '<div class="dash-scroll-hint" style="margin:0 0 4px;font-size:11px;color:#8a94a6;text-align:right">Showing ' . $visible . ' of ' . $n . ' barangays &middot; scroll sideways for more &rarr;</div>'
+    if ($scroll) echo '<div class="dash-scroll-hint" style="margin:0 0 4px;font-size:var(--fs-2xs);color:#8a94a6;text-align:right">Showing ' . $visible . ' of ' . $n . ' barangays &middot; scroll sideways for more &rarr;</div>'
                     . '<div class="dash-scroll" style="overflow-x:auto;overflow-y:hidden;padding-bottom:6px">';
     echo '<svg class="dash-svg' . ($scroll ? ' is-wide' : '') . '" viewBox="0 0 ' . $W . ' ' . $H . '"'
        . ($scroll ? ' style="width:' . $wPct . '%;max-width:none;height:auto;display:block;overflow:visible"' : '')
@@ -746,9 +746,8 @@ function dash_event_bar(array $ctx, string $sideHtml = ''): void
     <div class="dash-top">
         <div class="dash-top-main">
             <?php if ($events): ?>
-                <label class="dash-label" for="dashEvent">Dashboard data for:</label>
                 <form method="get" class="dash-event-form">
-                    <select id="dashEvent" name="event_id" class="dash-select" onchange="this.form.submit()">
+                    <select id="dashEvent" name="event_id" class="dash-select" aria-label="Disaster event" onchange="this.form.submit()">
                         <?php foreach ($events as $e): ?>
                             <option value="<?= (int) $e['event_id'] ?>" <?= (int) $e['event_id'] === $eid ? 'selected' : '' ?>><?= md_h($e['event_name']) ?></option>
                         <?php endforeach; ?>
@@ -757,7 +756,7 @@ function dash_event_bar(array $ctx, string $sideHtml = ''): void
                 </form>
                 <?php if ($event): ?>
                     <?php $active = ($event['status'] ?? 'Active') === 'Active'; ?>
-                    <span class="dash-event-state"><?= status_badge($active ? 'Active' : 'Passed') ?><span>Disaster Event</span></span>
+                    <span class="dash-event-state"><?= status_badge($active ? 'Active' : 'Passed') ?></span>
                 <?php endif; ?>
             <?php else: ?>
                 <span class="dash-label">No disaster event has been logged yet.</span>
@@ -778,7 +777,7 @@ function dash_kpi_row(array $kpis): void
 }
 
 /** Live In/Out evacuee card. Refreshes itself every 10 s while the selected event is Active. */
-function dash_live_card(array $ctx, bool $isMd): void
+function dash_live_card(array $ctx, bool $isMd, string $reporting = ''): void
 {
     $event  = $ctx['event'];
     $live   = $ctx['live'];
@@ -786,11 +785,7 @@ function dash_live_card(array $ctx, bool $isMd): void
     $eid    = $event ? (int) $event['event_id'] : 0;
 
     echo '<div class="card dash-card dash-live" id="dashLive" data-event="' . $eid . '" data-active="' . ($active ? '1' : '0') . '" data-md="' . ($isMd ? '1' : '0') . '">';
-    echo '<div class="dash-live-head"><h2>Live Evacuee Count</h2>';
-    if ($event) {
-        echo '<span class="dash-live-status' . ($active ? ' is-live' : '') . '" id="dashLiveStatus"><i class="live-dot" aria-hidden="true"></i><span>'
-           . ($active ? 'Live · Updated ' . md_h($live['updated']) : 'Event passed · final count') . '</span></span>';
-    }
+    echo '<div class="dash-live-head"><h2>Evacuee Count</h2>';
     echo '</div>';
 
     if (!$event) {
@@ -803,6 +798,7 @@ function dash_live_card(array $ctx, bool $isMd): void
        . '<em><span data-live="in_hh">' . dash_n($live['in_hh']) . '</span> household' . ($live['in_hh'] === 1 ? '' : 's') . ' sheltered</em></div>'
        . '<div class="dash-live-tile is-out"><small>Checked Out</small><strong data-live="out">' . dash_n($live['out']) . '</strong><em>Left the center</em></div>'
        . '<div class="dash-live-tile"><small>Total Registered</small><strong data-live="total">' . dash_n($live['total']) . '</strong><em>In + Out</em></div>'
+       . ($reporting !== '' ? '<div class="dash-live-tile"><small>Barangays Reporting</small><strong>' . md_h($reporting) . '</strong><em>For this event</em></div>' : '')
        . '</div>';
 
     if ($isMd) {
@@ -819,8 +815,7 @@ function dash_live_card(array $ctx, bool $isMd): void
     (function () {
         var card = document.getElementById('dashLive');
         if (!card || card.dataset.active !== '1') return;
-        var status = document.querySelector('#dashLiveStatus span'), dot = document.getElementById('dashLiveStatus');
-        var body = document.getElementById('dashLiveBody'), md = card.dataset.md === '1', busy = false;
+                var body = document.getElementById('dashLiveBody'), md = card.dataset.md === '1', busy = false;
         function fmt(n) { return Number(n).toLocaleString('en-US'); }
         function set(k, v) { var e = card.querySelector('[data-live="' + k + '"]'); if (e) e.textContent = fmt(v); }
         function cell(tr, text, cls) { var td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); }
@@ -836,9 +831,8 @@ function dash_live_card(array $ctx, bool $isMd): void
                         if (!d.per.length) { var t = document.createElement('tr'), c = document.createElement('td'); c.colSpan = 3; c.className = 'empty'; c.textContent = 'No evacuees recorded for this event.'; t.appendChild(c); body.appendChild(t); }
                         d.per.forEach(function (r) { var tr = document.createElement('tr'); cell(tr, r.barangay); cell(tr, fmt(r.in), 'num'); cell(tr, fmt(r.out), 'num'); body.appendChild(tr); });
                     }
-                    status.textContent = 'Live · Updated ' + d.updated; dot.classList.add('is-live'); dot.classList.remove('is-stale');
                 })
-                .catch(function () { status.textContent = 'Reconnecting…'; dot.classList.add('is-stale'); })
+                .catch(function () {})
                 .then(function () { busy = false; });
         }
         setInterval(refresh, 10000);
@@ -989,14 +983,7 @@ function dash_render_md(array $ctx): void
     dash_attention_strip($ctx);
 
     echo '<h2 class="dash-section">Municipality Overview</h2>';
-    dash_kpi_row([
-        ['Total Evacuees',        dash_n($m['evac_people'])],
-        ['Evacuated Households',  dash_n($m['evac_hh'])],
-        ['Total Casualties',      dash_n($m['cas']['total'])],
-        ['Barangays Reporting',   dash_n(min($m['reporting'], count($names))) . ' / ' . dash_n(count($names))],
-    ]);
-
-    dash_live_card($ctx, true);
+    dash_live_card($ctx, true, dash_n(min($m['reporting'], count($names))) . ' / ' . dash_n(count($names)));
 
     // Cards are defined once, then laid out most-urgent first:
     //   life safety (casualties, centers) -> damage + vehicles -> schedule -> trends -> activity.

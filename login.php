@@ -161,15 +161,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
             document.documentElement.setAttribute('data-theme', t);
         })();
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 <div class="login-page">
     <div class="login-card">
-        <div class="shield" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 3l7 3v5c0 4.7-3 8.1-7 10-4-1.9-7-5.3-7-10V6l7-3z"/>
-            </svg>
+        <div class="login-logo">
+            <img class="logo-light" src="assets/logo.svg" alt="PDERALSS logo" width="113" height="128">
+            <img class="logo-dark" src="assets/logo-white.svg" alt="" width="113" height="128" aria-hidden="true">
         </div>
         <h1>Post-Disaster Evacuation<br>Resource Allocation and<br>Logistics Scheduling System</h1>
         <p>Secure access for emergency response teams, resource coordinators, and logistics operators.</p>
