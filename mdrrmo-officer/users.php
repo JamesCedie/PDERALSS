@@ -223,7 +223,7 @@ foreach ($users as $u) {
                     <th>Email</th>
                     <th>Role</th>
                     <th>Address</th>
-                    <th>Actions</th>
+                    <th class="row-actions">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -235,7 +235,7 @@ foreach ($users as $u) {
                         <td><?= htmlspecialchars($u['email']) ?></td>
                         <td><?= status_badge($u['role']) ?></td>
                         <td><?= htmlspecialchars($u['address'] ?? '—') ?></td>
-                        <td class="actions">
+                        <td class="row-actions">
                             <?php if ($protected): ?>
                                 <span class="badge b-gray">Protected</span>
                             <?php else: ?>
@@ -306,7 +306,8 @@ foreach ($users as $u) {
                     <span class="mini">8-16 characters, uppercase + lowercase, a number and a special character.</span>
                 </div>
             </div>
-            <div class="actions mt">
+            <div class="actions">
+                <button type="button" class="btn btn-light" onclick="closeModal('userModal')">Cancel</button>
                 <button class="btn btn-primary" id="createUserBtn" disabled>Create User</button>
             </div>
         </form>
@@ -362,7 +363,8 @@ foreach ($users as $u) {
                         <span class="mini">8-16 characters, uppercase + lowercase, a number and a special character.</span>
                     </div>
                 </div>
-                <div class="actions mt">
+                <div class="actions">
+                    <button type="button" class="btn btn-light" onclick="closeModal('editModal-<?= $u['user_id'] ?>')">Cancel</button>
                     <button class="btn btn-primary">Save Changes</button>
                 </div>
             </form>

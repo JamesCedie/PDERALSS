@@ -58,7 +58,9 @@ foreach ($ctx['alerts'] as $a) $notes[] = [$a[1], $a[2], 'Live', $tones[$a[0]] ?
                 <option>Disabled</option>
             </select>
         </div>
-        <button class="btn btn-primary mt" onclick="alert('Notification settings saved.')">Save Settings</button>
+        <div class="actions">
+            <button class="btn btn-primary" onclick="alert('Notification settings saved.')">Save Settings</button>
+        </div>
     </div>
 </div>
 

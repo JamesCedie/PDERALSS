@@ -6,7 +6,7 @@ rg_ensure_tables();
 // ── POST actions (POST → redirect → GET) ───────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action  = (string) ($_POST['action'] ?? '');
-    $backTo  = rg_url(max(1, (int) ($_POST['page'] ?? 1)));
+    $backTo  = rg_url(rg_filters(['q' => $_POST['q'] ?? '', 'date' => $_POST['date'] ?? '', 'status' => $_POST['f_status'] ?? '', 'page' => $_POST['page'] ?? 1]));
 
     if (!md_csrf_valid()) {
         $_SESSION['flash_error'] = 'Your session expired. Please try again.';
@@ -37,7 +37,10 @@ $old        = $_SESSION['rg_old'] ?? [];
 unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['rg_old']);
 
 $totals = rg_totals();
-[$rows, $total, $page, $totalPages] = rg_list(max(1, (int) ($_GET['page'] ?? 1)));
+$f = rg_filters($_GET);
+[$rows, $total, $page, $totalPages] = rg_list($f);
+$totalAll  = (int) db_query('SELECT COUNT(*) FROM relief_distributions')->fetchColumn();
+$filtering = $f['q'] !== '' || $f['status'] !== '' || $f['date'] !== '';
 $today   = today_ph();
 $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup with what was typed
 ?>
@@ -65,10 +68,30 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
         <?php endforeach; ?>
     </div>
 
-    <div class="rg-panel">
-        <h3 class="rg-panel-title">Distribution Tracking</h3>
-        <div class="rg-table-wrap">
-            <table class="rg-table">
+    <div class="vr-table-head">
+        <div>
+            <div class="vr-section-title" style="margin-bottom:0">Distribution Tracking</div>
+            <div class="mini">Record, update, and monitor relief goods released to barangays.</div>
+        </div>
+        <div class="mini">Showing <?= count($rows) ?> of <?= $total ?><?= $filtering ? ' matching' : '' ?> distributions</div>
+    </div>
+
+    <form method="get" class="vr-filters" id="rgFilters">
+        <label class="sw-search vr-search">
+            <span aria-hidden="true"><svg class="ui-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+            <input type="search" name="q" value="<?= md_h($f['q']) ?>" placeholder="Search distribution ID, barangay, item, or recipient" maxlength="100">
+        </label>
+        <select name="status" onchange="this.form.submit()" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <?php foreach (RG_STATUSES as $s): ?><option <?= $f['status'] === $s ? 'selected' : '' ?>><?= md_h($s) ?></option><?php endforeach; ?>
+        </select>
+        <input type="date" name="date" max="<?= $today ?>" value="<?= md_h($f['date']) ?>" onchange="this.form.submit()" aria-label="Filter by distribution date" title="Distribution date">
+        <?php if ($filtering): ?><a class="vr-link" href="relief-goods.php">Clear</a><?php endif; ?>
+    </form>
+
+    <div class="sw-data-table">
+        <div class="table-wrap">
+            <table class="table">
                 <thead>
                     <tr>
                         <th>Brgy</th>
@@ -78,27 +101,30 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
                         <th>Time of Day</th>
                         <th>Received By</th>
                         <th>Status</th>
-                        <th class="rg-act-col">Action</th>
+                        <th class="vr-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (!$rows): ?>
-                        <tr><td colspan="8" class="rg-empty">No distributions recorded yet. Click “Distribute Goods” to add the first one.</td></tr>
+                        <tr><td colspan="8" class="empty"><?= $totalAll === 0 ? 'No distributions recorded yet. Click “Distribute Goods” to add the first one.' : 'No distributions match your filters.' ?></td></tr>
                     <?php endif; ?>
                     <?php foreach ($rows as $r): ?>
                         <tr>
-                            <td><?= md_h(rg_brgy_label($r['barangay'])) ?></td>
-                            <td><?= md_h($r['item']) ?><div class="rg-by-role"><?= md_h(rg_detail($r)) ?></div></td>
+                            <td><strong><?= md_h(rg_brgy_label($r['barangay'])) ?></strong></td>
+                            <td><?= md_h($r['item']) ?><div class="mini"><?= md_h(rg_detail($r)) ?></div></td>
                             <td><?= number_format((int) $r['recipients']) ?></td>
                             <td><?= md_h(rg_date_label($r['date_released'])) ?></td>
                             <td><?= md_h(rg_time_label($r['distribution_time'] ?? '')) ?></td>
-                            <td><?= $r['received_by'] ? md_h($r['received_by']) : '<span class="vr-muted">-</span>' ?></td>
+                            <td><?= $r['received_by'] ? md_h($r['received_by']) : '<span class="vr-muted">—</span>' ?></td>
                             <td>
                                 <form method="post" action="relief-goods.php" class="rg-status-form">
                                     <?= md_csrf_field() ?>
                                     <input type="hidden" name="action" value="set_status">
                                     <input type="hidden" name="distribution_id" value="<?= (int) $r['distribution_id'] ?>">
                                     <input type="hidden" name="page" value="<?= $page ?>">
+                                    <input type="hidden" name="f_status" value="<?= md_h($f['status']) ?>">
+                                    <input type="hidden" name="q" value="<?= md_h($f['q']) ?>">
+                                    <input type="hidden" name="date" value="<?= md_h($f['date']) ?>">
                                     <select name="status" class="rg-status" onchange="this.form.submit()" aria-label="Status for <?= md_h(rg_brgy_label($r['barangay'])) ?>, <?= md_h($r['item']) ?>">
                                         <?php foreach (RG_STATUSES as $s): ?>
                                             <option value="<?= md_h($s) ?>" <?= $r['status'] === $s ? 'selected' : '' ?>><?= md_h($s) ?></option>
@@ -107,8 +133,8 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
                                     <noscript><button class="btn btn-light">Save</button></noscript>
                                 </form>
                             </td>
-                            <td class="rg-act-col">
-                                <button type="button" class="btn btn-light rg-edit" onclick="rgEdit(this)" data-row="<?= md_h(json_encode([
+                            <td class="vr-right">
+                                <button type="button" class="btn btn-dark-sm" onclick="rgEdit(this)" data-row="<?= md_h(json_encode([
                                     'distribution_id'   => (int) $r['distribution_id'],
                                     'barangay'          => $r['barangay'],
                                     'item'              => $r['item'],
@@ -127,16 +153,13 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
                 </tbody>
             </table>
         </div>
-        <?php if ($total > 0): ?>
-            <div class="rg-foot">Showing <?= count($rows) ?> of <?= $total ?> distribution<?= $total === 1 ? '' : 's' ?></div>
-        <?php endif; ?>
     </div>
 
     <?php if ($totalPages > 1): ?>
         <div class="vr-pager">
-            <?php if ($page > 1): ?><a class="btn btn-light" href="<?= md_h(rg_url($page - 1)) ?>">Previous</a><?php endif; ?>
+            <?php if ($page > 1): ?><a class="btn btn-light" href="<?= md_h(rg_url($f, ['page' => $page - 1])) ?>">Previous</a><?php endif; ?>
             <span class="mini">Page <?= $page ?> of <?= $totalPages ?></span>
-            <?php if ($page < $totalPages): ?><a class="btn btn-light" href="<?= md_h(rg_url($page + 1)) ?>">Next</a><?php endif; ?>
+            <?php if ($page < $totalPages): ?><a class="btn btn-light" href="<?= md_h(rg_url($f, ['page' => $page + 1])) ?>">Next</a><?php endif; ?>
         </div>
     <?php endif; ?>
 
@@ -153,11 +176,18 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
                 <input type="hidden" name="action" id="rgAction" value="distribute">
                 <input type="hidden" name="distribution_id" id="rgId" value="<?= md_h($oldDist['distribution_id'] ?? '') ?>">
                 <input type="hidden" name="page" value="<?= $page ?>">
+                <input type="hidden" name="f_status" value="<?= md_h($f['status']) ?>">
+                <input type="hidden" name="q" value="<?= md_h($f['q']) ?>">
+                <input type="hidden" name="date" value="<?= md_h($f['date']) ?>">
                 <div class="rg-form">
                     <div class="rg-field">
                         <label for="rgBrgy">Brgy</label>
-                        <input id="rgBrgy" name="barangay" list="rgBrgyList" maxlength="100" required autocomplete="off" value="<?= md_h($oldDist['barangay'] ?? '') ?>">
-                        <datalist id="rgBrgyList"><?php foreach (brgy_names() as $b): ?><option value="<?= md_h($b) ?>"><?php endforeach; ?></datalist>
+                        <select id="rgBrgy" name="barangay" required>
+                            <option value="">Select barangay</option>
+                            <?php foreach (brgy_names() as $b): ?>
+                                <option value="<?= md_h($b) ?>" <?= strcasecmp((string) ($oldDist['barangay'] ?? ''), $b) === 0 ? 'selected' : '' ?>><?= md_h($b) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="rg-field">
                         <label for="rgItem">Item</label>
@@ -204,7 +234,10 @@ $oldDist = $errorMsg ? $old : [];   // after a failed save, reopen the popup wit
                         <input id="rgBy" name="received_by" maxlength="150" value="<?= md_h($oldDist['received_by'] ?? '') ?>">
                     </div>
                 </div>
-                <button class="btn btn-primary rg-submit" id="rgSubmit" data-new="Record Distribution" data-edit="Save Changes">Record Distribution</button>
+                <div class="actions">
+                    <button type="button" class="btn btn-light" onclick="closeModal('reliefModal')">Cancel</button>
+                    <button class="btn btn-primary rg-submit" id="rgSubmit" data-new="Record Distribution" data-edit="Save Changes">Record Distribution</button>
+                </div>
             </form>
         </div>
     </div>

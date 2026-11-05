@@ -278,7 +278,8 @@ $visible  = 5;
             </div>
 
             <div class="vr-form-error full" id="vrFormError" role="alert" hidden></div>
-            <div class="vr-actions">
+            <div class="actions">
+                <button type="button" class="btn btn-light" onclick="closeModal('createVehicleModal')">Cancel</button>
                 <button type="submit" class="btn btn-primary">Submit</button>
             </div>
         </form>
@@ -310,9 +311,6 @@ $visible  = 5;
                 <?php if ($r['status'] === 'Cancelled'): ?>
                     <div class="field full"><label>Cancellation reason</label><div class="vr-readonly vr-notes"><?= !empty($r['cancel_reason']) ? vr_h($r['cancel_reason']) : '<span class="vr-muted">No reason given</span>' ?></div></div>
                 <?php endif; ?>
-                <div class="vr-actions">
-                    <button type="button" class="btn btn-light" onclick="closeModal('viewVehicle-<?= (int) $r['request_id'] ?>')">Close</button>
-                </div>
             </div>
             <?php if (in_array($r['status'], VR_CANCELLABLE, true) && $r['requested_date'] >= vr_today()->format('Y-m-d')): ?>
                 <form method="post" class="vr-cancel-box" onsubmit="return confirm('Cancel <?= vr_h($r['request_code']) ?>? The time slot will be released.');">
@@ -331,6 +329,9 @@ $visible  = 5;
                     <button type="submit" class="btn btn-reject">Cancel booking</button>
                 </form>
             <?php endif; ?>
+            <div class="actions">
+                <button type="button" class="btn btn-light" onclick="closeModal('viewVehicle-<?= (int) $r['request_id'] ?>')">Close</button>
+            </div>
         </div>
     </div>
 <?php endforeach; ?>

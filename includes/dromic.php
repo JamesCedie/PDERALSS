@@ -344,7 +344,7 @@ function dromic_report_page(string $mode, ?int $fixedBarangayId = null): void
         foreach ($events as $e) echo '<option value="' . (int) $e['event_id'] . '"' . ((int) $e['event_id'] === $eventId ? ' selected' : '') . '>' . md_h($e['event_name']) . ' (' . md_h(md_date($e['date'])) . ')</option>';
         echo '</select></form>';
     }
-    if ($sheet !== '') echo '<button class="btn btn-primary" onclick="window.print()">Print / Save as PDF</button><a class="btn btn-success" href="' . md_h($url(['export' => 'xls'])) . '">Export Excel</a>';
+    if ($sheet !== '') echo '<div class="page-actions"><a class="btn btn-success" href="' . md_h($url(['export' => 'xls'])) . '">Export Excel</a><button class="btn btn-primary" onclick="window.print()">Print / Save as PDF</button></div>';
     echo '</div>';
 
     if (!$sw) echo '<div class="dromic-tabs">';

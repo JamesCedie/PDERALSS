@@ -257,7 +257,8 @@ $totalAssessments = count($records);
                 </div>
             </div>
 
-            <div class="actions mt">
+            <div class="actions">
+                <button type="button" class="btn btn-light" onclick="closeModal('damageModal')">Cancel</button>
                 <button class="btn btn-primary">Submit Assessment</button>
             </div>
         </form>

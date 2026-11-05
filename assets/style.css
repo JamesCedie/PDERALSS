@@ -607,8 +607,40 @@ textarea {
 
 .actions {
     display: flex;
-    gap: 7px;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
     flex-wrap: wrap;
+    margin-top: 20px;
+}
+.actions .btn { min-width: 90px; justify-content: center; }
+/* Destructive action: pinned to the far-left edge, away from the primary. */
+.actions .btn-reject,
+.actions .btn-danger { margin-right: auto; }
+.vr-form > .actions,
+.form-grid > .actions { grid-column: 1 / -1; }
+
+/* Page / card header actions: right edge, primary rightmost. */
+.page-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+/* Table row actions: right-aligned last column, order View > Edit > Delete. */
+.row-actions { text-align: right; white-space: nowrap; }
+.row-actions .btn { margin-left: 6px; }
+th.row-actions { text-align: right; }
+
+/* Phones: footer buttons stack full-width, primary on top. */
+@media (max-width: 520px) {
+    .actions { flex-direction: column-reverse; align-items: stretch; }
+    .actions .btn { width: 100%; }
+    .actions .btn-reject,
+    .actions .btn-danger { margin-right: 0; }
 }
 
 /*
@@ -1243,7 +1275,6 @@ textarea {
     border: 1px solid var(--btn-sec-bd);
 }
 .sw-ui .btn-light:hover { background: var(--btn-sec-hover); color: var(--btn-sec-hover-text); }
-.sw-ui .actions { gap: 8px; }
 
 .sw-ui .grid { gap: 16px; }
 .sw-ui .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -1338,9 +1369,6 @@ textarea {
 .sw-ui .modal-head .icon-btn:hover,
 .login-page .modal-head .icon-btn:hover { color: var(--text); background: var(--hover-nav); }
 .sw-ui .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px 16px; }
-.sw-ui .modal-box .actions { justify-content: flex-end; margin-top: 22px; }
-.sw-ui .modal-box .actions .btn { min-width: 90px; }
-.sw-ui .modal-box .actions .btn-primary { min-width: 200px; }
 
 .sw-household-list .page-head { align-items: center; }
 .sw-household-list .assigned-label { margin: 6px 0 26px; }
@@ -1376,7 +1404,6 @@ textarea {
 
 .household-modal { width: min(800px, calc(100vw - 40px)) !important; }
 .household-modal .form-grid { margin-top: 5px; }
-.household-modal .actions { margin-top: 24px; }
 .household-modal .btn-light { background: transparent; }
 
 .sw-view-grid {
@@ -1994,10 +2021,6 @@ textarea {
 .vr-assign {
     background:var(--surface); border:1px solid var(--border-soft); border-radius:8px; padding:12px;
 }
-.vr-actions { grid-column:1 / -1; display:flex; justify-content:flex-end; gap:10px; margin-top:6px; border-top:1px solid var(--border-soft); padding-top:16px; }
-.vr-actions .btn-primary { min-width:110px; }
-.vr-actions-split { justify-content:space-between; }
-.vr-actions-right { display:flex; gap:10px; }
 
 @media (max-width: 1100px) {
     .vr-cards { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -2116,7 +2139,6 @@ textarea {
 .md-event-modal { width:min(460px, calc(100vw - 40px)) !important; }
 .md-event-modal .form-grid { grid-template-columns:1fr; }
 .md-event-modal textarea { min-height:90px; resize:vertical; }
-.md-event-modal .actions .btn-primary { min-width:76px; }
 @media (max-width: 1100px) { .md-event-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width: 700px)  { .md-event-grid { grid-template-columns:1fr; } }
 
@@ -2312,7 +2334,6 @@ textarea {
     background:var(--surface-nested); color:var(--text-body); border:1px solid var(--border-soft); border-radius:5px;
 }
 .rg-field input:focus, .rg-field select:focus { outline:0; border-color:var(--focus); box-shadow:0 0 0 2px var(--focus-ring); }
-.rg-submit { margin-top:16px; padding:8px 14px !important; font-size:11px !important; min-width:0 !important; }
 
 @media (max-width:1100px) { .rg-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:760px)  { .rg-brgy-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
@@ -2418,7 +2439,6 @@ textarea {
 @media (max-width: 480px)  { .sw-ui .g5 { grid-template-columns: 1fr; } }
 /* Page headers and action rows wrap instead of overflowing on narrow screens. */
 .sw-ui .page-head { flex-wrap: wrap; gap: 10px; }
-.sw-ui .actions { flex-wrap: wrap; }
 .sw-ui .topbar .sw-top-title h1 { font-size: clamp(18px, 2.4vw, 25px); }
 @media (max-width: 560px) {
     .sw-ui .topbar { height: auto; min-height: 72px; padding-top: 10px; padding-bottom: 10px; }
@@ -2863,7 +2883,6 @@ a.dash-attn-item:hover { background:var(--hover-row); }
 .rg-modal-wide .rg-field label { font-size:11px; }
 .rg-modal-wide .rg-field input, .rg-modal-wide .rg-field select { height:40px; font-size:12px; }
 .rg-modal-wide .rg-full { grid-column:1 / -1; }
-.rg-modal-wide .rg-submit { margin-top:22px; padding:10px 16px !important; font-size:12px !important; }
 html[data-theme="dark"] .rg-field input[type="date"], html[data-theme="dark"] .rg-field input[type="time"] { color-scheme:dark; }
 .rg-close { display:grid; place-items:center; }
 

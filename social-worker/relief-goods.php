@@ -15,7 +15,8 @@ $totals = $rows = [];
 $total = 0; $page = 1; $totalPages = 1;
 if ($barangayId > 0) {
     $totals = rg_totals($barangayId, true);   // what the barangay has actually received (Completed)
-    [$rows, $total, $page, $totalPages] = rg_list(max(1, (int) ($_GET['page'] ?? 1)), $barangayId);
+    $f = rg_filters(['page' => $_GET['page'] ?? 1]);
+    [$rows, $total, $page, $totalPages] = rg_list($f, $barangayId);
 }
 ?>
 
@@ -41,16 +42,17 @@ if ($barangayId > 0) {
             <?php endforeach; ?>
         </div>
 
-        <div class="rg-panel">
-            <div class="rg-panel-head">
-                <div>
-                    <h3 class="rg-panel-title">Relief Goods Received from MD</h3>
-                    <p class="rg-panel-sub">Received distributions for <?= md_h(rg_brgy_label($barangay)) ?>. Records are maintained by the MD Office.</p>
-                </div>
-                <span class="rg-readonly">Read-only</span>
+        <div class="vr-table-head">
+            <div>
+                <div class="vr-section-title" style="margin-bottom:0">Relief Goods Received from MD</div>
+                <div class="mini">Received distributions for <?= md_h(rg_brgy_label($barangay)) ?>. Records are maintained by the MD Office.</div>
             </div>
-            <div class="rg-table-wrap">
-                <table class="rg-table">
+            <span class="rg-readonly">Read-only</span>
+        </div>
+
+        <div class="sw-data-table">
+            <div class="table-wrap">
+                <table class="table">
                     <thead>
                         <tr>
                             <th>Item</th>
@@ -63,18 +65,18 @@ if ($barangayId > 0) {
                     </thead>
                     <tbody>
                         <?php if (!$rows): ?>
-                            <tr><td colspan="6" class="rg-empty">No relief goods have been distributed to your barangay yet.</td></tr>
+                            <tr><td colspan="6" class="empty">No relief goods have been distributed to your barangay yet.</td></tr>
                         <?php endif; ?>
                         <?php foreach ($rows as $r): ?>
                             <tr>
-                                <td><?= md_h($r['item']) ?><div class="rg-by-role"><?= md_h(rg_detail($r)) ?></div></td>
+                                <td><?= md_h($r['item']) ?><div class="mini"><?= md_h(rg_detail($r)) ?></div></td>
                                 <td><?= number_format((int) $r['recipients']) ?></td>
                                 <td><?= md_h(rg_date_label($r['date_released'])) ?></td>
                                 <td><?= md_h(rg_time_label($r['distribution_time'] ?? '')) ?></td>
                                 <td>
                                     <?php if ($r['distributor'] !== null && $r['distributor'] !== ''): ?>
-                                        <div class="rg-by-name"><?= md_h($r['distributor']) ?></div>
-                                        <div class="rg-by-role">MD Officer</div>
+                                        <strong><?= md_h($r['distributor']) ?></strong>
+                                        <div class="mini">MD Officer</div>
                                     <?php else: ?>
                                         <span class="vr-muted">—</span>
                                     <?php endif; ?>
@@ -85,18 +87,16 @@ if ($barangayId > 0) {
                     </tbody>
                 </table>
             </div>
-            <?php if ($total > 0): ?>
-                <div class="rg-foot">
-                    Showing <?= $totalPages === 1 ? 'all ' . $total : count($rows) . ' of ' . $total ?> distribution<?= $total === 1 ? '' : 's' ?> · Status is updated by MD
-                </div>
-            <?php endif; ?>
         </div>
+        <?php if ($total > 0): ?>
+            <div class="mini" style="margin-top:10px">Showing <?= $totalPages === 1 ? 'all ' . $total : count($rows) . ' of ' . $total ?> distribution<?= $total === 1 ? '' : 's' ?> &middot; Status is updated by MD</div>
+        <?php endif; ?>
 
         <?php if ($totalPages > 1): ?>
             <div class="vr-pager">
-                <?php if ($page > 1): ?><a class="btn btn-light" href="<?= md_h(rg_url($page - 1)) ?>">Previous</a><?php endif; ?>
+                <?php if ($page > 1): ?><a class="btn btn-light" href="<?= md_h(rg_url($f, ['page' => $page - 1])) ?>">Previous</a><?php endif; ?>
                 <span class="mini">Page <?= $page ?> of <?= $totalPages ?></span>
-                <?php if ($page < $totalPages): ?><a class="btn btn-light" href="<?= md_h(rg_url($page + 1)) ?>">Next</a><?php endif; ?>
+                <?php if ($page < $totalPages): ?><a class="btn btn-light" href="<?= md_h(rg_url($f, ['page' => $page + 1])) ?>">Next</a><?php endif; ?>
             </div>
         <?php endif; ?>
 

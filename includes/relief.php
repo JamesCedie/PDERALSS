@@ -89,39 +89,58 @@ function rg_detail(array $r): string
     }
 }
 
+/** Reads + validates the list filters (search, status, date, page) from $_GET. */
+function rg_filters(array $src): array
+{
+    $status = (string) ($src['status'] ?? '');
+    return [
+        'q'      => mb_substr(trim((string) ($src['q'] ?? '')), 0, 100),
+        'status' => in_array($status, RG_STATUSES, true) ? $status : '',
+        'date'   => rg_parse_date((string) ($src['date'] ?? '')) ?? '',
+        'page'   => max(1, (int) ($src['page'] ?? 1)),
+    ];
+}
+
+function rg_url(array $f, array $override = []): string
+{
+    $f = array_filter(array_merge($f, $override), fn($v) => $v !== '' && $v !== null && $v !== 1);
+    return 'relief-goods.php' . ($f ? '?' . http_build_query($f) : '');
+}
+
 /**
- * Paged list, latest first. $barangayId = null lists every barangay (MD Officer).
+ * Filtered + paged list, latest first. $barangayId = null lists every barangay (MD Officer).
  * Returns [rows, total, page, totalPages]. Each row has `barangay` and `distributor`
  * (name of the user who recorded it, '' when unknown).
  */
-function rg_list(int $page, ?int $barangayId = null): array
+function rg_list(array $f, ?int $barangayId = null): array
 {
-    $where  = '1=1';
+    $where  = ['1=1'];
     $params = [];
-    if ($barangayId !== null) { $where = 'd.barangay_id = ?'; $params[] = $barangayId; }
+    if ($barangayId !== null) { $where[] = 'd.barangay_id = ?'; $params[] = $barangayId; }
+    if ($f['q'] !== '') {
+        $like = '%' . addcslashes($f['q'], '%_\\') . '%';
+        $where[] = "(COALESCE(d.distribution_code, '') ILIKE ? OR b.name ILIKE ? OR d.item ILIKE ? OR COALESCE(d.material_name, '') ILIKE ? OR COALESCE(d.received_by, '') ILIKE ?)";
+        array_push($params, $like, $like, $like, $like, $like);
+    }
+    if ($f['status'] !== '') { $where[] = 'd.status = ?';        $params[] = $f['status']; }
+    if ($f['date'] !== '')   { $where[] = 'd.date_released = ?'; $params[] = $f['date']; }
+    $w    = implode(' AND ', $where);
+    $from = 'FROM relief_distributions d JOIN barangays b ON b.barangay_id = d.barangay_id
+             LEFT JOIN users u ON u.user_id::text = d.recorded_by::text';
 
-    $total      = (int) db_query("SELECT COUNT(*) FROM relief_distributions d WHERE {$where}", $params)->fetchColumn();
+    $total      = (int) db_query("SELECT COUNT(*) {$from} WHERE {$w}", $params)->fetchColumn();
     $totalPages = max(1, (int) ceil($total / RG_PER_PAGE));
-    $page       = max(1, min($page, $totalPages));
+    $page       = max(1, min($f['page'], $totalPages));
 
     $rows = db_query(
-        "SELECT d.*, b.name AS barangay,
-                TRIM(CONCAT_WS(' ', u.first_name, u.last_name)) AS distributor
-         FROM relief_distributions d
-         JOIN barangays b ON b.barangay_id = d.barangay_id
-         LEFT JOIN users u ON u.user_id::text = d.recorded_by::text
-         WHERE {$where}
+        "SELECT d.*, b.name AS barangay, TRIM(CONCAT_WS(' ', u.first_name, u.last_name)) AS distributor
+         {$from} WHERE {$w}
          ORDER BY d.date_released DESC, d.distribution_time DESC NULLS LAST, d.distribution_id DESC
          LIMIT " . RG_PER_PAGE . ' OFFSET ' . (($page - 1) * RG_PER_PAGE),
         $params
     )->fetchAll();
 
     return [$rows, $total, $page, $totalPages];
-}
-
-function rg_url(int $page = 1): string
-{
-    return 'relief-goods.php' . ($page > 1 ? '?page=' . $page : '');
 }
 
 /** Strict Y-m-d parse; returns the date string or null. */

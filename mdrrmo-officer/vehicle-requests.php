@@ -293,16 +293,14 @@ $filtering = $f['q'] !== '' || $f['status'] !== '' || $f['purpose'] !== '' || $f
                     <div class="field full"><label>Cancelled by the Social Worker</label><div class="vr-readonly vr-notes"><?= !empty($r['cancel_reason']) ? vr_h($r['cancel_reason']) : '<span class="vr-muted">No reason given</span>' ?></div></div>
                 <?php endif; ?>
 
-                <div class="vr-actions vr-actions-split">
+                <div class="actions">
+                    <?php if ($editable): ?>
+                        <button type="submit" name="decision" value="reject" formnovalidate class="btn btn-reject" onclick="return confirm('Reject <?= vr_h($r['request_code']) ?>?')">Reject</button>
+                    <?php endif; ?>
                     <button type="button" class="btn btn-light" onclick="closeModal('<?= $mid ?>')"><?= $primary ? 'Cancel' : 'Close' ?></button>
-                    <div class="vr-actions-right">
-                        <?php if ($editable): ?>
-                            <button type="submit" name="decision" value="reject" formnovalidate class="btn btn-reject" onclick="return confirm('Reject <?= vr_h($r['request_code']) ?>?')">Reject</button>
-                        <?php endif; ?>
-                        <?php if ($primary): ?>
-                            <button type="submit" name="decision" value="<?= $primary[0] ?>" class="btn btn-primary"><?= $primary[1] ?></button>
-                        <?php endif; ?>
-                    </div>
+                    <?php if ($primary): ?>
+                        <button type="submit" name="decision" value="<?= $primary[0] ?>" class="btn btn-primary"><?= $primary[1] ?></button>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>

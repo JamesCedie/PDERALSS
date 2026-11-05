@@ -193,7 +193,8 @@ $events = db_query('SELECT * FROM disaster_events ORDER BY event_id DESC')->fetc
                     <textarea name="description" placeholder="Add notes or details"></textarea>
                 </div>
             </div>
-            <div class="actions mt">
+            <div class="actions">
+                <button type="button" class="btn btn-light" onclick="closeModal('eventModal')">Cancel</button>
                 <button class="btn btn-primary">Save</button>
             </div>
         </form>
