@@ -8,7 +8,7 @@
 
     var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     var SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    var CLS = { Pending: 'b-yellow', Approved: 'b-green', Scheduled: 'b-blue' };
+    var CLS = { Pending: 'b-yellow', Approved: 'b-purple', Scheduled: 'b-sky' };
 
     var title = document.getElementById('vaTitle');
     var prev = document.getElementById('vaPrev');

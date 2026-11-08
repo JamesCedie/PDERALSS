@@ -138,7 +138,7 @@ function mdBindSearch(inputId, tableId, noMatchId) {
 
 
 /**
- * Theme toggle (next to Logout). Light is the default; "dark" is stored only
+ * Theme toggle (next to Logout). Dark is the default; "light" is stored only
  * when the user picks it. The initial theme is applied by an inline script in
  * <head> before first paint, so this only wires the button and persistence.
  */
@@ -287,5 +287,73 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('form[data-hh-head]').forEach(function (f) { bindDob(f); bindHead(f); });
         document.querySelectorAll('form[data-hh-dob]').forEach(function (f) { bindDob(f); });
         document.querySelectorAll('form[data-hh-members]').forEach(bindMembers);
+    });
+})();
+
+/**
+ * Stat count-up.
+ * Whole-number stat values (e.g. "1,284" or "62%") count up from 0 the first
+ * time they scroll into view. Skipped when the user prefers reduced motion,
+ * and for the dashboard's live evacuee panel (.dash-live) which refreshes
+ * itself every few seconds and must never re-animate.
+ */
+(function () {
+    var SELECTOR = [
+        '.stat-value', '.vr-card-value', '.rg-stat-value', '.rg-brgy-value',
+        '.hh-folder-count strong', '.sw-breakdown-item strong', '.dash-tile strong'
+    ].join(',');
+    var NUMBER = /^(\d{1,3}(?:,\d{3})+|\d+)(%?)$/;
+    var DURATION = 900;
+
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+    function run(el) {
+        var text = el.textContent.trim();
+        var m = NUMBER.exec(text);
+        if (!m) return;
+        var target = parseInt(m[1].replace(/,/g, ''), 10);
+        if (!(target > 0)) return;
+
+        var withCommas = m[1].indexOf(',') !== -1;
+        var suffix = m[2];
+        var start = null;
+
+        el.style.fontVariantNumeric = 'tabular-nums';
+
+        function frame(ts) {
+            if (start === null) start = ts;
+            var p = Math.min((ts - start) / DURATION, 1);
+            var value = Math.round(target * easeOutCubic(p));
+            el.textContent = (withCommas ? value.toLocaleString('en-US') : String(value)) + suffix;
+            if (p < 1) {
+                requestAnimationFrame(frame);
+            } else {
+                el.textContent = text; // always finish on the exact server-rendered value
+            }
+        }
+        requestAnimationFrame(frame);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var els = Array.prototype.filter.call(document.querySelectorAll(SELECTOR), function (el) {
+            return !el.closest('.dash-live') && el.children.length === 0 && NUMBER.test(el.textContent.trim());
+        });
+        if (!els.length) return;
+
+        if (!('IntersectionObserver' in window)) {
+            els.forEach(run);
+            return;
+        }
+        var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    io.unobserve(entry.target);
+                    run(entry.target);
+                }
+            });
+        }, { threshold: 0.3 });
+        els.forEach(function (el) { io.observe(el); });
     });
 })();

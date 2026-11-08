@@ -625,7 +625,7 @@ function dash_bar_chart(array $items, string $empty = 'No records yet.'): void
         $t = 0; foreach ($it['segs'] as $sg) $t += max(0, (int) $sg[0]);
         $desc[] = $it['label'] . ' ' . $t;
     }
-    if ($scroll) echo '<div class="dash-scroll-hint" style="margin:0 0 4px;font-size:var(--fs-2xs);color:#8a94a6;text-align:right">Showing ' . $visible . ' of ' . $n . ' barangays &middot; scroll sideways for more &rarr;</div>'
+    if ($scroll) echo '<div class="dash-scroll-hint" style="margin:0 0 4px;font-size:var(--fs-2xs);color:var(--text-soft);text-align:right">Showing ' . $visible . ' of ' . $n . ' barangays &middot; scroll sideways for more &rarr;</div>'
                     . '<div class="dash-scroll" style="overflow-x:auto;overflow-y:hidden;padding-bottom:6px">';
     echo '<svg class="dash-svg' . ($scroll ? ' is-wide' : '') . '" viewBox="0 0 ' . $W . ' ' . $H . '"'
        . ($scroll ? ' style="width:' . $wPct . '%;max-width:none;height:auto;display:block;overflow:visible"' : '')
@@ -737,15 +737,25 @@ function dash_donut(array $segs, string $caption, string $empty = 'No records ye
 }
 
 // ── Page rendering ──────────────────────────────────────────────────────────
-function dash_event_bar(array $ctx, string $sideHtml = ''): void
+/**
+ * First section heading of the dashboard with the disaster-event dropdown (and its Active/Passed badge)
+ * on the far right, level with the title. $sideHtml (Social Worker: assigned barangay) sits above it.
+ */
+function dash_event_bar(array $ctx, string $title, string $sideHtml = ''): void
 {
     $event  = $ctx['event'];
     $events = $ctx['events'];
     $eid    = $event ? (int) $event['event_id'] : 0;
+    if ($sideHtml !== '') echo '<div class="dash-top"><div class="dash-top-side">' . $sideHtml . '</div></div>';
     ?>
-    <div class="dash-top">
-        <div class="dash-top-main">
+    <div class="dash-section-head">
+        <h2 class="dash-section"><?= md_h($title) ?></h2>
+        <div class="dash-event-pick">
             <?php if ($events): ?>
+                <?php if ($event): ?>
+                    <?php $active = ($event['status'] ?? 'Active') === 'Active'; ?>
+                    <span class="dash-event-state"><?= status_badge($active ? 'Active' : 'Passed') ?></span>
+                <?php endif; ?>
                 <form method="get" class="dash-event-form">
                     <select id="dashEvent" name="event_id" class="dash-select" aria-label="Disaster event" onchange="this.form.submit()">
                         <?php foreach ($events as $e): ?>
@@ -754,15 +764,10 @@ function dash_event_bar(array $ctx, string $sideHtml = ''): void
                     </select>
                     <noscript><button class="btn btn-light" type="submit">Apply</button></noscript>
                 </form>
-                <?php if ($event): ?>
-                    <?php $active = ($event['status'] ?? 'Active') === 'Active'; ?>
-                    <span class="dash-event-state"><?= status_badge($active ? 'Active' : 'Passed') ?></span>
-                <?php endif; ?>
             <?php else: ?>
                 <span class="dash-label">No disaster event has been logged yet.</span>
             <?php endif; ?>
         </div>
-        <?php if ($sideHtml !== ''): ?><div class="dash-top-side"><?= $sideHtml ?></div><?php endif; ?>
     </div>
     <?php
 }
@@ -846,12 +851,11 @@ function dash_render(array $ctx, bool $isMd): void
 {
     echo '<div class="dash">';
     if ($isMd) dash_render_md($ctx); else dash_render_sw($ctx);
-    if ($isMd) dash_render_resources(null);   // MD: bottom of the dashboard (SW shows it beside Vulnerable Sectors)
     echo '</div>';
 }
 
 /** Items shown in the Resource Allocation charts: item => colour tone. */
-const DASH_RELIEF_ITEMS = ['Food Packs' => 'blue', 'Materials' => 'amber', 'Cash Assistance' => 'green'];
+const DASH_RELIEF_ITEMS = ['Food Packs' => 'purple', 'Materials' => 'amber', 'Cash Assistance' => 'green'];
 
 /**
  * Live relief figures for the dashboard charts. $barangay = null -> every barangay (MD).
@@ -939,8 +943,8 @@ function dash_render_resources(?string $barangay): void
     echo '<div class="card dash-card"><h2>Distribution Status</h2>';
     dash_donut([
         ['Pending',    $st['Pending'],    'amber'],
-        ['In transit', $st['In Transit'], 'blue'],
-        ['Completed',  $st['Completed'],  'purple'],
+        ['In transit', $st['In Transit'], 'purple'],
+        ['Completed',  $st['Completed'],  'green'],
     ], 'distributions', 'No relief goods distributed yet.');
     $t = rg_totals($bid);
     echo '<div class="dash-tiles dash-tiles-3">';
@@ -979,10 +983,8 @@ function dash_render_md(array $ctx): void
     $eid   = $event ? (int) $event['event_id'] : 0;
     $noEv  = 'No disaster event selected.';
 
-    dash_event_bar($ctx);
     dash_attention_strip($ctx);
-
-    echo '<h2 class="dash-section">Municipality Overview</h2>';
+    dash_event_bar($ctx, 'Municipality Overview');
     dash_live_card($ctx, true, dash_n(min($m['reporting'], count($names))) . ' / ' . dash_n(count($names)));
 
     // Cards are defined once, then laid out most-urgent first:
@@ -993,8 +995,8 @@ function dash_render_md(array $ctx): void
         else {
             dash_donut([
                 ['Fatalities', $m['cas']['Fatality'], 'red'],
-                ['Missing',    $m['cas']['Missing'],  'amber'],
-                ['Injured',    $m['cas']['Injured'],  'blue'],
+                ['Missing',    $m['cas']['Missing'],  'purple'],
+                ['Injured',    $m['cas']['Injured'],  'amber'],
             ], 'casualties', 'No casualties recorded for this event.', true);
             if ($m['cas']['total'] > 0) {
                 echo '<div class="dash-note">Recorded reports · Updated ' . md_h(dash_time($m['cas_updated'])) . '</div>';
@@ -1037,8 +1039,8 @@ function dash_render_md(array $ctx): void
         echo '<div class="dash-note dash-note-inline">' . dash_n($v['pending']) . ' pending request' . ($v['pending'] === 1 ? '' : 's') . ' awaiting municipal dispatch</div>';
         dash_donut([
             ['Pending',    $v['pending'],   'amber'],    // needs action first
-            ['In transit', $v['transit'],   'blue'],
-            ['Completed',  $v['completed'], 'purple'],
+            ['In transit', $v['transit'],   'purple'],
+            ['Completed',  $v['completed'], 'green'],
         ], 'requests', 'No vehicle requests yet.');
         echo '</div>';
     };
@@ -1076,6 +1078,10 @@ function dash_render_md(array $ctx): void
     // Row 3: trends
     echo '<div class="dash-row r-2">'; $cardEvacPerBrgy(); $cardEvacTime(); echo '</div>';
 
+    // Resource allocation sits above Recent Activity so the activity table is always last
+    // (SW shows resources beside Vulnerable Sectors).
+    dash_render_resources(null);
+
     // Recent activity
     $nowLabel = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('j M Y');
     echo '<div class="dash-table-head"><h2 class="dash-section">Recent Activity</h2><span>' . md_h($nowLabel) . '</span></div>';
@@ -1108,9 +1114,7 @@ function dash_render_sw(array $ctx): void
     $hh     = (int) ($per[$b]['evac_hh'] ?? 0);
     $cap    = (int) $center[1];
 
-    dash_event_bar($ctx, 'Assigned Barangay: <strong>' . md_h($short) . '</strong>');
-
-    echo '<h2 class="dash-section">Household Summary</h2>';
+    dash_event_bar($ctx, 'Household Summary', 'Assigned Barangay: <strong>' . md_h($short) . '</strong>');
     dash_kpi_row([
         ['Total Households',     dash_n($m['households'])],
         ['4Ps Households',       dash_n($m['fourps'])],
@@ -1128,8 +1132,8 @@ function dash_render_sw(array $ctx): void
     else {
         dash_donut([
             ['Fatalities', $m['cas']['Fatality'], 'red'],
-            ['Missing',    $m['cas']['Missing'],  'amber'],
-            ['Injured',    $m['cas']['Injured'],  'blue'],
+            ['Missing',    $m['cas']['Missing'],  'purple'],
+            ['Injured',    $m['cas']['Injured'],  'amber'],
         ], 'casualties', 'No casualties recorded for this event.');
         if ($m['cas']['total'] > 0) {
             echo '<div class="dash-note">Included in the municipality’s ' . dash_n($m['cas_muni']) . ' reported casualties.</div>';

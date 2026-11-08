@@ -179,7 +179,7 @@ if ($selected !== null) {
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         var centers = <?= json_encode($centers, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;
-        var badgeClass = { Available: 'b-green', Occupied: 'b-yellow', 'Near Capacity': 'b-yellow', Full: 'b-red' };
+        var badgeClass = { Available: 'b-green', Occupied: 'b-purple', 'Near Capacity': 'b-yellow', Full: 'b-red' };
         var pinEls = {}, markers = {};
 
         // Live OpenStreetMap (Leaflet) centred on Oton
@@ -200,10 +200,10 @@ if ($selected !== null) {
             if (cityLayers) { cityLayers.remove(); }
             var world = [[-85, -180], [-85, 180], [85, 180], [85, -180]];
             var mask = L.polygon([world].concat(outerRings), {
-                stroke: false, fillColor: themeVar('--map-mask', '#F4F6FA'), fillOpacity: 0.62, interactive: false
+                stroke: false, fillColor: themeVar('--map-mask', '#E9F0ED'), fillOpacity: 0.62, interactive: false
             });
             var outline = L.polygon(outerRings, {
-                color: themeVar('--sig-blue', '#1D5FA8'), weight: 2, dashArray: '6 4', fill: false, interactive: false
+                color: themeVar('--sig-blue', '#6E7DAB'), weight: 2, dashArray: '6 4', fill: false, interactive: false
             });
             cityLayers = L.layerGroup([mask, outline]).addTo(map);
             map.setMaxBounds(outline.getBounds().pad(0.5));

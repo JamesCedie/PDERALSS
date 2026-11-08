@@ -398,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function () {
         map.invalidateSize();
         // Accuracy circle: a small circle = good fix, a big one = the pin is only approximate.
         if (circle) { circle.remove(); circle = null; }
-        if (acc != null) circle = L.circle([lat, lng], { radius: acc, weight: 1, color: '#5aa6f0', fillOpacity: 0.15 }).addTo(map);
+        if (acc != null) circle = L.circle([lat, lng], { radius: acc, weight: 1, color: '#A9B7DC', fillOpacity: 0.15 }).addTo(map);
         if (circle && acc > 30) map.fitBounds(circle.getBounds(), { maxZoom: 18 });
         else map.setView([lat, lng], 18);
         setTimeout(function () { map.invalidateSize(); }, 250);   // modal animation can leave Leaflet with the wrong size

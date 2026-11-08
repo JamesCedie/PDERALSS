@@ -153,11 +153,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Login - PDERALSS Portal</title>
     <script>
-        // Apply the saved theme before first paint (no flash). Light is the default;
+        // Apply the saved theme before first paint (no flash). Dark is the default;
         // the OS colour-scheme preference is intentionally ignored.
         (function () {
-            var t = 'light';
-            try { if (localStorage.getItem('theme') === 'dark') t = 'dark'; } catch (e) {}
+            var t = 'dark';
+            try { if (localStorage.getItem('theme') === 'light') t = 'light'; } catch (e) {}
             document.documentElement.setAttribute('data-theme', t);
         })();
     </script>
@@ -168,39 +168,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<div class="login-page">
-    <div class="login-card">
-        <div class="login-logo">
-            <img class="logo-light" src="assets/logo.svg" alt="PDERALSS logo" width="113" height="128">
-            <img class="logo-dark" src="assets/logo-white.svg" alt="" width="113" height="128" aria-hidden="true">
+<div class="login-page auth">
+    <!-- Brand side: logo, system title and tagline live apart from the form -->
+    <section class="auth-brand" aria-label="About PDERALSS">
+        <div class="auth-brand-inner">
+            <div class="auth-logo">
+                <span class="auth-logo-halo" aria-hidden="true"></span>
+                <img src="assets/logo-white.svg" alt="PDERALSS logo" width="113" height="128">
+            </div>
+            <h1 class="auth-title">Post-Disaster Evacuation Resource Allocation and Logistics Scheduling System</h1>
+            <p class="auth-tagline">Secure access for emergency response teams, resource coordinators, and logistics operators.</p>
         </div>
-        <h1>Post-Disaster Evacuation<br>Resource Allocation and<br>Logistics Scheduling System</h1>
-        <p>Secure access for emergency response teams, resource coordinators, and logistics operators.</p>
+    </section>
 
-        <?php if ($reason === 'session'): ?>
-            <div class="alert alert-warning mb">This account was logged in from another device. Please log in again.</div>
-        <?php endif; ?>
+    <!-- Form side -->
+    <main class="auth-panel">
+        <div class="login-card">
+            <h2 class="auth-form-title">Sign in</h2>
+            <p class="auth-form-sub">Enter your account details to continue.</p>
 
-        <?php if ($error): ?>
-            <div class="alert alert-danger mb"><?= htmlspecialchars($error) ?></div>
-        <?php endif; ?>
+            <?php if ($reason === 'session'): ?>
+                <div class="alert alert-warning mb">This account was logged in from another device. Please log in again.</div>
+            <?php endif; ?>
 
-        <form method="post">
-            <div class="field mb">
-                <label>Username</label>
-                <input name="username" type="text" placeholder="Enter your username" required>
-            </div>
-            <div class="field mb">
-                <label>Password</label>
-                <input type="password" name="password" placeholder="Enter your password" required>
-            </div>
-            <button class="btn btn-primary btn-block">Login</button>
-        </form>
+            <?php if ($error): ?>
+                <div class="alert alert-danger mb"><?= htmlspecialchars($error) ?></div>
+            <?php endif; ?>
 
-        <p class="mini mt" style="text-align:center">
-            <a href="#" onclick="event.preventDefault(); openModal('forgotPasswordModal')">Forgot Password?</a>
-        </p>
-    </div>
+            <form method="post">
+                <div class="field mb">
+                    <label for="loginUsername">Username</label>
+                    <input id="loginUsername" name="username" type="text" placeholder="Enter your username" autocomplete="username" required>
+                </div>
+                <div class="field mb">
+                    <label for="loginPassword">Password</label>
+                    <input id="loginPassword" type="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+                </div>
+                <button class="btn btn-primary btn-block">Login</button>
+            </form>
+
+            <p class="mini mt" style="text-align:center">
+                <a href="#" onclick="event.preventDefault(); openModal('forgotPasswordModal')">Forgot Password?</a>
+            </p>
+        </div>
+    </main>
 
     <!-- Forgot Password modal -->
     <div id="forgotPasswordModal" class="modal">

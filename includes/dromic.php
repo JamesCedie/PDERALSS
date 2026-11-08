@@ -22,7 +22,7 @@ function dromic_css(): string
 .dromic-toolbar select{min-width:240px}
 .dromic-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
 .dromic-tabs a{padding:6px 14px;border:1px solid #888;border-radius:6px;text-decoration:none;color:inherit;font-size:var(--fs-sm)}
-.dromic-tabs a.on{background:#2563eb;color:#fff;border-color:#2563eb}
+.dromic-tabs a.on{background:#6E7DAB;color:#fff;border-color:#6E7DAB}
 .dromic-scroll{overflow-x:auto}
 /* ---- paper form ---- */
 .dromic-sheet{background:#fff;color:#000;font-family:var(--font-sans);font-size:var(--fs-2xs);padding:18px 22px 26px;min-width:1040px;margin-bottom:18px}

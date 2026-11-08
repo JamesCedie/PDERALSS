@@ -67,11 +67,11 @@ function page_start($title = 'LGU Disaster Management System', $subtitle = null,
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($title) ?></title>
     <script>
-        // Apply the saved theme before first paint (no flash). Light is the default;
+        // Apply the saved theme before first paint (no flash). Dark is the default;
         // the OS colour-scheme preference is intentionally ignored.
         (function () {
-            var t = 'light';
-            try { if (localStorage.getItem('theme') === 'dark') t = 'dark'; } catch (e) {}
+            var t = 'dark';
+            try { if (localStorage.getItem('theme') === 'light') t = 'light'; } catch (e) {}
             document.documentElement.setAttribute('data-theme', t);
         })();
     </script>
@@ -181,27 +181,28 @@ function page_end()
 
 function status_badge($status)
 {
-    // ONE colour scheme for every status in the system.
-    //   green  = good / approved      yellow = waiting / caution     red  = problem / stop
-    //   purple = completed           blue   = in progress/info    gray   = neutral / closed / cancelled
+    // ONE colour scheme for every status in the system (palette: E71D36 / 6622CC / FCBA04 / 5FAD56 / 889696).
+    //   green  = available / active / completed    yellow = waiting / caution / injured
+    //   red    = full / rejected / fatal / totally damaged
+    //   purple = approved / in transit / missing    sky blue (2A7DE1) = scheduled    gray = closed / cancelled / passed
     $map = [
         // availability & lifecycle
         'Available'     => 'b-green',
         'Active'        => 'b-green',
         'Verified'      => 'b-green',
-        'Approved'      => 'b-green',
+        'Approved'      => 'b-purple',
         'Success'       => 'b-green',
-        'Occupied'      => 'b-yellow',
+        'Occupied'      => 'b-purple',
         'Near Capacity' => 'b-yellow',
         'Pending'       => 'b-yellow',
         'Under Review'  => 'b-yellow',
-        'Scheduled'     => 'b-blue',
-        'In Transit'    => 'b-blue',
-        'Completed'     => 'b-purple',
+        'Scheduled'     => 'b-sky',
+        'In Transit'    => 'b-purple',
+        'Completed'     => 'b-green',
         'Cancelled'     => 'b-gray',
         'Recorded'      => 'b-green',
-        'Updated'       => 'b-blue',
-        'Submitted'     => 'b-blue',
+        'Updated'       => 'b-purple',
+        'Submitted'     => 'b-purple',
         'Full'          => 'b-red',
         'Rejected'      => 'b-red',
         'Inactive'      => 'b-gray',
@@ -218,8 +219,8 @@ function status_badge($status)
         'Moderate'      => 'b-yellow',
         'Minor'         => 'b-green',
         'Fatality'      => 'b-red',
-        'Missing'       => 'b-yellow',
-        'Injured'       => 'b-blue',
+        'Missing'       => 'b-purple',
+        'Injured'       => 'b-yellow',
     ];
 
     $c = $map[$status] ?? 'b-gray';
