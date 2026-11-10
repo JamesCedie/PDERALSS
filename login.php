@@ -2,6 +2,7 @@
 session_start();
 require_once 'includes/db.php';
 require_once 'includes/password.php';
+require_once 'includes/otp.php';
 
 const MAX_LOGIN_ATTEMPTS = 4;
 db_ensure_login_lock();
@@ -25,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lookup_username'])) {
     $_SESSION['password_reset'] = [
         'username' => $lookupUsername,
         'otp'      => $otp,
-        'expires'  => time() + 300,
+        'expires'  => time() + OTP_TTL_SECONDS,
     ];
 
     $pass = getenv('SMTP_PASS') ?: '';
@@ -37,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lookup_username'])) {
             'sender' => ['email' => $from],
             'to' => [['email' => $email]],
             'subject' => 'Your OTP Code',
-            'textContent' => "Your OTP code is: {$otp}\nIt expires in 5 minutes.",
+            'textContent' => "Your OTP code is: {$otp}\nIt expires in " . OTP_TTL_SECONDS . " seconds.",
         ]);
         $ch = curl_init('https://api.brevo.com/v3/smtp/email');
         curl_setopt($ch, CURLOPT_POST, true);
@@ -65,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lookup_username'])) {
     $local  = $parts[0] ?? '';
     $domain = $parts[1] ?? '';
     $masked = (strlen($local) > 1 ? $local[0] . str_repeat('*', strlen($local) - 1) : $local) . '@' . $domain;
-    echo json_encode(['success' => true, 'masked_email' => $masked]);
+    echo json_encode(['success' => true, 'masked_email' => $masked, 'expires_in' => OTP_TTL_SECONDS]);
     exit;
 }
 
@@ -77,9 +78,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_otp'])) {
 
     $reset = $_SESSION['password_reset'] ?? null;
     if (!$reset || $reset['username'] !== $username || time() > $reset['expires']) {
-        echo json_encode(['success' => false, 'message' => 'OTP expired or invalid. Request a new one.']); exit;
+        unset($_SESSION['password_reset']); // an expired code can never be used again
+        echo json_encode(['success' => false, 'expired' => true, 'message' => 'OTP expired. Click "Resend code" to get a new one.']); exit;
     }
-    if ($otp !== $reset['otp']) { echo json_encode(['success' => false, 'message' => 'Invalid OTP code.']); exit; }
+    if (!hash_equals((string) $reset['otp'], $otp)) { echo json_encode(['success' => false, 'message' => 'Invalid OTP code.']); exit; }
+    unset($_SESSION['password_reset']); // single use
 
     $_SESSION['otp_verified_for'] = $username;
     echo json_encode(['success' => true, 'message' => 'OTP verified. Now enter a new password.']);
@@ -238,9 +241,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['lookup_username'])) 
             <form id="verifyOtpForm" onsubmit="event.preventDefault(); verifyOtp()">
                 <div class="field mb">
                     <label>OTP Code</label>
-                    <input type="text" id="otpCode" name="otp_code" maxlength="6" pattern="[0-9]{6}" placeholder="Enter 6-digit code" required>
+                    <input type="text" id="otpCode" name="otp_code" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter 6-digit code" required>
                 </div>
-                <button type="submit" class="btn btn-primary">Verify OTP</button>
+                <div class="otp-timer-row mb">
+                    <span class="otp-timer" id="otpTimer" role="timer" aria-live="off">Expires in <b>0:45</b></span>
+                    <button type="button" class="otp-resend" id="otpResendBtn" onclick="resendOtp()" hidden>Resend code</button>
+                </div>
+                <button type="submit" class="btn btn-primary" id="verifyOtpBtn">Verify OTP</button>
             </form>
         </div>
     </div>
@@ -280,9 +287,11 @@ function verifyOtp() {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
+                getOtpCountdown().stop();
                 closeModal('otpModal');
                 openModal('resetPasswordModal');
             } else {
+                if (data.expired) otpExpireNow();
                 alert(data.message || 'Invalid OTP.');
             }
         })

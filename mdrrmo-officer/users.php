@@ -46,19 +46,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email_otp'])) {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { echo json_encode(['success' => false, 'message' => 'Enter a valid email first.']); exit; }
     if (db_select_one('users', 'email = ?', [$email])) { echo json_encode(['success' => false, 'message' => 'That email is already used.']); exit; }
     $prev = $_SESSION['email_verify'] ?? null;
-    if ($prev && time() - $prev['sent_at'] < 60) { echo json_encode(['success' => false, 'message' => 'Please wait a minute before resending.']); exit; }
+    // Resend is only allowed once the previous code has expired.
+    if ($prev && $prev['email'] === strtolower($email) && time() <= $prev['expires']) { echo json_encode(['success' => false, 'message' => 'Your current code is still valid. Wait for it to expire before resending.']); exit; }
 
     $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
     if ($err = otp_send_email($email, $otp)) { echo json_encode(['success' => false, 'message' => $err]); exit; }
     $_SESSION['email_verify'] = [
         'email'    => strtolower($email),
         'otp_hash' => password_hash($otp, PASSWORD_DEFAULT),
-        'expires'  => time() + 300,
+        'expires'  => time() + OTP_TTL_SECONDS,
         'sent_at'  => time(),
         'tries'    => 0,
         'verified' => false,
     ];
-    echo json_encode(['success' => true, 'message' => 'OTP sent to ' . $email . '.']);
+    echo json_encode(['success' => true, 'message' => 'OTP sent to ' . $email . '.', 'expires_in' => OTP_TTL_SECONDS]);
     exit;
 }
 
@@ -67,7 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_email_otp'])) 
     header('Content-Type: application/json');
     $v     = $_SESSION['email_verify'] ?? null;
     $email = strtolower(trim($_POST['email'] ?? ''));
-    if (!$v || $v['email'] !== $email || time() > $v['expires']) { echo json_encode(['success' => false, 'message' => 'OTP expired. Send a new one.']); exit; }
+    if (!$v || $v['email'] !== $email || time() > $v['expires']) {
+        unset($_SESSION['email_verify']); // an expired code can never be used again
+        echo json_encode(['success' => false, 'expired' => true, 'message' => 'OTP expired. Click "Resend code" to get a new one.']); exit;
+    }
     if ($v['tries'] >= 5) { echo json_encode(['success' => false, 'message' => 'Too many attempts. Send a new OTP.']); exit; }
     $_SESSION['email_verify']['tries']++;
     if (!password_verify(trim($_POST['otp_code'] ?? ''), $v['otp_hash'])) { echo json_encode(['success' => false, 'message' => 'Invalid OTP code.']); exit; }
@@ -280,7 +284,11 @@ foreach ($users as $u) {
                     <button type="button" class="btn btn-dark-sm" id="sendEmailOtpBtn" onclick="sendEmailOtp()" style="margin-top:6px">Send OTP</button>
                     <div id="emailOtpBox" style="display:none;margin-top:6px">
                         <input type="text" id="addEmailOtp" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="6-digit code">
-                        <button type="button" class="btn btn-dark-sm" onclick="verifyEmailOtp()" style="margin-top:6px">Verify</button>
+                        <div class="otp-timer-row" style="margin-top:6px">
+                            <span class="otp-timer" id="addOtpTimer" role="timer" aria-live="off">Expires in <b>0:45</b></span>
+                            <button type="button" class="otp-resend" id="addOtpResendBtn" onclick="sendEmailOtp()" hidden>Resend code</button>
+                        </div>
+                        <button type="button" class="btn btn-dark-sm" id="verifyEmailOtpBtn" onclick="verifyEmailOtp()" style="margin-top:6px">Verify</button>
                     </div>
                     <span class="mini" id="emailOtpStatus"></span>
                 </div>
@@ -388,7 +396,17 @@ foreach ($users as $u) {
         $('emailOtpStatus').textContent = '';
         $('sendEmailOtpBtn').disabled = false;
         $('sendEmailOtpBtn').textContent = 'Send OTP';
+        if (_addTimer) _addTimer.stop();
     });
+
+    // Countdown; when it hits 0 the code is dead and only "Resend code" remains.
+    // Created lazily: assets/app.js (which defines createOtpCountdown) loads after this inline script.
+    let _addTimer = null;
+    const addTimer = () => _addTimer || (_addTimer = createOtpCountdown({
+        timer: $('addOtpTimer'), resend: $('addOtpResendBtn'),
+        lock: [$('addEmailOtp'), $('verifyEmailOtpBtn')],
+        onExpire: function () { $('emailOtpStatus').textContent = 'Code expired. Click "Resend code" to get a new one.'; $('createUserBtn').disabled = true; }
+    }));
 
     window.sendEmailOtp = function () {
         const email = $('addEmail').value.trim();
@@ -397,7 +415,12 @@ foreach ($users as $u) {
         btn.disabled = true; btn.textContent = 'Sending...';
         post('send_email_otp=1&email=' + encodeURIComponent(email)).then(function (d) {
             $('emailOtpStatus').textContent = d.message || '';
-            if (d.success) { $('emailOtpBox').style.display = ''; btn.textContent = 'OTP sent'; }
+            if (d.success) {
+                $('emailOtpBox').style.display = ''; btn.textContent = 'OTP sent';
+                $('addEmailOtp').value = '';
+                $('createUserBtn').disabled = true;
+                addTimer().start(d.expires_in);
+            } else if (_addTimer && _addTimer.active) { /* old code still valid, keep it */ }
             else { btn.disabled = false; btn.textContent = 'Send OTP'; }
         }).catch(function () { btn.disabled = false; btn.textContent = 'Send OTP'; alert('Something went wrong.'); });
     };
@@ -409,6 +432,8 @@ foreach ($users as $u) {
             .then(function (d) {
                 $('emailOtpStatus').textContent = d.message || '';
                 $('createUserBtn').disabled = !d.success;
+                if (d.success) addTimer().stop(true);
+                else if (d.expired) addTimer().expire();
             }).catch(function () { alert('Something went wrong.'); });
     };
 })();

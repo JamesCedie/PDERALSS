@@ -36,30 +36,89 @@ function confirmAction(message) {
 }
 
 /**
+ * OTP countdown. Shows "Expires in 0:45" and ticks down once a second.
+ * When it reaches zero the code is treated as dead: the `lock` elements are
+ * disabled and the `resend` button is revealed.
+ * Uses a wall-clock deadline so it stays accurate in background tabs.
+ */
+function createOtpCountdown(opts) {
+    let deadline = 0, tick = null;
+    const api = { active: false };
+    const fmt = (s) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+
+    function render() {
+        const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+        opts.timer.innerHTML = 'Expires in <b>' + fmt(left) + '</b>';
+        opts.timer.classList.toggle('is-low', left <= 10);
+        if (left <= 0) api.expire();
+    }
+    function lock(on) { (opts.lock || []).forEach(el => { if (el) el.disabled = on; }); }
+
+    api.start = function (seconds) {
+        clearInterval(tick);
+        deadline = Date.now() + (seconds || 45) * 1000;
+        api.active = true;
+        opts.timer.hidden = false;
+        opts.timer.classList.remove('is-expired');
+        opts.resend.hidden = true;
+        opts.resend.disabled = false;
+        lock(false);
+        render();
+        tick = setInterval(render, 250);
+    };
+    api.expire = function () {
+        clearInterval(tick);
+        api.active = false;
+        opts.timer.innerHTML = 'Code expired';
+        opts.timer.classList.remove('is-low');
+        opts.timer.classList.add('is-expired');
+        opts.resend.hidden = false;
+        lock(true);
+        if (opts.onExpire) opts.onExpire();
+    };
+    api.stop = function (keepVisible) {
+        clearInterval(tick);
+        api.active = false;
+        opts.resend.hidden = true;
+        if (!keepVisible) opts.timer.classList.remove('is-low', 'is-expired');
+    };
+    return api;
+}
+
+/**
  * Login page: "Forgot Password" flow.
  * Looks up the username already typed in the login form, gets back a
  * masked email for the matching account, and opens the OTP modal.
  * Safe to call even on pages without a #otpModal / username field.
  */
-function requestOtp() {
+let otpCountdown = null;
+function getOtpCountdown() {
+    if (!otpCountdown) {
+        otpCountdown = createOtpCountdown({
+            timer: document.getElementById('otpTimer'),
+            resend: document.getElementById('otpResendBtn'),
+            lock: [document.getElementById('otpCode'), document.getElementById('verifyOtpBtn')],
+        });
+    }
+    return otpCountdown;
+}
+function otpExpireNow() { getOtpCountdown().expire(); }
+
+function otpUsername() {
     const forgotField = document.getElementById('forgotUsername');
     const loginField = document.querySelector('form [name="username"]');
-    const username = (forgotField && forgotField.value.trim())
+    return (forgotField && forgotField.value.trim())
         ? forgotField.value.trim()
         : (loginField ? loginField.value.trim() : '');
+}
 
+/** Asks the server for a fresh code and (re)starts the countdown. `onDone` runs on success. */
+function sendOtpRequest(onDone) {
+    const username = otpUsername();
     if (!username) {
         alert('Please enter your username first.');
         return;
     }
-
-    const otpDisplay = document.getElementById('otpEmailDisplay');
-    if (otpDisplay && otpDisplay.textContent.trim()) {
-        alert('An OTP was already sent to ' + otpDisplay.textContent.trim());
-        openModal('otpModal');
-        return;
-    }
-
     fetch('login.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -69,14 +128,40 @@ function requestOtp() {
         .then(data => {
             if (data.success) {
                 document.getElementById('otpEmailDisplay').textContent = data.masked_email;
-                const btn = document.getElementById('sendOtpBtn');
-                if (btn) { btn.textContent = 'OTP sent'; btn.disabled = true; }
-                setTimeout(function () { closeModal('otpModal'); openModal('otpModal'); }, 2000);
+                document.getElementById('otpCode').value = '';
+                getOtpCountdown().start(data.expires_in);
+                onDone && onDone();
             } else {
                 alert(data.message || 'Something went wrong. Please try again.');
             }
         })
         .catch(() => alert('Something went wrong. Please try again.'));
+}
+
+function requestOtp() {
+    // A still-valid code was already sent: just reopen the modal.
+    if (otpCountdown && otpCountdown.active) {
+        openModal('otpModal');
+        return;
+    }
+    const btn = document.getElementById('sendOtpBtn');
+    sendOtpRequest(function () {
+        if (btn) { btn.textContent = 'OTP sent'; btn.disabled = true; }
+        setTimeout(function () {
+            closeModal('forgotPasswordModal');
+            openModal('otpModal');
+            const c = document.getElementById('otpCode'); if (c) c.focus();
+        }, 800);
+    });
+}
+
+function resendOtp() {
+    const btn = document.getElementById('otpResendBtn');
+    btn.disabled = true;
+    sendOtpRequest(function () {
+        const c = document.getElementById('otpCode'); if (c) c.focus();
+    });
+    setTimeout(function () { btn.disabled = false; }, 1500);
 }
 
 document.addEventListener('click', function (e) {

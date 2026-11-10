@@ -3600,3 +3600,57 @@ html[data-theme="dark"] .rg-field input[type="date"], html[data-theme="dark"] .r
     .login-page.auth .login-card { padding: 28px 22px 24px; }
 }
 :root[data-theme="dark"] .login-page.auth .login-card .mini a { color: #6fb1ee; }
+
+
+/* ---------- OTP countdown ---------- */
+.otp-timer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.otp-timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-family: var(--font-sans);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--text-2);
+    background: var(--input-bg, transparent);
+    border: 1px solid var(--border-soft, currentColor);
+}
+.otp-timer b {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    min-width: 2.4em;
+}
+.otp-timer.is-low { color: var(--danger-solid); border-color: var(--danger-solid); }
+.otp-timer.is-low b { color: var(--danger-solid); }
+.otp-timer.is-expired { color: var(--danger-solid); border-color: var(--danger-solid); font-weight: 600; }
+.otp-resend {
+    font-family: var(--font-sans);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--accent);
+    background: none;
+    border: 0;
+    padding: 4px 2px;
+    cursor: pointer;
+    text-decoration: underline;
+}
+.otp-resend:hover { color: var(--accent-hover); }
+.otp-resend:disabled { opacity: .5; cursor: default; }
+/* Dark mode: lighter red + readable accent so text keeps contrast on navy surfaces */
+:root[data-theme="dark"] .otp-timer.is-low,
+:root[data-theme="dark"] .otp-timer.is-low b,
+:root[data-theme="dark"] .otp-timer.is-expired { color: #FF7A8A; }
+:root[data-theme="dark"] .otp-timer.is-low,
+:root[data-theme="dark"] .otp-timer.is-expired { border-color: #FF7A8A; }
+:root[data-theme="dark"] .otp-resend { color: #8FA3E0; }
+:root[data-theme="dark"] .otp-resend:hover { color: #B4C3F0; }
+.otp-resend[hidden], .otp-timer[hidden] { display: none; }
