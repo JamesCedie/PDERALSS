@@ -82,7 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
     exit;
 }
 
-// ── Cancel a booking (e.g. the passenger details changed) ───────────────────
+// ── Cancel a booking ─────────────────────────────────────────────────────────
+// Allowed at any time while the request is Pending, Approved or Scheduled
+// (no date cut-off). Completed / Rejected / Cancelled requests are final.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cancel') {
     $id     = (int) ($_POST['request_id'] ?? 0);
     $reason = trim((string) ($_POST['cancel_reason'] ?? ''));
@@ -96,8 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'cance
         $_SESSION['flash_error'] = 'Vehicle request not found.';
     } elseif (!in_array($req['status'], VR_CANCELLABLE, true)) {
         $_SESSION['flash_error'] = "{$req['request_code']} is already {$req['status']} and can't be cancelled.";
-    } elseif ($req['requested_date'] < vr_today()->format('Y-m-d')) {
-        $_SESSION['flash_error'] = "{$req['request_code']} is for a past date and can't be cancelled.";
     } elseif (mb_strlen($reason) > 200) {
         $_SESSION['flash_error'] = 'The reason must be 200 characters or fewer.';
     } else {
@@ -206,7 +206,12 @@ $visible  = 5;
                             <td><?= vr_h(vr_time12($r['requested_time'])) ?></td>
                             <td><?= vr_status_badge($r['status']) ?></td>
                             <td class="vr-wrap"><?= $r['notes'] ? vr_h($r['notes']) : '<span class="vr-muted">—</span>' ?></td>
-                            <td class="vr-right"><button class="btn btn-dark-sm" onclick="openModal('viewVehicle-<?= (int) $r['request_id'] ?>')">View</button></td>
+                            <td class="vr-right">
+                                <button class="btn btn-dark-sm" onclick="openModal('viewVehicle-<?= (int) $r['request_id'] ?>')">View</button>
+                                <?php if (in_array($r['status'], VR_CANCELLABLE, true)): ?>
+                                    <button class="btn btn-reject" onclick="openModal('viewVehicle-<?= (int) $r['request_id'] ?>')">Cancel</button>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -312,14 +317,14 @@ $visible  = 5;
                     <div class="field full"><label>Cancellation reason</label><div class="vr-readonly vr-notes"><?= !empty($r['cancel_reason']) ? vr_h($r['cancel_reason']) : '<span class="vr-muted">No reason given</span>' ?></div></div>
                 <?php endif; ?>
             </div>
-            <?php if (in_array($r['status'], VR_CANCELLABLE, true) && $r['requested_date'] >= vr_today()->format('Y-m-d')): ?>
+            <?php if (in_array($r['status'], VR_CANCELLABLE, true)): ?>
                 <form method="post" class="vr-cancel-box" onsubmit="return confirm('Cancel <?= vr_h($r['request_code']) ?>? The time slot will be released.');">
                     <input type="hidden" name="action" value="cancel">
                     <input type="hidden" name="request_id" value="<?= (int) $r['request_id'] ?>">
                     <?= vr_csrf_field() ?>
                     <div class="vr-cancel-title">Need to change something?</div>
                     <div class="vr-cancel-text">
-                        Cancel this booking, then submit a new request with the correct details.
+                        You can cancel this booking at any time, even if it is already approved or scheduled. Submit a new request afterwards if you still need a trip.
                         <?php if ($r['status'] !== 'Pending'): ?><strong>The MDRRMO has already <?= vr_h(strtolower($r['status'])) ?> this request, so please inform them.</strong><?php endif; ?>
                     </div>
                     <div class="field">

@@ -2038,7 +2038,8 @@ th.row-actions { text-align: right; }
 
 
 .vr-page .table td, .vr-page .table th { white-space:nowrap; }
-.vr-page .table .vr-right { text-align:right; }
+.vr-page .table .vr-right { text-align:right; white-space:nowrap; }
+.vr-page .table .vr-right .btn + .btn { margin-left:6px; }
 .vr-code { color:var(--sw-soft); font-size:var(--fs-2xs); margin-top:2px; }
 .vr-muted { color:var(--sw-soft); }
 .sw-ui .btn-dark-sm {
