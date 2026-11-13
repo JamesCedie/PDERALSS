@@ -231,13 +231,16 @@ if ($selected !== null) {
             document.getElementById('mdCOpen').href = c.url;
         }
 
+        // Location-pin glyph for the marker (inherits the marker's colour).
+        var pinSvg = '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
+
         var pts = [];
         centers.forEach(function (c, i) {
             if (c.lat === null || c.lng === null) return;
             var icon = L.divIcon({
                 className: 'md-leaflet-pin',
                 iconSize: [0, 0],
-                html: '<button type="button" class="md-pin" data-i="' + i + '"><span class="md-pin-label">\uD83D\uDCCD ' + esc(c.barangay) + '</span><span class="md-pin-dot">\u2302</span></button>'
+                html: '<button type="button" class="md-pin" data-i="' + i + '"><span class="md-pin-label">' + esc(c.barangay) + '</span><span class="md-pin-dot">' + pinSvg + '</span></button>'
             });
             var m = L.marker([c.lat, c.lng], { icon: icon, title: c.barangay, keyboard: false }).addTo(map);
             markers[i] = m;

@@ -34,8 +34,8 @@
 :root {
     color-scheme: light;
     --bg-canvas: #DAE4DF;  /* Page background behind the cards (a notch darker so cards pop) */
-    --bg-sidebar: #F7FAF9;
-    --bg-topbar: #F7FAF9;
+    --bg-sidebar: #6E7DAB;  /* Light mode: sidebar uses the highlight colour (reversed with the active item) */
+    --bg-topbar: #6E7DAB;   /* Light mode: header uses the highlight colour */
     --surface: #FFFFFF;  /* Container surface */
     --surface-modal: #FFFFFF;
     --surface-raised: #FFFFFF;
@@ -2221,11 +2221,10 @@ th.row-actions { text-align: right; }
     padding:3px 9px; font-size:var(--fs-2xs); white-space:nowrap;
 }
 .md-pin-dot {
-    width:18px; height:18px; display:grid; place-items:center; font-size:var(--fs-2xs); border-radius:4px;
-    background:var(--st-green-bg); border:1px solid var(--st-green-bd); color:var(--st-green-text);
+    display:grid; place-items:center; line-height:0; color:#12293C;  /* dark blue, same in light and dark mode */
 }
+.md-pin-dot svg { width:20px; height:20px; display:block; filter:drop-shadow(0 0 1.5px rgba(255,255,255,.85)); }
 .md-pin:hover .md-pin-label, .md-pin.active .md-pin-label { background:var(--accent); border-color:var(--accent-hover); color:var(--on-accent); }
-.md-pin.active .md-pin-dot { background:var(--sig-green); color:var(--on-accent); }
 .md-map-legend {
     position:absolute; left:12px; right:12px; bottom:8px; display:flex; gap:14px; align-items:center;
     font-size:var(--fs-2xs); color:var(--sw-muted);
@@ -3655,3 +3654,136 @@ html[data-theme="dark"] .rg-field input[type="date"], html[data-theme="dark"] .r
 :root[data-theme="dark"] .otp-resend { color: #8FA3E0; }
 :root[data-theme="dark"] .otp-resend:hover { color: #B4C3F0; }
 .otp-resend[hidden], .otp-timer[hidden] { display: none; }
+
+
+/* ==========================================================================
+   Shell colour scheme (sidebar + header)
+   --------------------------------------------------------------------------
+   Light mode is "reversed": the sidebar and header carry the highlight colour
+   (periwinkle #6E7DAB) with white text, and the active page highlight uses
+   the old sidebar/header colour (#F7FAF9) with the old sidebar text colour.
+   Dark mode values below reproduce the previous look exactly.
+   Backgrounds come from --bg-sidebar / --bg-topbar (set with the theme tokens).
+   ========================================================================== */
+:root {
+    --shell-text: #FFFFFF;             /* Brand name, user name, page title */
+    --shell-muted: #FFFFFF;            /* Nav links, captions, subtitle */
+    --shell-soft: #FFFFFF;             /* Icons, role label */
+    --shell-divider: rgba(255,255,255,.28);   /* Lines inside the sidebar, nav tree connectors */
+    --shell-edge: rgba(13,33,49,.18);  /* Sidebar / header outer edge */
+    --shell-hover: rgba(255,255,255,.16);
+    --shell-active-bg: #F7FAF9;        /* Old sidebar/header colour */
+    --shell-active-text: #0D2131;      /* Old sidebar text colour */
+    --shell-active-shadow: none;
+    --shell-focus: #FFFFFF;
+    --shell-btn-bg: #F7FAF9;
+    --shell-btn-text: #0D2131;
+    --shell-btn-bd: transparent;
+    --shell-btn-hover: #FFFFFF;
+    --shell-live-text: #FFFFFF;
+    --shell-live-dot: #A9E6A3;
+    --shell-topbar-bg: var(--bg-topbar);
+}
+:root[data-theme="dark"] {
+    --shell-text: var(--text);
+    --shell-muted: var(--text-2);
+    --shell-soft: var(--text-soft);
+    --shell-divider: var(--border-soft);
+    --shell-edge: var(--border-soft);
+    --shell-hover: var(--hover-nav);
+    --shell-active-bg: var(--fill-primary);
+    --shell-active-text: var(--on-accent);
+    --shell-active-shadow: var(--glow-primary);
+    --shell-focus: var(--focus);
+    --shell-btn-bg: var(--btn-sec-bg);
+    --shell-btn-text: var(--btn-sec-text);
+    --shell-btn-bd: var(--btn-sec-bd);
+    --shell-btn-hover: var(--btn-sec-hover);
+    --shell-live-text: var(--text-body);
+    --shell-live-dot: var(--st-green-text);
+    --shell-topbar-bg: color-mix(in srgb, var(--bg-topbar) 90%, transparent);
+}
+
+/* Light mode shows the white logo on the periwinkle sidebar */
+:root:not([data-theme="dark"]) .sw-brand .brand-logo .logo-light { display: none; }
+:root:not([data-theme="dark"]) .sw-brand .brand-logo .logo-dark  { display: block; }
+
+/* --- Sidebar ------------------------------------------------------------ */
+.sw-ui .sidebar { color: var(--shell-text); border-right-color: var(--shell-edge); }
+.brand, .sw-brand { border-bottom-color: var(--shell-divider); }
+.sw-brand small { color: var(--shell-muted); }
+.sw-sidebar-user { border-top-color: var(--shell-divider); }
+.sw-sidebar-user small { color: var(--shell-soft); }
+.sw-sidebar-user a { color: var(--shell-soft); }
+.sw-sidebar-user a:hover { color: var(--shell-text); }
+.theme-toggle { color: var(--shell-soft); }
+.theme-toggle:hover { background: var(--shell-hover); color: var(--shell-text); }
+
+.sw-ui .nav a { color: var(--shell-muted); }
+.sw-ui .nav a:not(.active):hover { background: var(--shell-hover); color: var(--shell-text); }
+.sw-ui .nav a.active,
+.sw-ui .nav a.nav-tree-item.active {
+    background: var(--shell-active-bg);
+    color: var(--shell-active-text);
+    box-shadow: var(--shell-active-shadow);
+}
+.nav .nav-tree::before,
+.nav .nav-tree-item::before { background: var(--shell-divider); }
+
+/* --- Header ------------------------------------------------------------- */
+.sw-ui .topbar {
+    background: var(--shell-topbar-bg);
+    border-bottom-color: var(--shell-edge);
+    color: var(--shell-text);
+}
+.sw-top-title h1 { color: var(--shell-text); }
+.sw-top-title p { color: var(--shell-muted); }
+.sw-ui .topbar .sw-mobile-menu,
+.sw-ui .topbar .icon-btn { color: var(--shell-muted); }
+.sw-ui .topbar .icon-btn:hover { background: var(--shell-hover); color: var(--shell-text); }
+.sw-ui .topbar .user-name { color: var(--shell-text); }
+.sw-ui .topbar .user-role { color: var(--shell-muted); }
+.sw-ui .topbar .live-status-line { color: var(--shell-live-text); }
+.sw-ui .topbar .live-status small { color: var(--shell-soft); }
+.sw-ui .topbar .live-dot { background: var(--shell-live-dot); }
+.sw-top-back {
+    background: var(--shell-btn-bg);
+    border-color: var(--shell-btn-bd);
+    color: var(--shell-btn-text);
+}
+.sw-top-back:hover { background: var(--shell-btn-hover); color: var(--shell-btn-text); }
+
+/* Keyboard focus must stay visible on the coloured shell */
+.sidebar a:focus-visible, .sidebar button:focus-visible,
+.topbar a:focus-visible, .topbar button:focus-visible {
+    outline-color: var(--shell-focus);
+}
+
+/* ==========================================================================
+   Sidebar + header keep the dark-mode colours in light mode too.
+   Dark-theme tokens are re-declared on these two elements only, so the page
+   content stays light while the shell looks the same in both themes.
+   ========================================================================== */
+:root:not([data-theme="dark"]) .sidebar,
+:root:not([data-theme="dark"]) .topbar {
+    --bg-sidebar: #0A1B29;  --bg-topbar: #0D2131;
+    --sw-sidebar: #0A1B29;  --sw-top: #0D2131;
+    --sw-text: #E8F1EE;  --sw-muted: #96A7BF;  --sw-soft: #8696B4;  --sw-border: #2B405A;
+    --text: #E8F1EE;  --text-body: #D1E3DD;  --text-2: #96A7BF;  --text-soft: #8696B4;
+    --border: #2B405A;  --border-soft: #213650;  --hover-nav: #1C2D40;
+    --accent: #6E7DAB;  --accent-hover: #5F6E9C;  --fill-primary: #6E7DAB;  --on-accent: #FFFFFF;
+    --glow-primary: 0 0 0 2px rgba(209,227,221,.45);
+    --focus: #D1E3DD;
+    --btn-sec-bg: #17304A;  --btn-sec-bd: #2B405A;  --btn-sec-text: #D1E3DD;  --btn-sec-hover: #1F3A57;
+    --st-green-text: #8FD487;
+    --shadow-side: none;  --shadow-bar: none;
+    --shell-text: #E8F1EE;  --shell-muted: #96A7BF;  --shell-soft: #8696B4;
+    --shell-divider: #213650;  --shell-edge: #213650;  --shell-hover: #1C2D40;
+    --shell-active-bg: #6E7DAB;  --shell-active-text: #FFFFFF;
+    --shell-active-shadow: 0 0 0 2px rgba(209,227,221,.45);
+    --shell-focus: #D1E3DD;
+    --shell-btn-bg: #17304A;  --shell-btn-text: #D1E3DD;  --shell-btn-bd: #2B405A;  --shell-btn-hover: #1F3A57;
+    --shell-live-text: #D1E3DD;  --shell-live-dot: #8FD487;
+    --shell-topbar-bg: color-mix(in srgb, #0D2131 90%, transparent);
+    color-scheme: dark;
+}
